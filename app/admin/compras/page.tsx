@@ -18,6 +18,7 @@ export default function ComprasAdmin() {
   const [form, setForm] = useState<PurchaseForm>(EMPTY_FORM);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,22 +49,35 @@ export default function ComprasAdmin() {
   }
 
   async function save() {
-    if (!form.product_id || form.quantity <= 0) return;
+    setSaveError(null);
+    if (!form.product_id) { setSaveError("Selecciona un producto"); return; }
+    if (form.quantity <= 0) { setSaveError("La cantidad debe ser mayor a 0"); return; }
+    if (form.unit_cost < 0) { setSaveError("El costo no puede ser negativo"); return; }
+
     setSaving(true);
-    const total_cost = form.quantity * form.unit_cost;
-    await supabase.from("purchases").insert({ ...form, total_cost });
-    // Update stock and cost
-    const product = products.find(p => p.id === form.product_id);
-    if (product) {
-      await supabase.from("products").update({
-        stock: (product.stock ?? 0) + form.quantity,
-        cost: form.unit_cost,
-      }).eq("id", form.product_id);
+    try {
+      const total_cost = form.quantity * form.unit_cost;
+      const { error: insErr } = await supabase.from("purchases").insert({ ...form, total_cost });
+      if (insErr) throw new Error(insErr.message);
+
+      const product = products.find(p => p.id === form.product_id);
+      if (product) {
+        const { error: updErr } = await supabase.from("products").update({
+          stock: (product.stock ?? 0) + form.quantity,
+          cost: form.unit_cost,
+        }).eq("id", form.product_id);
+        if (updErr) throw new Error(updErr.message);
+      }
+
+      setForm(EMPTY_FORM);
+      setShowForm(false);
+      await load();
+    } catch (e: any) {
+      console.error("[admin/compras] save failed:", e);
+      setSaveError(e?.message ?? "Error al registrar compra");
+    } finally {
+      setSaving(false);
     }
-    setForm(EMPTY_FORM);
-    setShowForm(false);
-    await load();
-    setSaving(false);
   }
 
   const totalInvested = purchases.reduce((s, p) => s + Number(p.total_cost), 0);
@@ -85,7 +99,7 @@ export default function ComprasAdmin() {
           <p className="text-[#9B6B45] text-sm">Total invertido: <strong className="text-[#D4A520]">S/ {totalInvested.toFixed(2)}</strong></p>
         </div>
         <button
-          onClick={() => setShowForm(s => !s)}
+          onClick={() => { setSaveError(null); setShowForm(s => !s); }}
           className="flex items-center gap-2 bg-[#D4A520] text-white font-bold px-4 py-2.5 rounded-xl hover:bg-[#A07D10] transition-colors text-sm"
         >
           <Plus size={16} /> Registrar compra
@@ -123,6 +137,11 @@ export default function ComprasAdmin() {
       {showForm && (
         <div className="bg-white rounded-2xl p-6 border border-[#F5EDD8] shadow-sm flex flex-col gap-4">
           <h2 className="font-bold text-[#3D2010]">Nueva compra</h2>
+          {saveError && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-sm font-mono">
+              {saveError}
+            </div>
+          )}
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-[#6B3D1E] mb-1">Producto</label>
