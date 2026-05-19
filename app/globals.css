@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+@theme {
+  --color-gold: #D4A520;
+  --color-gold-light: #F5E9B8;
+  --color-gold-dark: #A07D10;
+  --color-brown: #6B3D1E;
+  --color-brown-light: #C4956A;
+  --color-brown-muted: #9B6B45;
+  --color-cream: #FDF8F0;
+  --color-cream-dark: #F5EDD8;
+  --color-sage: #8BAF7A;
+  --color-sage-light: #D4EAC8;
+  --color-peach: #F5C4A8;
+  --color-peach-light: #FDE8DC;
+
+  --font-nunito: var(--font-nunito);
+  --font-dancing: var(--font-dancing);
+}
+
+:root {
+  --background: #FDF8F0;
+  --foreground: #3D2010;
+}
+
+* {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-nunito), 'Nunito', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-brand {
+  font-family: var(--font-dancing), 'Dancing Script', cursive;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.wave-divider {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.wave-divider svg {
+  display: block;
+  width: 100%;
+}
