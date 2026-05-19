@@ -1,11 +1,26 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import * as XLSX from "xlsx";
 import { supabase } from "../../lib/supabase";
 import { Product } from "../../lib/types";
-import { Plus, Pencil, ToggleLeft, ToggleRight, Save, X, Upload, Trash2, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, ToggleLeft, ToggleRight, Save, X, Upload, Trash2, AlertTriangle, FileDown, FileUp, CheckCircle2 } from "lucide-react";
 
 interface Category { id: string; name: string; }
+
+interface ImportRow {
+  rowNum: number;
+  raw: Record<string, any>;
+  errors: string[];
+  // normalized
+  id: string; sku: string; name: string; tagline: string; description: string;
+  category: string; price: number; cost: number; stock: number;
+  sizes: string[]; colors: string[]; gender: string; material: string;
+  has_offer: boolean; active: boolean;
+}
+
+const TEMPLATE_COLS = ["id","name","tagline","description","category","price","cost","stock","sizes","colors","gender","material","has_offer","active"] as const;
+const COL_WIDTHS     = [12,28,22,40,16,9,9,8,24,22,10,24,12,8];
 
 const FALLBACK_CATS: Category[] = [
   { id: "conjuntos", name: "Conjuntos" },
@@ -19,6 +34,19 @@ const EMPTY: any = {
   category: "conjuntos", price: 0, cost: 0, stock: 0,
   sizes: [], colors: [], gender: "Unisex", has_offer: false, image_url: "", active: true,
 };
+
+function parseBool(v: any, defaultVal = false): boolean {
+  if (typeof v === "boolean") return v;
+  const s = String(v ?? "").trim().toUpperCase();
+  if (["TRUE","SÍ","SI","1","YES"].includes(s)) return true;
+  if (["FALSE","NO","0"].includes(s)) return false;
+  return defaultVal;
+}
+
+function parseArr(v: any): string[] {
+  if (!v) return [];
+  return String(v).split(",").map(s => s.trim()).filter(Boolean);
+}
 
 export default function ProductosAdmin() {
   const [products,   setProducts]   = useState<Product[]>([]);
@@ -45,6 +73,13 @@ export default function ProductosAdmin() {
   const [deleting,       setDeleting]       = useState(false);
   const [deleteError,    setDeleteError]    = useState<string | null>(null);
 
+  // Import
+  const importRef   = useRef<HTMLInputElement>(null);
+  const [importRows,    setImportRows]    = useState<ImportRow[] | null>(null);
+  const [importError,   setImportError]   = useState<string | null>(null);
+  const [importSaving,  setImportSaving]  = useState(false);
+  const [importResult,  setImportResult]  = useState<{ imported: number; skipped: number } | null>(null);
+
   async function load() {
     setError(null);
     try {
@@ -54,7 +89,6 @@ export default function ProductosAdmin() {
       ]);
       if (prodRes.error) throw new Error(prodRes.error.message);
       setProducts(prodRes.data ?? []);
-      // If categories table exists and has rows, use it; otherwise keep fallback
       if (catRes.data && catRes.data.length > 0) setCategories(catRes.data);
     } catch (e: any) {
       console.error("[admin/productos] load failed:", e);
@@ -66,6 +100,7 @@ export default function ProductosAdmin() {
 
   useEffect(() => { load(); }, []);
 
+  // ── Edit / Save ────────────────────────────────────────────────────────────
   async function save() {
     if (!editing) return;
     setSaving(true);
@@ -73,7 +108,6 @@ export default function ProductosAdmin() {
     try {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { _isNew, ...payload } = editing;
-      // Auto-sync sku = id for new products
       if (_isNew) payload.sku = payload.id;
 
       if (_isNew) {
@@ -98,6 +132,7 @@ export default function ProductosAdmin() {
     if (!e) setProducts(ps => ps.map(x => x.id === p.id ? { ...x, active: !x.active } : x));
   }
 
+  // ── Delete ─────────────────────────────────────────────────────────────────
   async function handleDeleteClick(p: Product) {
     setDeleteError(null);
     const { count, error: countErr } = await supabase
@@ -126,6 +161,7 @@ export default function ProductosAdmin() {
     }
   }
 
+  // ── Image upload ───────────────────────────────────────────────────────────
   async function handleImageUpload(file: File) {
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       setSaveError("Solo se aceptan jpg, png o webp");
@@ -135,7 +171,6 @@ export default function ProductosAdmin() {
     setSaveError(null);
     try {
       const ext  = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-      // Use editing.id if available; otherwise a timestamped temp name
       const path = `products/${(editing?.id as string)?.trim() || `tmp-${Date.now()}`}.${ext}`;
 
       const { error: upErr } = await supabase.storage
@@ -143,11 +178,7 @@ export default function ProductosAdmin() {
         .upload(path, file, { upsert: true, contentType: file.type });
       if (upErr) throw new Error(`Storage upload: ${upErr.message}`);
 
-      // Use the local `path` variable directly — avoids any data.path discrepancy
-      const { data: urlData } = supabase.storage
-        .from("product-images")
-        .getPublicUrl(path);
-
+      const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
       if (!urlData?.publicUrl) throw new Error("No se pudo obtener la URL pública. Verifica que el bucket existe y es público.");
 
       console.log("[admin/productos] image uploaded, public URL:", urlData.publicUrl);
@@ -160,6 +191,7 @@ export default function ProductosAdmin() {
     }
   }
 
+  // ── Inline category ────────────────────────────────────────────────────────
   async function handleAddCategory() {
     if (!newCatName.trim()) return;
     setSavingCat(true);
@@ -168,12 +200,8 @@ export default function ProductosAdmin() {
       const slug = newCatName.trim().toLowerCase()
         .normalize("NFD").replace(/[̀-ͯ]/g, "")
         .replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-      const { error: catErr } = await supabase
-        .from("categories")
-        .insert({ id: slug, name: newCatName.trim() });
-      if (catErr && !catErr.message.includes("duplicate") && !catErr.message.includes("unique")) {
-        throw new Error(catErr.message);
-      }
+      const { error: catErr } = await supabase.from("categories").insert({ id: slug, name: newCatName.trim() });
+      if (catErr && !catErr.message.includes("duplicate") && !catErr.message.includes("unique")) throw new Error(catErr.message);
       const newCat = { id: slug, name: newCatName.trim() };
       setCategories(cats => cats.find(c => c.id === slug) ? cats : [...cats, newCat]);
       setEditing((prev: any) => ({ ...prev, category: slug }));
@@ -187,6 +215,169 @@ export default function ProductosAdmin() {
     }
   }
 
+  // ── Excel template download ────────────────────────────────────────────────
+  function downloadTemplate() {
+    const catIds = categories.map(c => c.id).join(" | ");
+    const header  = [...TEMPLATE_COLS];
+    const note    = ["← obligatorio","← obligatorio","","","← obligatorio. Categorías: " + catIds,"← obligatorio, número","número (≥0)","entero (≥0)","separar con comas","separar con comas","Unisex | Niño | Niña","","TRUE o FALSE","TRUE o FALSE"];
+    const example1 = ["LC-999","Nombre del Producto","Tagline breve","Descripción completa del producto","conjuntos",59,0,10,"RN,0-3m,3-6m","Blanco,Celeste","Unisex","100% Algodón Pima","FALSE","TRUE"];
+    const example2 = ["LC-998","Otro Producto","","Cuerpo de descripción","bodies",29,0,20,"RN,0-3m","Rosa","Niña","100% Algodón Pima","TRUE","TRUE"];
+
+    const ws = XLSX.utils.aoa_to_sheet([header, note, example1, example2]);
+    ws["!cols"] = TEMPLATE_COLS.map((_, i) => ({ wch: COL_WIDTHS[i] }));
+
+    // Style the note row (row index 1) with italic — basic cell metadata
+    TEMPLATE_COLS.forEach((_, ci) => {
+      const ref = XLSX.utils.encode_cell({ r: 1, c: ci });
+      if (ws[ref]) ws[ref].s = { font: { italic: true, color: { rgb: "888888" } } };
+    });
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Productos");
+    XLSX.writeFile(wb, "plantilla-productos-lioncub.xlsx");
+  }
+
+  // ── Excel import ───────────────────────────────────────────────────────────
+  function handleImportFile(file: File) {
+    setImportError(null);
+    setImportResult(null);
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data  = new Uint8Array(e.target!.result as ArrayBuffer);
+        const wb    = XLSX.read(data, { type: "array" });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        if (!sheet) throw new Error("El archivo Excel está vacío o no tiene hojas.");
+
+        const rows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+        if (rows.length < 2) throw new Error("El archivo no tiene filas de datos (solo encabezados o vacío).");
+
+        // Detect header row — skip any leading rows until we find TEMPLATE_COLS[0] ("id")
+        let headerIdx = rows.findIndex(r => String(r[0] ?? "").trim().toLowerCase() === "id");
+        if (headerIdx === -1) throw new Error(`No se encontró una fila con encabezado "id". Asegúrate de usar la plantilla descargada.`);
+
+        const headers = rows[headerIdx].map((h: any) => String(h ?? "").trim().toLowerCase());
+        const missing = TEMPLATE_COLS.filter(c => !headers.includes(c));
+        if (missing.length > 0) throw new Error(`Columnas faltantes en el Excel: ${missing.join(", ")}. Usa la plantilla oficial.`);
+
+        const catSet      = new Set(categories.map(c => c.id));
+        const existingIds = new Set(products.map(p => p.id));
+        const seenIds     = new Set<string>();
+
+        const dataRows = rows.slice(headerIdx + 1);
+        // Skip note / instruction rows (if row 0 col "price" is not a number and row 0 col "id" starts with "←")
+        const parsed: ImportRow[] = [];
+
+        dataRows.forEach((raw, idx) => {
+          const rowNum = headerIdx + idx + 2; // 1-based Excel row
+          const cell = (col: string) => {
+            const ci = headers.indexOf(col);
+            return ci >= 0 ? raw[ci] : "";
+          };
+
+          // Skip blank rows and instruction rows
+          const rawId = String(cell("id") ?? "").trim();
+          if (!rawId || rawId.startsWith("←")) return;
+
+          const errors: string[] = [];
+
+          // id
+          if (!rawId) errors.push("id es obligatorio");
+          else if (seenIds.has(rawId)) errors.push(`id "${rawId}" duplicado en el archivo`);
+          else if (existingIds.has(rawId)) errors.push(`id "${rawId}" ya existe en la tienda`);
+          seenIds.add(rawId);
+
+          // name
+          const rawName = String(cell("name") ?? "").trim();
+          if (!rawName) errors.push("name (nombre) es obligatorio");
+
+          // category
+          const rawCat = String(cell("category") ?? "").trim().toLowerCase();
+          if (!rawCat) errors.push("category es obligatorio");
+          else if (!catSet.has(rawCat)) errors.push(`categoría "${rawCat}" no existe (usa: ${[...catSet].join(", ")})`);
+
+          // price
+          const rawPrice = Number(cell("price"));
+          if (isNaN(rawPrice) || rawPrice <= 0) errors.push("price debe ser un número mayor a 0");
+
+          // cost
+          const rawCost = cell("cost") !== "" ? Number(cell("cost")) : 0;
+          if (isNaN(rawCost) || rawCost < 0) errors.push("cost debe ser un número >= 0");
+
+          // stock
+          const rawStock = cell("stock") !== "" ? Number(cell("stock")) : 0;
+          if (isNaN(rawStock) || rawStock < 0 || !Number.isInteger(rawStock))
+            errors.push("stock debe ser un entero >= 0");
+
+          parsed.push({
+            rowNum,
+            raw: Object.fromEntries(TEMPLATE_COLS.map(c => [c, cell(c)])),
+            errors,
+            id:          rawId,
+            sku:         rawId,
+            name:        rawName,
+            tagline:     String(cell("tagline") ?? "").trim(),
+            description: String(cell("description") ?? "").trim(),
+            category:    rawCat,
+            price:       rawPrice,
+            cost:        isNaN(rawCost)  ? 0 : rawCost,
+            stock:       isNaN(rawStock) ? 0 : rawStock,
+            sizes:       parseArr(cell("sizes")),
+            colors:      parseArr(cell("colors")),
+            gender:      String(cell("gender") ?? "Unisex").trim() || "Unisex",
+            material:    String(cell("material") ?? "100% Algodón Pima").trim() || "100% Algodón Pima",
+            has_offer:   parseBool(cell("has_offer"), false),
+            active:      parseBool(cell("active"), true),
+          });
+        });
+
+        if (parsed.length === 0) throw new Error("No se encontraron filas de datos válidas en el archivo.");
+
+        setImportRows(parsed);
+      } catch (e: any) {
+        console.error("[admin/productos] import parse failed:", e);
+        setImportError(e?.message ?? "Error al leer el archivo");
+        setImportRows(null);
+      }
+    };
+    reader.onerror = () => setImportError("No se pudo leer el archivo");
+    reader.readAsArrayBuffer(file);
+  }
+
+  async function confirmImport() {
+    if (!importRows) return;
+    const valid = importRows.filter(r => r.errors.length === 0);
+    if (valid.length === 0) { setImportError("No hay filas válidas para importar."); return; }
+
+    setImportSaving(true);
+    setImportError(null);
+    try {
+      const payload = valid.map(({ id, sku, name, tagline, description, category, price, cost, stock, sizes, colors, gender, material, has_offer, active }) => ({
+        id, sku, name, tagline, description, category, price, cost, stock, sizes, colors, gender, material, has_offer, active,
+      }));
+      const { error: insErr } = await supabase.from("products").insert(payload);
+      if (insErr) throw new Error(insErr.message);
+
+      const skipped = importRows.filter(r => r.errors.length > 0).length;
+      setImportResult({ imported: valid.length, skipped });
+      setImportRows(null);
+      await load();
+    } catch (e: any) {
+      console.error("[admin/productos] import insert failed:", e);
+      setImportError(e?.message ?? "Error al insertar en la base de datos");
+    } finally {
+      setImportSaving(false);
+    }
+  }
+
+  function closeImport() {
+    setImportRows(null);
+    setImportError(null);
+    if (importRef.current) importRef.current.value = "";
+  }
+
+  // ── Filtered list ──────────────────────────────────────────────────────────
   const filtered = products.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     p.id.toLowerCase().includes(search.toLowerCase()) ||
@@ -204,18 +395,52 @@ export default function ProductosAdmin() {
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-[#3D2010]">Productos</h1>
           <p className="text-[#9B6B45] text-sm">{products.length} productos en catálogo</p>
         </div>
-        <button
-          onClick={() => { setSaveError(null); setEditing({ ...EMPTY, _isNew: true }); }}
-          className="flex items-center gap-2 bg-[#D4A520] text-white font-bold px-4 py-2.5 rounded-xl hover:bg-[#A07D10] transition-colors text-sm"
-        >
-          <Plus size={16} /> Nuevo producto
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={downloadTemplate}
+            className="flex items-center gap-2 border border-[#D4A520] text-[#D4A520] font-bold px-3 py-2 rounded-xl hover:bg-[#FDF8F0] transition-colors text-xs"
+          >
+            <FileDown size={14} /> Plantilla
+          </button>
+          <button
+            onClick={() => { setImportError(null); setImportResult(null); importRef.current?.click(); }}
+            className="flex items-center gap-2 border border-[#9B6B45] text-[#9B6B45] font-bold px-3 py-2 rounded-xl hover:bg-[#FDF8F0] transition-colors text-xs"
+          >
+            <FileUp size={14} /> Importar Excel
+          </button>
+          <input
+            ref={importRef}
+            type="file"
+            accept=".xlsx,.xls"
+            className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) handleImportFile(f); e.target.value = ""; }}
+          />
+          <button
+            onClick={() => { setSaveError(null); setEditing({ ...EMPTY, _isNew: true }); }}
+            className="flex items-center gap-2 bg-[#D4A520] text-white font-bold px-4 py-2.5 rounded-xl hover:bg-[#A07D10] transition-colors text-sm"
+          >
+            <Plus size={16} /> Nuevo producto
+          </button>
+        </div>
       </div>
+
+      {/* Import result banner */}
+      {importResult && (
+        <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-2xl px-5 py-3 text-green-700">
+          <CheckCircle2 size={18} className="flex-shrink-0" />
+          <span className="text-sm font-semibold">
+            {importResult.imported} producto{importResult.imported !== 1 ? "s" : ""} importado{importResult.imported !== 1 ? "s" : ""} correctamente.
+            {importResult.skipped > 0 && ` ${importResult.skipped} omitido${importResult.skipped !== 1 ? "s" : ""} por errores.`}
+          </span>
+          <button onClick={() => setImportResult(null)} className="ml-auto text-green-600 hover:text-green-800"><X size={16} /></button>
+        </div>
+      )}
 
       <input
         placeholder="Buscar por nombre, SKU o categoría..."
@@ -224,7 +449,7 @@ export default function ProductosAdmin() {
         className="bg-white border border-[#F5EDD8] rounded-xl px-4 py-2.5 text-sm text-[#3D2010] focus:outline-none focus:ring-2 focus:ring-[#D4A520] w-full max-w-sm"
       />
 
-      {/* Table */}
+      {/* Product table */}
       <div className="bg-white rounded-2xl shadow-sm border border-[#F5EDD8] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -249,9 +474,7 @@ export default function ProductosAdmin() {
                             src={p.image_url}
                             alt={p.name}
                             className="w-full h-full object-cover"
-                            onError={e => {
-                              (e.currentTarget as HTMLImageElement).style.display = "none";
-                            }}
+                            onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                           />
                         </div>
                       )}
@@ -289,7 +512,7 @@ export default function ProductosAdmin() {
         </div>
       </div>
 
-      {/* Delete dialog */}
+      {/* ── Delete dialog ───────────────────────────────────────────────────── */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm flex flex-col gap-4">
@@ -344,7 +567,108 @@ export default function ProductosAdmin() {
         </div>
       )}
 
-      {/* Edit / Create modal */}
+      {/* ── Import preview modal ────────────────────────────────────────────── */}
+      {(importRows || importError) && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#F5EDD8]">
+              <h2 className="font-extrabold text-[#3D2010] text-lg flex items-center gap-2">
+                <FileUp size={20} className="text-[#D4A520]" />
+                Vista previa — importación
+              </h2>
+              <button onClick={closeImport} className="text-[#9B6B45] hover:text-[#3D2010]"><X size={20} /></button>
+            </div>
+
+            {/* Parse error */}
+            {importError && (
+              <div className="mx-6 mt-4 bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm font-mono break-all">
+                {importError}
+              </div>
+            )}
+
+            {/* Preview table */}
+            {importRows && importRows.length > 0 && (
+              <>
+                <div className="px-6 pt-3 pb-1 flex items-center gap-4 text-sm">
+                  <span className="flex items-center gap-1.5 text-green-700 font-semibold">
+                    <CheckCircle2 size={15} />
+                    {importRows.filter(r => r.errors.length === 0).length} válidas
+                  </span>
+                  <span className="flex items-center gap-1.5 text-red-600 font-semibold">
+                    <AlertTriangle size={15} />
+                    {importRows.filter(r => r.errors.length > 0).length} con errores
+                  </span>
+                  <span className="text-[#9B6B45] text-xs ml-auto">Las filas con error NO se importarán</span>
+                </div>
+
+                <div className="overflow-auto flex-1 px-6 pb-4">
+                  <table className="w-full text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-[#F5EDD8] text-[#6B3D1E]">
+                        <th className="px-2 py-2 text-left font-bold border border-[#EDD9B4]">Fila</th>
+                        <th className="px-2 py-2 text-left font-bold border border-[#EDD9B4]">ID</th>
+                        <th className="px-2 py-2 text-left font-bold border border-[#EDD9B4]">Nombre</th>
+                        <th className="px-2 py-2 text-left font-bold border border-[#EDD9B4]">Categoría</th>
+                        <th className="px-2 py-2 text-right font-bold border border-[#EDD9B4]">Precio</th>
+                        <th className="px-2 py-2 text-right font-bold border border-[#EDD9B4]">Stock</th>
+                        <th className="px-2 py-2 text-left font-bold border border-[#EDD9B4]">Estado / Error</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {importRows.map(r => {
+                        const ok = r.errors.length === 0;
+                        return (
+                          <tr key={r.rowNum} className={ok ? "bg-green-50" : "bg-red-50"}>
+                            <td className="px-2 py-1.5 border border-[#EDD9B4] text-[#9B6B45]">{r.rowNum}</td>
+                            <td className="px-2 py-1.5 border border-[#EDD9B4] font-mono">{r.id}</td>
+                            <td className="px-2 py-1.5 border border-[#EDD9B4]">{r.name}</td>
+                            <td className="px-2 py-1.5 border border-[#EDD9B4]">{r.category}</td>
+                            <td className="px-2 py-1.5 border border-[#EDD9B4] text-right">S/ {r.price}</td>
+                            <td className="px-2 py-1.5 border border-[#EDD9B4] text-right">{r.stock}</td>
+                            <td className="px-2 py-1.5 border border-[#EDD9B4]">
+                              {ok ? (
+                                <span className="text-green-700 font-semibold">✓ Lista para importar</span>
+                              ) : (
+                                <span className="text-red-600">{r.errors.join(" · ")}</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+
+            {/* Footer actions */}
+            {importRows && (
+              <div className="flex gap-3 px-6 py-4 border-t border-[#F5EDD8]">
+                <button
+                  onClick={closeImport}
+                  className="flex-1 py-2.5 border border-[#F5EDD8] rounded-xl text-[#9B6B45] font-semibold hover:bg-[#F5EDD8] transition-colors text-sm"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmImport}
+                  disabled={importSaving || importRows.filter(r => r.errors.length === 0).length === 0}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#D4A520] text-white font-bold rounded-xl hover:bg-[#A07D10] transition-colors text-sm disabled:opacity-50"
+                >
+                  <FileUp size={15} />
+                  {importSaving
+                    ? "Importando..."
+                    : `Importar ${importRows.filter(r => r.errors.length === 0).length} producto${importRows.filter(r => r.errors.length === 0).length !== 1 ? "s" : ""}`
+                  }
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit / Create modal ─────────────────────────────────────────────── */}
       {editing && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto flex flex-col gap-4">
@@ -361,7 +685,6 @@ export default function ProductosAdmin() {
               </div>
             )}
 
-            {/* Text fields */}
             {([
               { key: "id",          label: "SKU / ID",             type: "text",     ph: "LC-999" },
               { key: "name",        label: "Nombre",               type: "text",     ph: "" },
