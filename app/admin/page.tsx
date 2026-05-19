@@ -1,7 +1,10 @@
+export const dynamic = "force-dynamic";
+
 import { supabase } from "../lib/supabase";
 import DashboardClient from "./components/DashboardClient";
 
-async function getStats() {
+async function getStats(): Promise<any> {
+  try {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
@@ -54,6 +57,13 @@ async function getStats() {
     topProducts, lowStock,
     productCount: products.filter(p => p.active).length,
   };
+  } catch {
+    return {
+      totalRevenue: 0, totalCOGS: 0, grossProfit: 0, totalPurchases: 0,
+      orderCount: 0, paidCount: 0, pendingCount: 0,
+      salesByDay: [], topProducts: [], lowStock: [], productCount: 0,
+    };
+  }
 }
 
 export default async function AdminDashboard() {
