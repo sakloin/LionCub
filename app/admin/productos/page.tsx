@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { Product } from "../../lib/types";
-import { Plus, Pencil, ToggleLeft, ToggleRight, Save, X, Upload } from "lucide-react";
+import { Plus, Pencil, ToggleLeft, ToggleRight, Save, X, Upload, Trash2, AlertTriangle } from "lucide-react";
 
 interface Category { id: string; name: string; }
 
@@ -38,6 +38,12 @@ export default function ProductosAdmin() {
   // Image upload
   const [uploading,  setUploading]  = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Delete
+  const [deleteTarget,   setDeleteTarget]   = useState<Product | null>(null);
+  const [deleteHasSales, setDeleteHasSales] = useState(false);
+  const [deleting,       setDeleting]       = useState(false);
+  const [deleteError,    setDeleteError]    = useState<string | null>(null);
 
   async function load() {
     setError(null);
@@ -90,6 +96,34 @@ export default function ProductosAdmin() {
   async function toggleActive(p: Product) {
     const { error: e } = await supabase.from("products").update({ active: !p.active }).eq("id", p.id);
     if (!e) setProducts(ps => ps.map(x => x.id === p.id ? { ...x, active: !x.active } : x));
+  }
+
+  async function handleDeleteClick(p: Product) {
+    setDeleteError(null);
+    const { count, error: countErr } = await supabase
+      .from("order_items")
+      .select("id", { count: "exact", head: true })
+      .eq("product_id", p.id);
+    if (countErr) { setDeleteError(countErr.message); setDeleteTarget(p); setDeleteHasSales(false); return; }
+    setDeleteHasSales((count ?? 0) > 0);
+    setDeleteTarget(p);
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const { error: delErr } = await supabase.from("products").delete().eq("id", deleteTarget.id);
+      if (delErr) throw new Error(delErr.message);
+      setDeleteTarget(null);
+      await load();
+    } catch (e: any) {
+      console.error("[admin/productos] delete failed:", e);
+      setDeleteError(e?.message ?? "Error al eliminar producto");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   async function handleImageUpload(file: File) {
@@ -239,9 +273,14 @@ export default function ProductosAdmin() {
                     </button>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <button onClick={() => { setSaveError(null); setEditing({ ...p }); }} className="p-1.5 text-[#9B6B45] hover:text-[#D4A520] transition-colors">
-                      <Pencil size={15} />
-                    </button>
+                    <div className="flex items-center justify-center gap-1">
+                      <button onClick={() => { setSaveError(null); setEditing({ ...p }); }} className="p-1.5 text-[#9B6B45] hover:text-[#D4A520] transition-colors">
+                        <Pencil size={15} />
+                      </button>
+                      <button onClick={() => handleDeleteClick(p)} className="p-1.5 text-[#9B6B45] hover:text-red-500 transition-colors">
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -249,6 +288,61 @@ export default function ProductosAdmin() {
           </table>
         </div>
       </div>
+
+      {/* Delete dialog */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm flex flex-col gap-4">
+            {deleteHasSales ? (
+              <>
+                <div className="flex items-center gap-3 text-orange-600">
+                  <AlertTriangle size={22} />
+                  <h2 className="font-extrabold text-[#3D2010] text-lg">No se puede eliminar</h2>
+                </div>
+                <p className="text-sm text-[#6B3D1E]">
+                  <strong>{deleteTarget.name}</strong> tiene ventas registradas y no puede eliminarse.
+                </p>
+                <p className="text-sm text-[#9B6B45]">
+                  Si ya no quieres venderlo, puedes <strong>desactivarlo</strong> para ocultarlo de la tienda sin perder el historial de pedidos.
+                </p>
+                {deleteError && <p className="text-xs text-red-600 font-mono break-all">{deleteError}</p>}
+                <button
+                  onClick={() => { setDeleteTarget(null); setDeleteError(null); }}
+                  className="w-full py-2.5 bg-[#D4A520] text-white font-bold rounded-xl hover:bg-[#A07D10] transition-colors text-sm"
+                >
+                  Entendido
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 text-red-600">
+                  <Trash2 size={22} />
+                  <h2 className="font-extrabold text-[#3D2010] text-lg">Eliminar producto</h2>
+                </div>
+                <p className="text-sm text-[#6B3D1E]">
+                  ¿Eliminar <strong>{deleteTarget.name}</strong>? Esta acción no se puede deshacer.
+                </p>
+                {deleteError && <p className="text-xs text-red-600 font-mono break-all">{deleteError}</p>}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => { setDeleteTarget(null); setDeleteError(null); }}
+                    className="flex-1 py-2.5 border border-[#F5EDD8] rounded-xl text-[#9B6B45] font-semibold hover:bg-[#F5EDD8] transition-colors text-sm"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={confirmDelete}
+                    disabled={deleting}
+                    className="flex-1 py-2.5 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-colors text-sm disabled:opacity-60"
+                  >
+                    {deleting ? "Eliminando..." : "Sí, eliminar"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Edit / Create modal */}
       {editing && (
