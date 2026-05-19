@@ -1,4 +1,5 @@
 import { LanguageProvider } from "./context/LanguageContext";
+import { CartProvider } from "./context/CartContext";
 import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
 import TrustBar from "./components/TrustBar";
@@ -11,16 +12,18 @@ import Footer from "./components/Footer";
 export default function Home() {
   return (
     <LanguageProvider>
-      <Navbar />
-      <main>
-        <Hero />
-        <TrustBar />
-        <Collection />
-        <WhyPima />
-        <OurStory />
-        <Testimonials />
-      </main>
-      <Footer />
+      <CartProvider>
+        <Navbar />
+        <main>
+          <Hero />
+          <TrustBar />
+          <Collection />
+          <WhyPima />
+          <OurStory />
+          <Testimonials />
+        </main>
+        <Footer />
+      </CartProvider>
     </LanguageProvider>
   );
 }

@@ -3,11 +3,15 @@
 import { useState, useEffect } from "react";
 import { Menu, X, ShoppingBag } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
+import { useCart } from "../context/CartContext";
+import CartDrawer from "./cart/CartDrawer";
 import Image from "next/image";
 
 export default function Navbar() {
   const { lang, toggleLang, t } = useLang();
+  const { count } = useCart();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -24,6 +28,7 @@ export default function Navbar() {
   ];
 
   return (
+    <>
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled
@@ -72,12 +77,18 @@ export default function Navbar() {
             {lang === "es" ? "EN" : "ES"}
           </button>
 
-          {/* Cart placeholder */}
+          {/* Cart button */}
           <button
+            onClick={() => setCartOpen(true)}
             className="relative p-2 text-[#6B3D1E] hover:text-[#D4A520] transition-colors"
             aria-label={t("Carrito", "Cart")}
           >
             <ShoppingBag size={20} />
+            {count > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#D4A520] text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                {count}
+              </span>
+            )}
           </button>
 
           {/* Mobile menu toggle */}
@@ -107,5 +118,7 @@ export default function Navbar() {
         </div>
       )}
     </header>
+    <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
+    </>
   );
 }

@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { MessageCircle, Tag } from "lucide-react";
+import { ShoppingCart, Tag, Check } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
+import { useCart } from "../context/CartContext";
 import data from "../data/productos.json";
 
 const { brand, categories, products } = data;
@@ -33,7 +34,21 @@ function whatsappUrl(product: (typeof products)[0]) {
 
 function ProductCard({ product }: { product: (typeof products)[0] }) {
   const { t } = useLang();
+  const { add } = useCart();
   const [imgError, setImgError] = useState(false);
+  const [selectedSize, setSelectedSize] = useState(product.sizes[0] ?? "");
+  const [selectedColor, setSelectedColor] = useState(product.colors[0] ?? "");
+  const [added, setAdded] = useState(false);
+
+  function handleAdd() {
+    // Convert static product to Product type for cart
+    add(
+      { ...product, cost: 0, stock: 99, has_offer: product.hasOffer, image_url: `/${product.image}`, active: true, created_at: "" } as any,
+      selectedSize, selectedColor
+    );
+    setAdded(true);
+    setTimeout(() => setAdded(false), 2000);
+  }
 
   return (
     <div className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-[#F5EDD8] flex flex-col">
@@ -86,15 +101,16 @@ function ProductCard({ product }: { product: (typeof products)[0] }) {
 
         {/* Sizes */}
         <div>
-          <p className="text-[#6B3D1E] text-xs font-bold mb-1.5">{t("Tallas", "Sizes")}</p>
+          <p className="text-[#6B3D1E] text-xs font-bold mb-1.5">{t("Talla", "Size")}</p>
           <div className="flex flex-wrap gap-1.5">
             {product.sizes.map((size) => (
-              <span
+              <button
                 key={size}
-                className="text-xs bg-[#F5EDD8] text-[#6B3D1E] font-semibold px-2.5 py-1 rounded-full"
+                onClick={() => setSelectedSize(size)}
+                className={`text-xs font-semibold px-2.5 py-1 rounded-full transition-all ${selectedSize === size ? "bg-[#D4A520] text-white" : "bg-[#F5EDD8] text-[#6B3D1E] hover:bg-[#F0E0C0]"}`}
               >
                 {size}
-              </span>
+              </button>
             ))}
           </div>
         </div>
@@ -117,15 +133,12 @@ function ProductCard({ product }: { product: (typeof products)[0] }) {
         </div>
 
         {/* CTA */}
-        <a
-          href={whatsappUrl(product)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-auto pt-1 w-full flex items-center justify-center gap-2 py-2.5 bg-[#25D366] text-white font-bold rounded-xl hover:bg-[#1eb85a] transition-colors text-sm"
+        <button
+          onClick={handleAdd}
+          className={`mt-auto pt-1 w-full flex items-center justify-center gap-2 py-2.5 font-bold rounded-xl transition-all text-sm ${added ? "bg-green-500 text-white" : "bg-[#D4A520] text-white hover:bg-[#A07D10]"}`}
         >
-          <MessageCircle size={15} />
-          {t("Pedir por WhatsApp", "Order via WhatsApp")}
-        </a>
+          {added ? <><Check size={15} /> {t("¡Agregado!", "Added!")}</> : <><ShoppingCart size={15} /> {t("Agregar al carrito", "Add to cart")}</>}
+        </button>
       </div>
     </div>
   );
