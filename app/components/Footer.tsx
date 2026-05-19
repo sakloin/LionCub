@@ -1,10 +1,13 @@
 "use client";
 
 import { useLang } from "../context/LanguageContext";
-import { MessageCircle, Share2, Mail, MapPin } from "lucide-react";
+import { MessageCircle, Mail, MapPin } from "lucide-react";
+import data from "../data/productos.json";
+
+const { brand } = data;
 
 export default function Footer() {
-  const { lang, t } = useLang();
+  const { t } = useLang();
 
   return (
     <footer id="contacto" className="bg-[#3D2010] text-white">
@@ -17,32 +20,33 @@ export default function Footer() {
             <p className="text-white/60 text-xs uppercase tracking-widest mt-1">Baby Clothing</p>
           </div>
           <p className="text-white/70 leading-relaxed max-w-sm text-sm">
-            {t(
-              "Ropa de bebé en 100% algodón pima peruano. Suave, natural y llena de amor. Para los bebés de Perú y del mundo.",
-              "Baby clothing in 100% Peruvian Pima cotton. Soft, natural, and full of love. For babies in Peru and around the world."
-            )}
+            {brand.story}
           </p>
 
           {/* Social links */}
           <div className="flex gap-3 mt-2">
             <a
-              href="https://www.facebook.com/profile.php?id=61577494893684"
+              href={brand.facebook}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-[#D4A520] transition-colors"
+              className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-[#1877F2] transition-colors font-bold text-sm"
               aria-label="Facebook"
             >
-              <span className="text-sm font-bold">f</span>
+              f
             </a>
             <a
-              href="#"
-              className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-[#D4A520] transition-colors"
+              href={brand.instagram}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-[#E1306C] transition-colors"
               aria-label="Instagram"
             >
-              <Share2 size={16} />
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+              </svg>
             </a>
             <a
-              href="https://wa.me/51999999999"
+              href={brand.whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-[#25D366] transition-colors"
@@ -85,8 +89,8 @@ export default function Footer() {
               <span>
                 WhatsApp
                 <br />
-                <a href="https://wa.me/51999999999" className="hover:text-white transition-colors">
-                  +51 999 999 999
+                <a href={brand.whatsappUrl} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
+                  +{brand.whatsapp}
                 </a>
               </span>
             </li>
@@ -95,8 +99,8 @@ export default function Footer() {
               <span>
                 {t("Correo", "Email")}
                 <br />
-                <a href="mailto:hola@lioncubbaby.com" className="hover:text-white transition-colors">
-                  hola@lioncubbaby.com
+                <a href={`mailto:${brand.email}`} className="hover:text-white transition-colors">
+                  {brand.email}
                 </a>
               </span>
             </li>
@@ -122,7 +126,7 @@ export default function Footer() {
             )}
           </p>
           <a
-            href="https://wa.me/51999999999"
+            href={brand.whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 bg-[#25D366] text-white font-bold px-5 py-2.5 rounded-full hover:bg-[#1eb85a] transition-colors text-sm flex-shrink-0"
@@ -137,9 +141,7 @@ export default function Footer() {
       <div className="border-t border-white/10 py-5">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-white/40">
           <p>© 2025 Lion Cub Baby Clothing. {t("Todos los derechos reservados.", "All rights reserved.")}</p>
-          <p>
-            {t("Hecho con", "Made with")} ❤️ {t("en Lima, Perú", "in Lima, Peru")}
-          </p>
+          <p>{t("Hecho con", "Made with")} ❤️ {t("en Lima, Perú", "in Lima, Peru")}</p>
         </div>
       </div>
     </footer>

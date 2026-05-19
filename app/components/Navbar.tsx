@@ -39,10 +39,7 @@ export default function Navbar() {
               src="/logo.png"
               alt="Lion Cub Baby Clothing"
               fill
-              className="object-contain"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = "none";
-              }}
+              className="object-contain drop-shadow-sm"
             />
           </div>
           <span className="font-brand text-2xl text-[#6B3D1E] group-hover:text-[#D4A520] transition-colors">

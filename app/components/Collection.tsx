@@ -1,161 +1,227 @@
 "use client";
 
+import Image from "next/image";
+import { useState } from "react";
+import { MessageCircle, Tag } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
-import { ArrowRight } from "lucide-react";
+import data from "../data/productos.json";
 
-const products = [
-  {
-    id: 1,
-    nameEs: "Body Manga Larga",
-    nameEn: "Long Sleeve Bodysuit",
-    descEs: "Suave al tacto, perfecto para el día a día",
-    descEn: "Soft to the touch, perfect for everyday wear",
-    sizes: ["0-3m", "3-6m", "6-12m"],
-    color: "from-[#F5E9B8] to-[#FDE8DC]",
-    emoji: "👶",
-    tag: { es: "Favorito", en: "Bestseller" },
-  },
-  {
-    id: 2,
-    nameEs: "Pelele con Pies",
-    nameEn: "Footed Romper",
-    descEs: "Abrigo completo para las noches tranquilas",
-    descEn: "Full coverage for peaceful nights",
-    sizes: ["0-3m", "3-6m", "6-12m", "12-18m"],
-    color: "from-[#D4EAC8] to-[#F5E9B8]",
-    emoji: "🌙",
-    tag: null,
-  },
-  {
-    id: 3,
-    nameEs: "Set Pantalón + Camiseta",
-    nameEn: "Pants + Tee Set",
-    descEs: "Conjunto ideal para salir y jugar",
-    descEn: "The ideal set for outings and play",
-    sizes: ["3-6m", "6-12m", "12-18m", "18-24m"],
-    color: "from-[#FDE8DC] to-[#F5E9B8]",
-    emoji: "✨",
-    tag: { es: "Nuevo", en: "New" },
-  },
-  {
-    id: 4,
-    nameEs: "Pijama Dos Piezas",
-    nameEn: "Two-Piece Pajama Set",
-    descEs: "Dulces sueños con el algodón más suave",
-    descEn: "Sweet dreams with the softest cotton",
-    sizes: ["6-12m", "12-18m", "18-24m"],
-    color: "from-[#F5E9B8] to-[#D4EAC8]",
-    emoji: "💤",
-    tag: null,
-  },
-  {
-    id: 5,
-    nameEs: "Manta Swaddle",
-    nameEn: "Swaddle Blanket",
-    descEs: "Envoltura perfecta para los primeros días",
-    descEn: "Perfect wrap for the earliest days",
-    sizes: ["RN", "0-3m"],
-    color: "from-[#FDE8DC] to-[#D4EAC8]",
-    emoji: "🤍",
-    tag: { es: "Recién Nacido", en: "Newborn" },
-  },
-  {
-    id: 6,
-    nameEs: "Gorro + Manoplas",
-    nameEn: "Hat + Mittens Set",
-    descEs: "Accesorios suaves para proteger al bebé",
-    descEn: "Soft accessories to keep baby cozy",
-    sizes: ["RN", "0-3m", "3-6m"],
-    color: "from-[#F5E9B8] to-[#FDE8DC]",
-    emoji: "🧡",
-    tag: null,
-  },
-];
+const { brand, categories, products } = data;
+
+const colorHex: Record<string, string> = {
+  Blanco: "#FFFFFF",
+  Beige: "#D4B896",
+  Celeste: "#87CEEB",
+  Rosa: "#FFB6C1",
+  "Palo Rosa": "#FFD1DC",
+  Azul: "#4A90D9",
+  "Verde menta": "#A8D8A8",
+  Crema: "#FFF5DC",
+  Durazno: "#FFCBA4",
+  Floral: "#F7C5CC",
+  Blanco_border: "#E0E0E0",
+  Crema_border: "#DDD5C0",
+  Floral_border: "#E8B4BB",
+};
+
+function whatsappUrl(product: (typeof products)[0]) {
+  const msg = encodeURIComponent(
+    `Hola Lion Cub! 🦁 Me interesa *${product.name}* (Ref: ${product.id}). ¿Está disponible?`
+  );
+  return `https://wa.me/${brand.whatsapp}?text=${msg}`;
+}
+
+function ProductCard({ product }: { product: (typeof products)[0] }) {
+  const { t } = useLang();
+  const [imgError, setImgError] = useState(false);
+
+  return (
+    <div className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-[#F5EDD8] flex flex-col">
+      {/* Image */}
+      <div className="relative aspect-square bg-[#FDF8F0] overflow-hidden">
+        {!imgError ? (
+          <Image
+            src={`/products/${product.id}.jpeg`}
+            alt={product.name}
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-500"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-6xl">🦁</div>
+        )}
+
+        {/* Offer badge */}
+        {product.hasOffer && (
+          <div className="absolute top-3 left-3 flex items-center gap-1 bg-[#D4A520] text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-md">
+            <Tag size={10} />
+            3 × 15% dto
+          </div>
+        )}
+
+        {/* Gender badge */}
+        {product.gender !== "Unisex" && (
+          <div className="absolute top-3 right-3 bg-white/90 text-[#6B3D1E] text-xs font-semibold px-2.5 py-1 rounded-full shadow-sm">
+            {product.gender}
+          </div>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="p-5 flex flex-col gap-3 flex-1">
+        {/* Name + price */}
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h3 className="font-bold text-[#3D2010] text-base leading-tight">{product.name}</h3>
+            <p className="text-[#C4956A] text-xs mt-0.5 italic">{product.tagline}</p>
+          </div>
+          <span className="font-extrabold text-[#D4A520] text-lg whitespace-nowrap">
+            S/ {product.price}
+          </span>
+        </div>
+
+        {/* Description */}
+        <p className="text-[#9B6B45] text-sm leading-relaxed line-clamp-3">{product.desc}</p>
+
+        {/* Sizes */}
+        <div>
+          <p className="text-[#6B3D1E] text-xs font-bold mb-1.5">{t("Tallas", "Sizes")}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {product.sizes.map((size) => (
+              <span
+                key={size}
+                className="text-xs bg-[#F5EDD8] text-[#6B3D1E] font-semibold px-2.5 py-1 rounded-full"
+              >
+                {size}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Colors */}
+        <div>
+          <p className="text-[#6B3D1E] text-xs font-bold mb-1.5">{t("Colores", "Colors")}</p>
+          <div className="flex flex-wrap gap-2 items-center">
+            {product.colors.map((color) => (
+              <div key={color} className="flex items-center gap-1">
+                <span
+                  className="w-5 h-5 rounded-full border border-[#E0E0E0] flex-shrink-0 shadow-sm"
+                  style={{ backgroundColor: colorHex[color] ?? "#ccc" }}
+                  title={color}
+                />
+                <span className="text-[10px] text-[#9B6B45]">{color}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* CTA */}
+        <a
+          href={whatsappUrl(product)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-auto pt-1 w-full flex items-center justify-center gap-2 py-2.5 bg-[#25D366] text-white font-bold rounded-xl hover:bg-[#1eb85a] transition-colors text-sm"
+        >
+          <MessageCircle size={15} />
+          {t("Pedir por WhatsApp", "Order via WhatsApp")}
+        </a>
+      </div>
+    </div>
+  );
+}
 
 export default function Collection() {
-  const { lang, t } = useLang();
+  const { t } = useLang();
+  const [activeCategory, setActiveCategory] = useState("all");
+
+  const filtered =
+    activeCategory === "all"
+      ? products
+      : products.filter((p) => p.category === activeCategory);
+
+  // Group by category in order
+  const grouped = categories
+    .map((cat) => ({
+      ...cat,
+      items: filtered.filter((p) => p.category === cat.id),
+    }))
+    .filter((g) => g.items.length > 0);
 
   return (
     <section id="coleccion" className="bg-[#FDF8F0] py-20">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         {/* Header */}
-        <div className="text-center mb-14">
+        <div className="text-center mb-10">
           <p className="text-[#D4A520] font-bold text-sm uppercase tracking-widest mb-2">
             {t("Lo que tenemos para ti", "What we have for you")}
           </p>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#3D2010] mb-4">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#3D2010] mb-3">
             {t("Nuestra Colección", "Our Collection")}
           </h2>
           <p className="text-[#9B6B45] max-w-lg mx-auto">
             {t(
-              "Cada prenda está confeccionada a mano con algodón pima 100% peruano. Sin mezclas, sin compromisos.",
-              "Every garment is hand-crafted with 100% Peruvian Pima cotton. No blends, no compromises."
+              "Cada prenda, 100% Algodón Pima peruano. Sin mezclas, sin compromisos.",
+              "Every garment, 100% Peruvian Pima cotton. No blends, no compromises."
             )}
           </p>
         </div>
 
-        {/* Product grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {products.map((product) => (
-            <div
-              key={product.id}
-              className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-[#F5EDD8]"
-            >
-              {/* Image area */}
-              <div className={`relative aspect-square bg-gradient-to-br ${product.color} flex items-center justify-center`}>
-                <span className="text-7xl group-hover:scale-110 transition-transform duration-300">
-                  {product.emoji}
-                </span>
-                {product.tag && (
-                  <span className="absolute top-4 left-4 bg-[#D4A520] text-white text-xs font-bold px-3 py-1 rounded-full">
-                    {lang === "es" ? product.tag.es : product.tag.en}
-                  </span>
-                )}
-              </div>
-
-              {/* Info */}
-              <div className="p-5">
-                <h3 className="font-bold text-[#3D2010] text-lg mb-1">
-                  {lang === "es" ? product.nameEs : product.nameEn}
-                </h3>
-                <p className="text-[#9B6B45] text-sm mb-3">
-                  {lang === "es" ? product.descEs : product.descEn}
-                </p>
-
-                {/* Sizes */}
-                <div className="flex flex-wrap gap-1.5 mb-4">
-                  {product.sizes.map((size) => (
-                    <span
-                      key={size}
-                      className="text-xs bg-[#F5EDD8] text-[#6B3D1E] font-semibold px-2.5 py-1 rounded-full"
-                    >
-                      {size}
-                    </span>
-                  ))}
-                </div>
-
-                <button className="w-full py-2.5 border-2 border-[#D4A520] text-[#D4A520] font-bold rounded-xl hover:bg-[#D4A520] hover:text-white transition-all text-sm flex items-center justify-center gap-2 group/btn">
-                  {t("Consultar disponibilidad", "Check availability")}
-                  <ArrowRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Bottom CTA */}
-        <div className="text-center mt-12">
-          <p className="text-[#9B6B45] mb-4">
-            {t("¿Buscas algo especial para tu bebé?", "Looking for something special for your baby?")}
-          </p>
-          <a
-            href="#contacto"
-            className="inline-flex items-center gap-2 text-[#D4A520] font-bold hover:text-[#A07D10] transition-colors"
+        {/* Category filter tabs */}
+        <div className="flex flex-wrap justify-center gap-2 mb-12">
+          <button
+            onClick={() => setActiveCategory("all")}
+            className={`px-5 py-2 rounded-full text-sm font-bold transition-all ${
+              activeCategory === "all"
+                ? "bg-[#D4A520] text-white shadow-md"
+                : "bg-[#F5EDD8] text-[#6B3D1E] hover:bg-[#F0E0C0]"
+            }`}
           >
-            {t("Escríbenos por WhatsApp", "Message us on WhatsApp")}
-            <ArrowRight size={16} />
-          </a>
+            {t("Todo", "All")} ({products.length})
+          </button>
+          {categories.map((cat) => {
+            const count = products.filter((p) => p.category === cat.id).length;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`px-5 py-2 rounded-full text-sm font-bold transition-all ${
+                  activeCategory === cat.id
+                    ? "bg-[#D4A520] text-white shadow-md"
+                    : "bg-[#F5EDD8] text-[#6B3D1E] hover:bg-[#F0E0C0]"
+                }`}
+              >
+                {cat.name} ({count})
+              </button>
+            );
+          })}
         </div>
+
+        {/* Products grouped by category */}
+        {grouped.map((group) => (
+          <div key={group.id} className="mb-16 last:mb-0">
+            {/* Category header */}
+            <div className="flex items-end gap-4 mb-6 pb-3 border-b border-[#F5EDD8]">
+              <div>
+                <h3 className="text-2xl font-extrabold text-[#3D2010]">{group.name}</h3>
+                <p className="text-[#9B6B45] text-sm">{group.desc}</p>
+              </div>
+              {group.id !== "conjuntos" && (
+                <div className="ml-auto flex items-center gap-1.5 bg-[#F5E9B8] text-[#A07D10] text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap">
+                  <Tag size={11} />
+                  {t("Oferta 3 × 15% dto", "Offer 3 × 15% off")}
+                </div>
+              )}
+            </div>
+
+            {/* Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {group.items.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   );
