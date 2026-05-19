@@ -1,0 +1,73 @@
+export type Category = "conjuntos" | "bodies" | "baberos" | "mantas";
+
+export interface Product {
+  id: string;
+  sku: string;
+  name: string;
+  tagline: string;
+  desc: string;
+  category: Category;
+  price: number;
+  cost: number;
+  stock: number;
+  sizes: string[];
+  colors: string[];
+  gender: string;
+  material: string;
+  has_offer: boolean;
+  image_url: string;
+  active: boolean;
+  created_at: string;
+}
+
+export interface Order {
+  id: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_email: string;
+  address: string;
+  district: string;
+  city: string;
+  shipping_method: "domicilio" | "shalom";
+  shalom_agency: string | null;
+  shipping_cost: number;
+  subtotal: number;
+  total: number;
+  payment_method: "izipay" | "transferencia" | "contraentrega";
+  payment_status: "pendiente" | "pagado" | "fallido";
+  order_status: "nuevo" | "procesando" | "enviado" | "entregado" | "cancelado";
+  notes: string | null;
+  created_at: string;
+}
+
+export interface OrderItem {
+  id: string;
+  order_id: string;
+  product_id: string;
+  product_name: string;
+  product_sku: string;
+  quantity: number;
+  unit_price: number;
+  unit_cost: number;
+  subtotal: number;
+}
+
+export interface Purchase {
+  id: string;
+  product_id: string;
+  product_name: string;
+  quantity: number;
+  unit_cost: number;
+  total_cost: number;
+  supplier: string;
+  notes: string | null;
+  purchased_at: string;
+  created_at: string;
+}
+
+export interface CartItem {
+  product: Product;
+  quantity: number;
+  selectedSize: string;
+  selectedColor: string;
+}
