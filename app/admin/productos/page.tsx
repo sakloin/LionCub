@@ -19,8 +19,8 @@ interface ImportRow {
   has_offer: boolean; active: boolean;
 }
 
-const TEMPLATE_COLS = ["id","name","tagline","description","category","price","cost","stock","sizes","colors","gender","material","has_offer","active"] as const;
-const COL_WIDTHS     = [12,28,22,40,16,9,9,8,24,22,10,24,12,8];
+const TEMPLATE_COLS = ["name","tagline","description","category","price","cost","stock","sizes","colors","gender","material","has_offer","active"] as const;
+const COL_WIDTHS     = [28,22,40,16,9,9,8,24,22,10,24,12,8];
 
 const FALLBACK_CATS: Category[] = [
   { id: "conjuntos", name: "Conjuntos" },
@@ -34,6 +34,17 @@ const EMPTY: any = {
   category: "conjuntos", price: 0, cost: 0, stock: 0,
   sizes: [], colors: [], gender: "Unisex", has_offer: false, image_url: "", active: true,
 };
+
+/** Returns the next available LC-NNN id given a list of existing products
+ *  plus any ids already reserved in the current batch. */
+function nextId(existingProducts: { id: string }[], reserved: string[] = []): string {
+  const LC = /^LC-(\d+)$/i;
+  const allNums = [...existingProducts.map(p => p.id), ...reserved]
+    .map(id => { const m = id.match(LC); return m ? parseInt(m[1], 10) : 0; })
+    .filter(n => n > 0);
+  const max = allNums.length > 0 ? Math.max(...allNums) : 0;
+  return `LC-${String(max + 1).padStart(3, "0")}`;
+}
 
 function parseBool(v: any, defaultVal = false): boolean {
   if (typeof v === "boolean") return v;
@@ -219,9 +230,9 @@ export default function ProductosAdmin() {
   function downloadTemplate() {
     const catIds = categories.map(c => c.id).join(" | ");
     const header  = [...TEMPLATE_COLS];
-    const note    = ["← obligatorio","← obligatorio","","","← obligatorio. Categorías: " + catIds,"← obligatorio, número","número (≥0)","entero (≥0)","separar con comas","separar con comas","Unisex | Niño | Niña","","TRUE o FALSE","TRUE o FALSE"];
-    const example1 = ["LC-999","Nombre del Producto","Tagline breve","Descripción completa del producto","conjuntos",59,0,10,"RN,0-3m,3-6m","Blanco,Celeste","Unisex","100% Algodón Pima","FALSE","TRUE"];
-    const example2 = ["LC-998","Otro Producto","","Cuerpo de descripción","bodies",29,0,20,"RN,0-3m","Rosa","Niña","100% Algodón Pima","TRUE","TRUE"];
+    const note     = ["← obligatorio","","","← obligatorio. Categorías: " + catIds,"← obligatorio, número","número (≥0)","entero (≥0)","separar con comas","separar con comas","Unisex | Niño | Niña","","TRUE o FALSE","TRUE o FALSE"];
+    const example1 = ["Nombre del Producto","Tagline breve","Descripción completa del producto","conjuntos",59,0,10,"RN,0-3m,3-6m","Blanco,Celeste","Unisex","100% Algodón Pima","FALSE","TRUE"];
+    const example2 = ["Otro Producto","","Cuerpo de descripción","bodies",29,0,20,"RN,0-3m","Rosa","Niña","100% Algodón Pima","TRUE","TRUE"];
 
     const ws = XLSX.utils.aoa_to_sheet([header, note, example1, example2]);
     ws["!cols"] = TEMPLATE_COLS.map((_, i) => ({ wch: COL_WIDTHS[i] }));
@@ -253,20 +264,18 @@ export default function ProductosAdmin() {
         const rows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
         if (rows.length < 2) throw new Error("El archivo no tiene filas de datos (solo encabezados o vacío).");
 
-        // Detect header row — skip any leading rows until we find TEMPLATE_COLS[0] ("id")
-        let headerIdx = rows.findIndex(r => String(r[0] ?? "").trim().toLowerCase() === "id");
-        if (headerIdx === -1) throw new Error(`No se encontró una fila con encabezado "id". Asegúrate de usar la plantilla descargada.`);
+        // Detect header row — first row whose first non-empty cell is "name"
+        let headerIdx = rows.findIndex(r => String(r[0] ?? "").trim().toLowerCase() === "name");
+        if (headerIdx === -1) throw new Error(`No se encontró una fila con encabezado "name". Asegúrate de usar la plantilla descargada.`);
 
         const headers = rows[headerIdx].map((h: any) => String(h ?? "").trim().toLowerCase());
         const missing = TEMPLATE_COLS.filter(c => !headers.includes(c));
         if (missing.length > 0) throw new Error(`Columnas faltantes en el Excel: ${missing.join(", ")}. Usa la plantilla oficial.`);
 
-        const catSet      = new Set(categories.map(c => c.id));
-        const existingIds = new Set(products.map(p => p.id));
-        const seenIds     = new Set<string>();
+        const catSet     = new Set(categories.map(c => c.id));
+        const reservedIds: string[] = []; // ids assigned to earlier rows in this batch
 
         const dataRows = rows.slice(headerIdx + 1);
-        // Skip note / instruction rows (if row 0 col "price" is not a number and row 0 col "id" starts with "←")
         const parsed: ImportRow[] = [];
 
         dataRows.forEach((raw, idx) => {
@@ -277,20 +286,14 @@ export default function ProductosAdmin() {
           };
 
           // Skip blank rows and instruction rows
-          const rawId = String(cell("id") ?? "").trim();
-          if (!rawId || rawId.startsWith("←")) return;
+          const rawName = String(cell("name") ?? "").trim();
+          if (!rawName || rawName.startsWith("←")) return;
+
+          // Auto-generate id for this row (accounts for existing products + already-reserved ids)
+          const autoId = nextId(products, reservedIds);
+          reservedIds.push(autoId);
 
           const errors: string[] = [];
-
-          // id
-          if (!rawId) errors.push("id es obligatorio");
-          else if (seenIds.has(rawId)) errors.push(`id "${rawId}" duplicado en el archivo`);
-          else if (existingIds.has(rawId)) errors.push(`id "${rawId}" ya existe en la tienda`);
-          seenIds.add(rawId);
-
-          // name
-          const rawName = String(cell("name") ?? "").trim();
-          if (!rawName) errors.push("name (nombre) es obligatorio");
 
           // category
           const rawCat = String(cell("category") ?? "").trim().toLowerCase();
@@ -314,8 +317,8 @@ export default function ProductosAdmin() {
             rowNum,
             raw: Object.fromEntries(TEMPLATE_COLS.map(c => [c, cell(c)])),
             errors,
-            id:          rawId,
-            sku:         rawId,
+            id:          autoId,
+            sku:         autoId,
             name:        rawName,
             tagline:     String(cell("tagline") ?? "").trim(),
             description: String(cell("description") ?? "").trim(),
@@ -422,7 +425,7 @@ export default function ProductosAdmin() {
             onChange={e => { const f = e.target.files?.[0]; if (f) handleImportFile(f); e.target.value = ""; }}
           />
           <button
-            onClick={() => { setSaveError(null); setEditing({ ...EMPTY, _isNew: true }); }}
+            onClick={() => { setSaveError(null); const autoId = nextId(products); setEditing({ ...EMPTY, id: autoId, sku: autoId, _isNew: true }); }}
             className="flex items-center gap-2 bg-[#D4A520] text-white font-bold px-4 py-2.5 rounded-xl hover:bg-[#A07D10] transition-colors text-sm"
           >
             <Plus size={16} /> Nuevo producto
@@ -607,7 +610,7 @@ export default function ProductosAdmin() {
                     <thead>
                       <tr className="bg-[#F5EDD8] text-[#6B3D1E]">
                         <th className="px-2 py-2 text-left font-bold border border-[#EDD9B4]">Fila</th>
-                        <th className="px-2 py-2 text-left font-bold border border-[#EDD9B4]">ID</th>
+                        <th className="px-2 py-2 text-left font-bold border border-[#EDD9B4]">ID (auto)</th>
                         <th className="px-2 py-2 text-left font-bold border border-[#EDD9B4]">Nombre</th>
                         <th className="px-2 py-2 text-left font-bold border border-[#EDD9B4]">Categoría</th>
                         <th className="px-2 py-2 text-right font-bold border border-[#EDD9B4]">Precio</th>
@@ -685,8 +688,20 @@ export default function ProductosAdmin() {
               </div>
             )}
 
+            {/* ID — read-only for both new and existing products */}
+            <div>
+              <label className="block text-xs font-bold text-[#6B3D1E] mb-1">ID / SKU</label>
+              <div className="flex items-center gap-2">
+                <span className="font-mono font-bold text-[#D4A520] bg-[#FDF8F0] border border-[#F5EDD8] rounded-xl px-3 py-2 text-sm">
+                  {editing.id || "—"}
+                </span>
+                {editing._isNew && (
+                  <span className="text-xs text-[#9B6B45]">generado automáticamente</span>
+                )}
+              </div>
+            </div>
+
             {([
-              { key: "id",          label: "SKU / ID",             type: "text",     ph: "LC-999" },
               { key: "name",        label: "Nombre",               type: "text",     ph: "" },
               { key: "tagline",     label: "Tagline (opcional)",   type: "text",     ph: "" },
               { key: "description", label: "Descripción",          type: "textarea", ph: "" },
