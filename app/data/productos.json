@@ -1,0 +1,613 @@
+{
+  "brand": {
+    "name": "Lion Cub",
+    "tagline": "Baby Clothing",
+    "story": "100% Algodón Pima peruano. La fibra más suave del mundo. Respirable, delicada e hipoalergénica.",
+    "whatsapp": "51920201943",
+    "whatsappUrl": "https://wa.me/51920201943",
+    "instagram": "https://www.instagram.com/lioncubbabyclothing/",
+    "facebook": "https://www.facebook.com/profile.php?id=61577494893684",
+    "email": "hola@lioncub.pe",
+    "website": "lioncub.pe",
+    "logo": "assets/lion-cub-logo-transparent.png"
+  },
+  "categories": [
+    {
+      "id": "conjuntos",
+      "name": "Conjuntos & Ajuares",
+      "desc": "Sets completos hechos para el primer abrazo y los días que siguen.",
+      "count": 20
+    },
+    {
+      "id": "bodies",
+      "name": "Bodies",
+      "desc": "La prenda base del guardarropa — suave, versátil, esencial.",
+      "count": 1
+    },
+    {
+      "id": "baberos",
+      "name": "Baberos",
+      "desc": "Los detalles tiernos que cuidan cada comida.",
+      "count": 2
+    },
+    {
+      "id": "mantas",
+      "name": "Mantas",
+      "desc": "Abrigos ligeros que envuelven con dulzura.",
+      "count": 2
+    }
+  ],
+  "baseColors": [
+    "Blanco",
+    "Beige",
+    "Celeste",
+    "Rosa",
+    "Palo Rosa",
+    "Azul"
+  ],
+  "offers": {
+    "bodies": {
+      "rule": "buy_3_get_15_off_third",
+      "desc": "Lleva 3 bodies y recibe 15% de descuento en el tercero"
+    },
+    "baberos": {
+      "rule": "buy_3_get_15_off_third",
+      "desc": "Lleva 3 baberos y recibe 15% de descuento en el tercero"
+    },
+    "mantas": {
+      "rule": "buy_3_get_15_off_third",
+      "desc": "Lleva 3 mantas y recibe 15% de descuento en la tercera"
+    }
+  },
+  "products": [
+    {
+      "id": "LC-001",
+      "category": "conjuntos",
+      "categoryName": "Conjuntos & Ajuares",
+      "name": "Tiernos Conejitos",
+      "tagline": "El primer abrazo suave",
+      "desc": "Set de 5 piezas con delicado estampado de conejitos: body kimono, pantalón con pie, gorrito, mantita envolvente y gorro. Ideal para la llegada a casa.",
+      "price": 79,
+      "sizes": [
+        "RN",
+        "0-3m",
+        "3-6m"
+      ],
+      "colors": [
+        "Blanco"
+      ],
+      "baseAvailable": true,
+      "gender": "Unisex",
+      "material": "100% Algodón Pima",
+      "hasOffer": false,
+      "image": "assets/products/LC-001.jpeg"
+    },
+    {
+      "id": "LC-002",
+      "category": "conjuntos",
+      "categoryName": "Conjuntos & Ajuares",
+      "name": "Dulce Conejita Anticólico",
+      "tagline": "Hecho con amor para noches tranquilas",
+      "desc": "Conjunto anticólico de 3 piezas en tono palo rosa: polera con volantes, pantalón con pie y gorrito. Corte pensado para aliviar al bebé en sus primeros días.",
+      "price": 69,
+      "sizes": [
+        "RN",
+        "0-3m"
+      ],
+      "colors": [
+        "Palo Rosa"
+      ],
+      "baseAvailable": false,
+      "gender": "Niña",
+      "material": "100% Algodón Pima",
+      "hasOffer": false,
+      "image": "assets/products/LC-002.jpeg"
+    },
+    {
+      "id": "LC-003",
+      "category": "conjuntos",
+      "categoryName": "Conjuntos & Ajuares",
+      "name": "Bear & Bunny Amiguitos",
+      "tagline": "Los compañeros de cuna preferidos",
+      "desc": "Set 3 piezas en verde suave con bordado exclusivo de osito y conejita. Body, pantalón con pie y gorrito a juego.",
+      "price": 79,
+      "sizes": [
+        "RN",
+        "0-3m",
+        "3-6m"
+      ],
+      "colors": [
+        "Verde menta"
+      ],
+      "baseAvailable": true,
+      "gender": "Unisex",
+      "material": "100% Algodón Pima",
+      "hasOffer": false,
+      "image": "assets/products/LC-003.jpeg"
+    },
+    {
+      "id": "LC-004",
+      "category": "conjuntos",
+      "categoryName": "Conjuntos & Ajuares",
+      "name": "Besties del Alma",
+      "tagline": "Amigos inseparables desde el día uno",
+      "desc": "Conjunto 3 piezas en celeste con aplique de ositos rayados. Body, pantalón con pie y gorrito. Costuras planas.",
+      "price": 59,
+      "sizes": [
+        "RN",
+        "0-3m",
+        "3-6m"
+      ],
+      "colors": [
+        "Celeste"
+      ],
+      "baseAvailable": true,
+      "gender": "Unisex",
+      "material": "100% Algodón Pima",
+      "hasOffer": false,
+      "image": "assets/products/LC-004.jpeg"
+    },
+    {
+      "id": "LC-005",
+      "category": "conjuntos",
+      "categoryName": "Conjuntos & Ajuares",
+      "name": "Blonditas de Amor",
+      "tagline": "Elegancia tierna para princesas",
+      "desc": "Set 3 piezas en rosa empolvado con blondas y moño central. Body, pantalón con pie y gorrito. Detalles artesanales.",
+      "price": 59,
+      "sizes": [
+        "RN",
+        "0-3m"
+      ],
+      "colors": [
+        "Rosa"
+      ],
+      "baseAvailable": false,
+      "gender": "Niña",
+      "material": "100% Algodón Pima",
+      "hasOffer": false,
+      "image": "assets/products/LC-005.jpeg"
+    },
+    {
+      "id": "LC-006",
+      "category": "conjuntos",
+      "categoryName": "Conjuntos & Ajuares",
+      "name": "Conejita en Ballet",
+      "tagline": "Un ballet de ternura",
+      "desc": "Conjunto 3 piezas palo rosa con bordado de conejita bailarina. Body manga larga, pantalón con pie floreado y gorrito.",
+      "price": 59,
+      "sizes": [
+        "RN",
+        "0-3m",
+        "3-6m"
+      ],
+      "colors": [
+        "Palo Rosa"
+      ],
+      "baseAvailable": false,
+      "gender": "Niña",
+      "material": "100% Algodón Pima",
+      "hasOffer": false,
+      "image": "assets/products/LC-006.jpeg"
+    },
+    {
+      "id": "LC-007",
+      "category": "conjuntos",
+      "categoryName": "Conjuntos & Ajuares",
+      "name": "Cute Bunny",
+      "tagline": "Suave como una caricia de orejas largas",
+      "desc": "Conjunto 3 piezas blanco con volantes y bordado de conejita. Body manga larga, pantalón con pie estampado y gorrito.",
+      "price": 59,
+      "sizes": [
+        "RN",
+        "0-3m"
+      ],
+      "colors": [
+        "Blanco"
+      ],
+      "baseAvailable": false,
+      "gender": "Niña",
+      "material": "100% Algodón Pima",
+      "hasOffer": false,
+      "image": "assets/products/LC-007.jpeg"
+    },
+    {
+      "id": "LC-008",
+      "category": "conjuntos",
+      "categoryName": "Conjuntos & Ajuares",
+      "name": "Pequeño Explorador Dino",
+      "tagline": "Aventuras desde la cuna",
+      "desc": "Set 5 piezas: chaquetita kimono con estampado de dinos, pantalón con pie, gorrito bordado y mitones anti-arañones.",
+      "price": 59,
+      "sizes": [
+        "RN",
+        "0-3m",
+        "3-6m"
+      ],
+      "colors": [
+        "Azul"
+      ],
+      "baseAvailable": false,
+      "gender": "Niño",
+      "material": "100% Algodón Pima",
+      "hasOffer": false,
+      "image": "assets/products/LC-008.jpeg"
+    },
+    {
+      "id": "LC-009",
+      "category": "conjuntos",
+      "categoryName": "Conjuntos & Ajuares",
+      "name": "Dino del Bosque",
+      "tagline": "Tierno como su habitat natural",
+      "desc": "Set 5 piezas verde menta con estampado de dinos y árboles: chaqueta kimono, pantalón con pie, gorrito y mitones.",
+      "price": 59,
+      "sizes": [
+        "RN",
+        "0-3m",
+        "3-6m"
+      ],
+      "colors": [
+        "Verde menta"
+      ],
+      "baseAvailable": false,
+      "gender": "Niño",
+      "material": "100% Algodón Pima",
+      "hasOffer": false,
+      "image": "assets/products/LC-009.jpeg"
+    },
+    {
+      "id": "LC-010",
+      "category": "conjuntos",
+      "categoryName": "Conjuntos & Ajuares",
+      "name": "Mi Duraznito",
+      "tagline": "Dulce como su nombre",
+      "desc": "Ajuar premium 5 piezas en tono durazno: chaqueta, vestido con bordado floral, bloomer con volantes, lazo y zapatitos.",
+      "price": 79,
+      "sizes": [
+        "RN",
+        "0-3m",
+        "3-6m"
+      ],
+      "colors": [
+        "Durazno"
+      ],
+      "baseAvailable": false,
+      "gender": "Niña",
+      "material": "100% Algodón Pima",
+      "hasOffer": false,
+      "image": "assets/products/LC-010.jpeg"
+    },
+    {
+      "id": "LC-011",
+      "category": "conjuntos",
+      "categoryName": "Conjuntos & Ajuares",
+      "name": "Mi Lacito Bonito",
+      "tagline": "Detalles que enamoran",
+      "desc": "Conjunto 3 piezas crema con lacitos bordados y estampado de florecitas. Blusita, pantalón con pie y gorrito.",
+      "price": 59,
+      "sizes": [
+        "RN",
+        "0-3m",
+        "3-6m"
+      ],
+      "colors": [
+        "Crema"
+      ],
+      "baseAvailable": false,
+      "gender": "Niña",
+      "material": "100% Algodón Pima",
+      "hasOffer": false,
+      "image": "assets/products/LC-011.jpeg"
+    },
+    {
+      "id": "LC-012",
+      "category": "conjuntos",
+      "categoryName": "Conjuntos & Ajuares",
+      "name": "Native Bear",
+      "tagline": "Carácter tierno del norte",
+      "desc": "Set 3 piezas en tonos tierra con estampado all-over de ositos nativos. Body, pantalón con pie y gorrito. Unisex.",
+      "price": 69,
+      "sizes": [
+        "RN",
+        "0-3m",
+        "3-6m",
+        "6-9m"
+      ],
+      "colors": [
+        "Crema"
+      ],
+      "baseAvailable": true,
+      "gender": "Unisex",
+      "material": "100% Algodón Pima",
+      "hasOffer": false,
+      "image": "assets/products/LC-012.jpeg"
+    },
+    {
+      "id": "LC-013",
+      "category": "conjuntos",
+      "categoryName": "Conjuntos & Ajuares",
+      "name": "Osita Ballerina",
+      "tagline": "Giros suaves, pasos de algodón",
+      "desc": "Conjunto 3 piezas verde menta con bordado de osita bailarina. Body con volantes, pantalón con pie floral y gorrito.",
+      "price": 65,
+      "sizes": [
+        "RN",
+        "0-3m",
+        "3-6m"
+      ],
+      "colors": [
+        "Verde menta"
+      ],
+      "baseAvailable": false,
+      "gender": "Niña",
+      "material": "100% Algodón Pima",
+      "hasOffer": false,
+      "image": "assets/products/LC-013.jpeg"
+    },
+    {
+      "id": "LC-014",
+      "category": "conjuntos",
+      "categoryName": "Conjuntos & Ajuares",
+      "name": "Ovejita de mis Sueños",
+      "tagline": "Noches tranquilas, sueños dulces",
+      "desc": "Set 3 piezas beige con bordado de ovejita. Body kimono, pantalón estampado y gorrito. Acabados de lujo.",
+      "price": 59,
+      "sizes": [
+        "RN",
+        "0-3m",
+        "3-6m"
+      ],
+      "colors": [
+        "Beige"
+      ],
+      "baseAvailable": true,
+      "gender": "Unisex",
+      "material": "100% Algodón Pima",
+      "hasOffer": false,
+      "image": "assets/products/LC-014.jpeg"
+    },
+    {
+      "id": "LC-015",
+      "category": "conjuntos",
+      "categoryName": "Conjuntos & Ajuares",
+      "name": "Princesita de Ballet",
+      "tagline": "Pequeña estrella del primer escenario",
+      "desc": "Ajuar premium 5 piezas en durazno: chaqueta, vestido con flores bordadas, bloomer, lazo y zapatitos de ballet.",
+      "price": 79,
+      "sizes": [
+        "RN",
+        "0-3m",
+        "3-6m"
+      ],
+      "colors": [
+        "Durazno"
+      ],
+      "baseAvailable": false,
+      "gender": "Niña",
+      "material": "100% Algodón Pima",
+      "hasOffer": false,
+      "image": "assets/products/LC-015.jpeg"
+    },
+    {
+      "id": "LC-016",
+      "category": "conjuntos",
+      "categoryName": "Conjuntos & Ajuares",
+      "name": "Nube Celeste Premium",
+      "tagline": "La suavidad hecha ajuar",
+      "desc": "Ajuar premium 4 piezas en celeste: chaqueta kimono, pantalón con pie, gorrito y mantita con puntilla.",
+      "price": 79,
+      "sizes": [
+        "RN",
+        "0-3m"
+      ],
+      "colors": [
+        "Celeste"
+      ],
+      "baseAvailable": true,
+      "gender": "Unisex",
+      "material": "100% Algodón Pima",
+      "hasOffer": false,
+      "image": "assets/products/LC-016.jpeg"
+    },
+    {
+      "id": "LC-017",
+      "category": "conjuntos",
+      "categoryName": "Conjuntos & Ajuares",
+      "name": "Ositos de Cuentos",
+      "tagline": "Cada puntada, una historia",
+      "desc": "Conjunto 2 piezas con exquisito bordado de osito y conejita en crema y palo rosa. Blusita cruzada y pantalón.",
+      "price": 59,
+      "sizes": [
+        "RN",
+        "0-3m",
+        "3-6m"
+      ],
+      "colors": [
+        "Crema"
+      ],
+      "baseAvailable": false,
+      "gender": "Niña",
+      "material": "100% Algodón Pima",
+      "hasOffer": false,
+      "image": "assets/products/LC-017.jpeg"
+    },
+    {
+      "id": "LC-018",
+      "category": "conjuntos",
+      "categoryName": "Conjuntos & Ajuares",
+      "name": "Ternura Libélula",
+      "tagline": "Ligereza que acaricia",
+      "desc": "Conjunto 3 piezas verde menta con bordado de libélulas. Body con volantes, pantalón con pie estampado y gorrito.",
+      "price": 59,
+      "sizes": [
+        "RN",
+        "0-3m",
+        "3-6m"
+      ],
+      "colors": [
+        "Verde menta"
+      ],
+      "baseAvailable": true,
+      "gender": "Unisex",
+      "material": "100% Algodón Pima",
+      "hasOffer": false,
+      "image": "assets/products/LC-018.jpeg"
+    },
+    {
+      "id": "LC-019",
+      "category": "conjuntos",
+      "categoryName": "Conjuntos & Ajuares",
+      "name": "Hilo de Algodón Nativo",
+      "tagline": "Textura que abraza",
+      "desc": "Ajuar tejido 3 piezas con textura de hilo. Body kimono, pantalón con pie tejido y gorrito. Unisex premium.",
+      "price": 79,
+      "sizes": [
+        "RN",
+        "0-3m",
+        "3-6m"
+      ],
+      "colors": [
+        "Crema",
+        "Verde menta"
+      ],
+      "baseAvailable": true,
+      "gender": "Unisex",
+      "material": "100% Algodón Pima",
+      "hasOffer": false,
+      "image": "assets/products/LC-019.jpeg"
+    },
+    {
+      "id": "LC-020",
+      "category": "conjuntos",
+      "categoryName": "Conjuntos & Ajuares",
+      "name": "Mariposa de Primavera",
+      "tagline": "Alas suaves, primer vuelo",
+      "desc": "Conjunto 3 piezas crema con bordado de mariposa y lazos. Blusita con volantes, pantalón con pie y gorrito.",
+      "price": 59,
+      "sizes": [
+        "RN",
+        "0-3m",
+        "3-6m"
+      ],
+      "colors": [
+        "Crema"
+      ],
+      "baseAvailable": false,
+      "gender": "Niña",
+      "material": "100% Algodón Pima",
+      "hasOffer": false,
+      "image": "assets/products/LC-020.jpeg"
+    },
+    {
+      "id": "LC-101",
+      "category": "bodies",
+      "categoryName": "Bodies",
+      "name": "Body Esencial Premium",
+      "tagline": "La segunda piel del bebé",
+      "desc": "Body manga larga con broches en hombro, cuello redondo y broches en entrepierna. El básico imprescindible en Pima puro.",
+      "price": 29,
+      "sizes": [
+        "RN",
+        "0-3m",
+        "3-6m",
+        "6-9m",
+        "9-12m"
+      ],
+      "colors": [
+        "Blanco",
+        "Celeste",
+        "Palo Rosa",
+        "Beige"
+      ],
+      "baseAvailable": true,
+      "gender": "Unisex",
+      "material": "100% Algodón Pima",
+      "hasOffer": true,
+      "image": "assets/products/LC-101.jpeg"
+    },
+    {
+      "id": "LC-201",
+      "category": "baberos",
+      "categoryName": "Baberos",
+      "name": "Pack Dino Aventurero",
+      "tagline": "Cada comida, una expedición",
+      "desc": "Trío de baberos con estampado y bordado de dinos en azul y verde. Doble capa absorbente, broches laterales. Incluye 3 unidades.",
+      "price": 19,
+      "sizes": [
+        "Único"
+      ],
+      "colors": [
+        "Azul",
+        "Verde menta",
+        "Blanco"
+      ],
+      "baseAvailable": false,
+      "gender": "Unisex",
+      "material": "100% Algodón Pima",
+      "hasOffer": true,
+      "image": "assets/products/LC-201.jpeg"
+    },
+    {
+      "id": "LC-202",
+      "category": "baberos",
+      "categoryName": "Baberos",
+      "name": "Pack Safari Tierno",
+      "tagline": "Tres amigos para tres momentos",
+      "desc": "Trío de baberos con bordado de jirafa y elefante en tonos neutros. Delicado rayado y texturas suaves. Incluye 3 unidades.",
+      "price": 19,
+      "sizes": [
+        "Único"
+      ],
+      "colors": [
+        "Blanco",
+        "Beige",
+        "Palo Rosa"
+      ],
+      "baseAvailable": true,
+      "gender": "Unisex",
+      "material": "100% Algodón Pima",
+      "hasOffer": true,
+      "image": "assets/products/LC-202.jpeg"
+    },
+    {
+      "id": "LC-301",
+      "category": "mantas",
+      "categoryName": "Mantas",
+      "name": "Manta Celestial",
+      "tagline": "Envuelto en un cielo de suavidad",
+      "desc": "Manta envolvente celeste con puntilla delicada en los bordes. Ligera, transpirable, perfecta para dormir, pasear o arropar después del baño.",
+      "price": 49,
+      "sizes": [
+        "80 × 80 cm"
+      ],
+      "colors": [
+        "Celeste"
+      ],
+      "baseAvailable": true,
+      "gender": "Unisex",
+      "material": "100% Algodón Pima",
+      "hasOffer": true,
+      "image": "assets/products/LC-301.jpeg"
+    },
+    {
+      "id": "LC-302",
+      "category": "mantas",
+      "categoryName": "Mantas",
+      "name": "Manta Dulces Pétalos",
+      "tagline": "Un jardín sobre la cuna",
+      "desc": "Manta envolvente con delicado estampado floral multicolor sobre blanco. Bordes con puntilla artesanal. Ligera y termorreguladora.",
+      "price": 49,
+      "sizes": [
+        "80 × 80 cm"
+      ],
+      "colors": [
+        "Floral"
+      ],
+      "baseAvailable": true,
+      "gender": "Unisex",
+      "material": "100% Algodón Pima",
+      "hasOffer": true,
+      "image": "assets/products/LC-302.jpeg"
+    }
+  ]
+}
