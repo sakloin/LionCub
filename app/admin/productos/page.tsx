@@ -6,7 +6,7 @@ import { Product } from "../../lib/types";
 import Image from "next/image";
 import { Plus, Pencil, ToggleLeft, ToggleRight, Save, X } from "lucide-react";
 
-const EMPTY: Partial<Product> = { id:"", sku:"", name:"", tagline:"", desc:"", category:"conjuntos", price:0, cost:0, stock:0, sizes:[], colors:[], gender:"Unisex", has_offer:false, image_url:"", active:true };
+const EMPTY: Partial<Product> = { id:"", sku:"", name:"", tagline:"", description:"", category:"conjuntos", price:0, cost:0, stock:0, sizes:[], colors:[], gender:"Unisex", has_offer:false, image_url:"", active:true };
 
 export default function ProductosAdmin() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -137,7 +137,7 @@ export default function ProductosAdmin() {
               { key:"id", label:"SKU/ID", type:"text", placeholder:"LC-999" },
               { key:"name", label:"Nombre", type:"text" },
               { key:"tagline", label:"Tagline", type:"text" },
-              { key:"desc", label:"Descripción", type:"textarea" },
+              { key:"description", label:"Descripción", type:"textarea" },
               { key:"price", label:"Precio (S/)", type:"number" },
               { key:"cost", label:"Costo (S/)", type:"number" },
               { key:"stock", label:"Stock", type:"number" },
