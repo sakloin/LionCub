@@ -101,12 +101,22 @@ export default function ProductosAdmin() {
     setSaveError(null);
     try {
       const ext  = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-      const path = `products/${editing?.id || `tmp-${Date.now()}`}.${ext}`;
-      const { data, error: upErr } = await supabase.storage
+      // Use editing.id if available; otherwise a timestamped temp name
+      const path = `products/${(editing?.id as string)?.trim() || `tmp-${Date.now()}`}.${ext}`;
+
+      const { error: upErr } = await supabase.storage
         .from("product-images")
         .upload(path, file, { upsert: true, contentType: file.type });
-      if (upErr) throw new Error(upErr.message);
-      const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(data.path);
+      if (upErr) throw new Error(`Storage upload: ${upErr.message}`);
+
+      // Use the local `path` variable directly — avoids any data.path discrepancy
+      const { data: urlData } = supabase.storage
+        .from("product-images")
+        .getPublicUrl(path);
+
+      if (!urlData?.publicUrl) throw new Error("No se pudo obtener la URL pública. Verifica que el bucket existe y es público.");
+
+      console.log("[admin/productos] image uploaded, public URL:", urlData.publicUrl);
       setEditing((prev: any) => ({ ...prev, image_url: urlData.publicUrl }));
     } catch (e: any) {
       console.error("[admin/productos] image upload failed:", e);
@@ -200,9 +210,15 @@ export default function ProductosAdmin() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       {p.image_url && (
-                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-[#F5EDD8] flex-shrink-0">
-                          {/* plain img avoids next/image domain config for mixed local/storage URLs */}
-                          <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
+                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-[#F5EDD8] flex-shrink-0 flex items-center justify-center text-[#C4956A] text-[10px]">
+                          <img
+                            src={p.image_url}
+                            alt={p.name}
+                            className="w-full h-full object-cover"
+                            onError={e => {
+                              (e.currentTarget as HTMLImageElement).style.display = "none";
+                            }}
+                          />
                         </div>
                       )}
                       <div>
@@ -289,8 +305,25 @@ export default function ProductosAdmin() {
             <div>
               <label className="block text-xs font-bold text-[#6B3D1E] mb-1">Imagen del producto</label>
               {editing.image_url && (
-                <div className="mb-2 w-24 h-24 rounded-xl overflow-hidden border border-[#F5EDD8]">
-                  <img src={editing.image_url} alt="preview" className="w-full h-full object-cover" />
+                <div className="mb-2">
+                  <div className="w-28 h-28 rounded-xl overflow-hidden border border-[#F5EDD8] bg-[#F5EDD8] flex items-center justify-center">
+                    <img
+                      src={editing.image_url}
+                      alt="preview"
+                      className="w-full h-full object-cover"
+                      onError={e => {
+                        (e.currentTarget as HTMLImageElement).style.display = "none";
+                        const parent = e.currentTarget.parentElement;
+                        if (parent && !parent.querySelector(".img-err")) {
+                          const msg = document.createElement("p");
+                          msg.className = "img-err text-[10px] text-red-500 text-center px-2";
+                          msg.textContent = "Imagen no cargó — verifica que el bucket sea público";
+                          parent.appendChild(msg);
+                        }
+                      }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-[#9B6B45] mt-1 break-all max-w-xs">{editing.image_url}</p>
                 </div>
               )}
               <button
@@ -309,7 +342,7 @@ export default function ProductosAdmin() {
                 className="hidden"
                 onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = ""; }}
               />
-              <p className="text-[10px] text-[#9B6B45] mt-1">jpg · png · webp — requiere bucket "product-images" en Supabase Storage</p>
+              <p className="text-[10px] text-[#9B6B45] mt-1">jpg · png · webp — bucket "product-images" debe ser público en Supabase Storage</p>
             </div>
 
             {/* Category */}
