@@ -9,7 +9,7 @@ create table if not exists products (
   sku         text unique not null,
   name        text not null,
   tagline     text,
-  desc        text,
+  description text,
   category    text not null,
   price       numeric(10,2) not null,
   cost        numeric(10,2) default 0,    -- costo de fabricación/compra
@@ -77,7 +77,7 @@ create table if not exists purchases (
 -- ============================================================
 -- DATOS INICIALES: importar catálogo actual
 -- ============================================================
-insert into products (id, sku, name, tagline, desc, category, price, cost, stock, sizes, colors, gender, has_offer, image_url, active) values
+insert into products (id, sku, name, tagline, description, category, price, cost, stock, sizes, colors, gender, has_offer, image_url, active) values
 ('LC-001','LC-001','Tiernos Conejitos','El primer abrazo suave','Set de 5 piezas con delicado estampado de conejitos: body kimono, pantalón con pie, gorrito, mantita envolvente y gorro. Ideal para la llegada a casa.','conjuntos',79,0,10,'{"RN","0-3m","3-6m"}','{"Blanco"}','Unisex',false,'/products/LC-001.jpeg',true),
 ('LC-002','LC-002','Dulce Conejita Anticólico','Hecho con amor para noches tranquilas','Conjunto anticólico de 3 piezas en tono palo rosa.','conjuntos',69,0,8,'{"RN","0-3m"}','{"Palo Rosa"}','Niña',false,'/products/LC-002.jpeg',true),
 ('LC-003','LC-003','Bear & Bunny Amiguitos','Los compañeros de cuna preferidos','Set 3 piezas en verde suave con bordado exclusivo de osito y conejita.','conjuntos',79,0,10,'{"RN","0-3m","3-6m"}','{"Verde menta"}','Unisex',false,'/products/LC-003.jpeg',true),

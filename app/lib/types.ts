@@ -5,7 +5,7 @@ export interface Product {
   sku: string;
   name: string;
   tagline: string;
-  desc: string;
+  description: string;
   category: Category;
   price: number;
   cost: number;
