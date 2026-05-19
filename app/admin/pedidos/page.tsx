@@ -20,12 +20,21 @@ const PAY_COLORS: Record<string, string> = {
 export default function PedidosAdmin() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("todos");
 
   async function load() {
-    const { data } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
-    setOrders(data ?? []);
-    setLoading(false);
+    setError(null);
+    try {
+      const { data, error: sbError } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+      if (sbError) throw new Error(sbError.message);
+      setOrders(data ?? []);
+    } catch (e: any) {
+      console.error("[admin/pedidos] load failed:", e);
+      setError(e?.message ?? "Error al cargar pedidos");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { load(); }, []);
@@ -38,6 +47,13 @@ export default function PedidosAdmin() {
   const filtered = filter === "todos" ? orders : orders.filter(o => o.order_status === filter);
 
   if (loading) return <p className="text-[#9B6B45]">Cargando...</p>;
+  if (error) return (
+    <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-red-700">
+      <p className="font-bold mb-1">Error al cargar pedidos</p>
+      <p className="text-sm font-mono">{error}</p>
+      <button onClick={load} className="mt-3 text-xs font-bold underline">Reintentar</button>
+    </div>
+  );
 
   return (
     <div className="flex flex-col gap-5">

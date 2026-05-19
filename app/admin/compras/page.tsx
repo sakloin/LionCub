@@ -19,15 +19,25 @@ export default function ComprasAdmin() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   async function load() {
-    const [p, pr] = await Promise.all([
-      supabase.from("purchases").select("*").order("purchased_at", { ascending: false }),
-      supabase.from("products").select("id,name,stock,cost").order("id"),
-    ]);
-    setPurchases(p.data ?? []);
-    setProducts(pr.data ?? []);
-    setLoading(false);
+    setError(null);
+    try {
+      const [p, pr] = await Promise.all([
+        supabase.from("purchases").select("*").order("purchased_at", { ascending: false }),
+        supabase.from("products").select("id,name,stock,cost").order("id"),
+      ]);
+      if (p.error) throw new Error(p.error.message);
+      if (pr.error) throw new Error(pr.error.message);
+      setPurchases(p.data ?? []);
+      setProducts(pr.data ?? []);
+    } catch (e: any) {
+      console.error("[admin/compras] load failed:", e);
+      setError(e?.message ?? "Error al cargar datos");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { load(); }, []);
@@ -59,6 +69,13 @@ export default function ComprasAdmin() {
   const totalInvested = purchases.reduce((s, p) => s + Number(p.total_cost), 0);
 
   if (loading) return <p className="text-[#9B6B45]">Cargando...</p>;
+  if (error) return (
+    <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-red-700">
+      <p className="font-bold mb-1">Error al cargar compras</p>
+      <p className="text-sm font-mono">{error}</p>
+      <button onClick={load} className="mt-3 text-xs font-bold underline">Reintentar</button>
+    </div>
+  );
 
   return (
     <div className="flex flex-col gap-5">
