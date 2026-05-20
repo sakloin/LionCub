@@ -24,7 +24,7 @@ export const PAYMENT_INFO = {
   },
 } as const;
 
-export type PaymentMethod = "yape" | "plin" | "transferencia" | "contraentrega" | "izipay";
+export type PaymentMethod = "yape" | "plin" | "transferencia" | "contraentrega" | "izipay" | "culqi";
 
 // Methods that require a payment proof to be uploaded before confirming.
 export const PROOF_REQUIRED: PaymentMethod[] = ["yape", "plin", "transferencia"];

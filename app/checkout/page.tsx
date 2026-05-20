@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCart } from "../context/CartContext";
 import { useLang } from "../context/LanguageContext";
 import Image from "next/image";
 import { MapPin, Package, CreditCard, CheckCircle, MessageCircle, Calendar, Clock, Upload, FileText, RefreshCw } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { PAYMENT_INFO, PROOF_REQUIRED, type PaymentMethod } from "../lib/payment-info";
+import { CULQI_ENABLED } from "../lib/feature-flags";
 
 type Step = "datos" | "envio" | "pago" | "confirmar";
 
@@ -98,6 +99,19 @@ export default function CheckoutPage() {
   const [proofUploading,  setProofUploading]  = useState(false);
   const [proofError,      setProofError]      = useState<string | null>(null);
 
+  // Culqi state
+  const [culqiError, setCulqiError] = useState<string | null>(null);
+
+  // Load Culqi checkout.js when the flag is enabled
+  useEffect(() => {
+    if (!CULQI_ENABLED) return;
+    if (document.getElementById("culqi-js")) return;
+    const script = document.createElement("script");
+    script.id  = "culqi-js";
+    script.src = "https://js.culqi.com/checkout-js";
+    document.body.appendChild(script);
+  }, []);
+
   const isShalom        = form.shipping_method === "shalom";
   const shippingCost    = isShalom ? 15 : 10;
   const grandTotal      = total + shippingCost;
@@ -165,8 +179,54 @@ export default function CheckoutPage() {
     ? !!(form.address && form.district && form.delivery_date && form.delivery_time_slot)
     : !!form.shalom_agency;
 
+  async function handleCulqiFlow(createdOrderId: string) {
+    const W = window as any;
+    const culqiKey = process.env.NEXT_PUBLIC_CULQI_PUBLIC_KEY;
+    if (!culqiKey || !W.Culqi) {
+      setCulqiError("Culqi no está disponible. Recarga la página e intenta de nuevo.");
+      return;
+    }
+    W.Culqi.publicKey = culqiKey;
+    W.Culqi.settings({
+      title: "Lion Cub Baby Clothing",
+      currency: "PEN",
+      description: `Pedido #${createdOrderId.slice(0, 8).toUpperCase()}`,
+      amount: Math.round(grandTotal * 100),
+    });
+
+    const token = await new Promise<string | null>((resolve) => {
+      W.culqi = () => {
+        W.culqi = undefined;
+        resolve(W.Culqi.token?.id ?? null);
+      };
+      W.Culqi.open();
+    });
+
+    if (!token) return; // user closed without paying
+
+    const res = await fetch("/api/payments/culqi/charge", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token,
+        orderId: createdOrderId,
+        amount: Math.round(grandTotal * 100),
+        email: form.customer_email || `${form.customer_phone}@lioncub.pe`,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      setCulqiError(data.error ?? "Error al procesar el pago. Intenta de nuevo.");
+      return;
+    }
+    setOrderId(createdOrderId);
+    setStep("confirmar");
+    clear();
+  }
+
   async function submitOrder() {
     setSubmitting(true);
+    setCulqiError(null);
     try {
       const res = await fetch("/api/orders", {
         method: "POST",
@@ -184,9 +244,13 @@ export default function CheckoutPage() {
       });
       const data = await res.json();
       if (data.id) {
-        setOrderId(data.id);
-        setStep("confirmar");
-        clear();
+        if (form.payment_method === "culqi") {
+          await handleCulqiFlow(data.id);
+        } else {
+          setOrderId(data.id);
+          setStep("confirmar");
+          clear();
+        }
       }
     } finally {
       setSubmitting(false);
@@ -399,11 +463,13 @@ export default function CheckoutPage() {
 
                   <div className="grid gap-3">
                     {[
-                      { value: "yape",         label: "💜 Yape",                    desc: "QR instantáneo" },
-                      { value: "plin",         label: "🔵 Plin",                   desc: "QR instantáneo" },
-                      { value: "transferencia",label: "🏦 Transferencia bancaria",  desc: "BCP · BBVA · Interbank" },
-                      { value: "contraentrega",label: "💵 Contra entrega",          desc: "Solo Lima Metropolitana (domicilio)" },
-                      { value: "izipay",       label: "💳 Tarjeta / Izipay",        desc: "Próximamente disponible", disabled: true },
+                      { value: "yape",         label: "💜 Yape",                       desc: "QR instantáneo" },
+                      { value: "plin",         label: "🔵 Plin",                       desc: "QR instantáneo" },
+                      { value: "transferencia",label: "🏦 Transferencia bancaria",      desc: "BCP · BBVA · Interbank" },
+                      { value: "contraentrega",label: "💵 Contra entrega",              desc: "Solo Lima Metropolitana (domicilio)" },
+                      ...(CULQI_ENABLED
+                        ? [{ value: "culqi", label: "💳 Tarjeta de crédito/débito",   desc: "Visa, Mastercard · Powered by Culqi" }]
+                        : [{ value: "izipay", label: "💳 Tarjeta",                    desc: "Próximamente disponible", disabled: true }]),
                     ].map(opt => (
                       <button key={opt.value}
                         onClick={() => { if (!opt.disabled) { field("payment_method", opt.value); resetProof(); } }}
@@ -467,6 +533,13 @@ export default function CheckoutPage() {
                       )}
 
                       {proofError && <p className="text-xs text-red-500">{proofError}</p>}
+                    </div>
+                  )}
+
+                  {/* Culqi error */}
+                  {culqiError && (
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700">
+                      {culqiError}
                     </div>
                   )}
 

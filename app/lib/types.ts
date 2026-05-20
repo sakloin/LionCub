@@ -33,9 +33,12 @@ export interface Order {
   shipping_cost: number;
   subtotal: number;
   total: number;
-  payment_method: "izipay" | "transferencia" | "contraentrega" | "yape" | "plin";
+  payment_method: "izipay" | "transferencia" | "contraentrega" | "yape" | "plin" | "culqi";
   payment_status: "pendiente" | "pagado" | "fallido";
   payment_proof_url: string | null;
+  payment_provider: string | null;
+  payment_reference: string | null;
+  payment_paid_at: string | null;
   order_status: "nuevo" | "procesando" | "enviado" | "entregado" | "cancelado";
   notes: string | null;
   delivery_date: string | null;
