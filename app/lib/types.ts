@@ -33,8 +33,9 @@ export interface Order {
   shipping_cost: number;
   subtotal: number;
   total: number;
-  payment_method: "izipay" | "transferencia" | "contraentrega";
+  payment_method: "izipay" | "transferencia" | "contraentrega" | "yape" | "plin";
   payment_status: "pendiente" | "pagado" | "fallido";
+  payment_proof_url: string | null;
   order_status: "nuevo" | "procesando" | "enviado" | "entregado" | "cancelado";
   notes: string | null;
   delivery_date: string | null;

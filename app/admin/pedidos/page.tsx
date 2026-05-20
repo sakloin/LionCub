@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { Order } from "../../lib/types";
-import { ChevronDown, ChevronUp, Package2, MessageCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, Package2, MessageCircle, FileText, Check, XCircle } from "lucide-react";
 
 interface OrderItemDetail {
   id: string;
@@ -124,6 +124,37 @@ export default function PedidosAdmin() {
     }
   }
 
+  async function handleConfirmPayment(id: string) {
+    try {
+      const { error: dbErr } = await supabase.from("orders").update({ payment_status: "pagado" }).eq("id", id);
+      if (dbErr) throw dbErr;
+      setOrders(prev => prev.map(o => o.id === id ? { ...o, payment_status: "pagado" } : o));
+      setExpandedId(null);
+      showToast("Pago confirmado ✓");
+    } catch (e: any) {
+      showToast(e?.message ?? "Error al confirmar pago", false);
+    }
+  }
+
+  async function handleRejectPayment(order: Order) {
+    try {
+      const { error: dbErr } = await supabase.from("orders").update({ payment_status: "fallido" }).eq("id", order.id);
+      if (dbErr) throw dbErr;
+      setOrders(prev => prev.map(o => o.id === order.id ? { ...o, payment_status: "fallido" } : o));
+      setExpandedId(null);
+      showToast("Comprobante marcado como inválido");
+      const phone = fmtPhone(order.customer_phone ?? "");
+      if (phone) {
+        const msg = encodeURIComponent(
+          `Hola ${order.customer_name}, no pudimos validar tu comprobante del pedido #${order.id.slice(0, 8).toUpperCase()}. ¿Podrías reenviarlo? 🦁`
+        );
+        window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
+      }
+    } catch (e: any) {
+      showToast(e?.message ?? "Error al rechazar pago", false);
+    }
+  }
+
   const filtered = filter === "todos" ? orders : orders.filter(o => o.order_status === filter);
 
   if (loading) return <p className="text-[#9B6B45]">Cargando...</p>;
@@ -139,7 +170,7 @@ export default function PedidosAdmin() {
     <div className="flex flex-col gap-5">
       {/* Toast */}
       {toast && (
-        <div className={`fixed top-4 right-4 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-bold pointer-events-none transition-all ${toast.ok ? "bg-green-500 text-white" : "bg-red-500 text-white"}`}>
+        <div className={`fixed top-4 right-4 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-bold pointer-events-none ${toast.ok ? "bg-green-500 text-white" : "bg-red-500 text-white"}`}>
           {toast.msg}
         </div>
       )}
@@ -152,11 +183,8 @@ export default function PedidosAdmin() {
       {/* Filter tabs */}
       <div className="flex flex-wrap gap-2">
         {["todos","nuevo","procesando","enviado","entregado","cancelado"].map(s => (
-          <button
-            key={s}
-            onClick={() => setFilter(s)}
-            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all capitalize ${filter === s ? "bg-[#D4A520] text-white" : "bg-white text-[#6B3D1E] border border-[#F5EDD8] hover:border-[#D4A520]"}`}
-          >
+          <button key={s} onClick={() => setFilter(s)}
+            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all capitalize ${filter === s ? "bg-[#D4A520] text-white" : "bg-white text-[#6B3D1E] border border-[#F5EDD8] hover:border-[#D4A520]"}`}>
             {s}
           </button>
         ))}
@@ -169,10 +197,12 @@ export default function PedidosAdmin() {
       ) : (
         <div className="flex flex-col gap-3">
           {filtered.map(order => {
-            const isExpanded = expandedId === order.id;
-            const items = orderItems[order.id];
+            const isExpanded     = expandedId === order.id;
+            const items          = orderItems[order.id];
             const isLoadingItems = loadingItems.has(order.id);
-            const wa = orderWaUrl(order);
+            const wa             = orderWaUrl(order);
+            const proofUrl       = (order as any).payment_proof_url as string | null;
+            const proofIsPdf     = !!proofUrl && proofUrl.toLowerCase().includes(".pdf");
 
             return (
               <div key={order.id} className="bg-white rounded-2xl shadow-sm border border-[#F5EDD8] overflow-hidden">
@@ -214,14 +244,9 @@ export default function PedidosAdmin() {
 
                   {/* WhatsApp button */}
                   {wa.valid ? (
-                    <a
-                      href={wa.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="WhatsApp al cliente"
+                    <a href={wa.url} target="_blank" rel="noopener noreferrer" title="WhatsApp al cliente"
                       className="flex items-center px-4 text-[#25D366] hover:bg-green-50 border-l border-[#F5EDD8] transition-colors flex-shrink-0"
-                      onClick={e => e.stopPropagation()}
-                    >
+                      onClick={e => e.stopPropagation()}>
                       <MessageCircle size={20} />
                     </a>
                   ) : (
@@ -232,17 +257,55 @@ export default function PedidosAdmin() {
                 </div>
 
                 {/* Status controls */}
-                <div className="px-5 pb-4 flex flex-wrap gap-3 items-center">
-                  <div className="flex items-center gap-2">
+                <div className="px-5 pb-4 flex flex-col gap-2.5">
+                  {/* Payment row: select + proof thumbnail + quick action buttons */}
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs text-[#9B6B45]">Pago:</span>
                     <select
                       value={order.payment_status}
                       onChange={e => updateStatus(order.id, "payment_status", e.target.value)}
-                      className={`text-xs font-bold px-2 py-1 rounded-full border-0 ${PAY_COLORS[order.payment_status]} cursor-pointer`}
+                      className={`text-xs font-bold px-2 py-1 rounded-full border-0 ${PAY_COLORS[order.payment_status] ?? "bg-gray-100 text-gray-700"} cursor-pointer`}
                     >
                       {["pendiente","pagado","fallido"].map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
+
+                    {/* Proof thumbnail / PDF badge */}
+                    {proofUrl && (
+                      proofIsPdf ? (
+                        <a href={proofUrl} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 px-2 py-1 rounded-lg transition-colors"
+                          title="Ver comprobante PDF">
+                          <FileText size={14} /> PDF
+                        </a>
+                      ) : (
+                        <a href={proofUrl} target="_blank" rel="noopener noreferrer" title="Ver comprobante">
+                          <img src={proofUrl} alt="Comprobante" className="w-8 h-8 rounded-lg object-cover border border-[#F5EDD8] hover:opacity-80 transition-opacity" />
+                        </a>
+                      )
+                    )}
+
+                    {/* Quick action: Confirm payment */}
+                    <button
+                      onClick={() => handleConfirmPayment(order.id)}
+                      disabled={order.payment_status === "pagado"}
+                      className="flex items-center gap-1 text-xs font-bold text-green-700 bg-green-50 hover:bg-green-100 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      title="Marcar pago como confirmado"
+                    >
+                      <Check size={12} /> Confirmar
+                    </button>
+
+                    {/* Quick action: Reject proof */}
+                    <button
+                      onClick={() => handleRejectPayment(order)}
+                      disabled={order.payment_status === "fallido"}
+                      className="flex items-center gap-1 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      title="Marcar comprobante como inválido y avisar al cliente por WhatsApp"
+                    >
+                      <XCircle size={12} /> Inválido
+                    </button>
                   </div>
+
+                  {/* Order status row */}
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-[#9B6B45]">Estado:</span>
                     <select
@@ -253,6 +316,7 @@ export default function PedidosAdmin() {
                       {["nuevo","procesando","enviado","entregado","cancelado"].map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
+
                   {order.notes && <p className="text-xs text-[#9B6B45] italic">"{order.notes}"</p>}
                 </div>
 
@@ -278,9 +342,7 @@ export default function PedidosAdmin() {
                                 {imgUrl ? (
                                   <img src={imgUrl} alt={item.product_name} className="w-full h-full object-cover" />
                                 ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-[#C4956A] text-[10px] font-bold">
-                                    {item.product_sku}
-                                  </div>
+                                  <div className="w-full h-full flex items-center justify-center text-[#C4956A] text-[10px] font-bold">{item.product_sku}</div>
                                 )}
                               </div>
                               <div className="flex-1 min-w-0">
