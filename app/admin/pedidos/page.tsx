@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { Order } from "../../lib/types";
+import { formatSoles } from "../../lib/money";
 import { ChevronDown, ChevronUp, Package2, MessageCircle, FileText, Check, XCircle } from "lucide-react";
 
 interface OrderItemDetail {
@@ -48,7 +49,7 @@ function orderWaUrl(order: Order): { url: string; valid: boolean } {
   const phone = fmtPhone(order.customer_phone ?? "");
   if (!phone) return { url: "", valid: false };
   const msg = encodeURIComponent(
-    `Hola ${order.customer_name}, te escribo de Lion Cub 🦁 por tu pedido #${order.id.slice(0, 8).toUpperCase()} de S/ ${Number(order.total).toFixed(2)}. ¿En qué te puedo ayudar?`
+    `Hola ${order.customer_name}, te escribo de Lion Cub 🦁 por tu pedido #${order.id.slice(0, 8).toUpperCase()} de ${formatSoles(Number(order.total))}. ¿En qué te puedo ayudar?`
   );
   return { url: `https://wa.me/${phone}?text=${msg}`, valid: true };
 }
@@ -222,7 +223,7 @@ export default function PedidosAdmin() {
                           {order.customer_phone} · {new Date(order.created_at).toLocaleDateString("es-PE", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" })}
                         </p>
                       </div>
-                      <p className="font-extrabold text-[#D4A520] text-lg">S/ {Number(order.total).toFixed(2)}</p>
+                      <p className="font-extrabold text-[#D4A520] text-lg">{formatSoles(Number(order.total))}</p>
                     </div>
 
                     <div className="flex flex-wrap gap-2 text-xs">
@@ -352,19 +353,19 @@ export default function PedidosAdmin() {
                                   {item.selected_size  ? ` · ${item.selected_size}`  : ""}
                                   {item.selected_color ? ` · ${item.selected_color}` : ""}
                                 </p>
-                                <p className="text-[#9B6B45] text-xs">S/ {Number(item.unit_price).toFixed(2)} c/u</p>
+                                <p className="text-[#9B6B45] text-xs">{formatSoles(Number(item.unit_price))} c/u</p>
                               </div>
                               <div className="text-right flex-shrink-0">
                                 <p className="text-xs font-bold text-[#3D2010] bg-[#F5EDD8] rounded-full px-2 py-0.5 mb-1">x{item.quantity}</p>
-                                <p className="font-bold text-[#D4A520] text-sm">S/ {Number(item.subtotal).toFixed(2)}</p>
+                                <p className="font-bold text-[#D4A520] text-sm">{formatSoles(Number(item.subtotal))}</p>
                               </div>
                             </div>
                           );
                         })}
                         <div className="flex justify-end gap-4 pt-2 text-xs text-[#9B6B45] border-t border-[#F5EDD8]">
-                          <span>Subtotal: <strong className="text-[#3D2010]">S/ {Number(order.subtotal).toFixed(2)}</strong></span>
-                          <span>Envío: <strong className="text-[#3D2010]">S/ {Number(order.shipping_cost).toFixed(2)}</strong></span>
-                          <span>Total: <strong className="text-[#D4A520]">S/ {Number(order.total).toFixed(2)}</strong></span>
+                          <span>Subtotal: <strong className="text-[#3D2010]">{formatSoles(Number(order.subtotal))}</strong></span>
+                          <span>Envío: <strong className="text-[#3D2010]">{formatSoles(Number(order.shipping_cost))}</strong></span>
+                          <span>Total: <strong className="text-[#D4A520]">{formatSoles(Number(order.total))}</strong></span>
                         </div>
                       </div>
                     )}

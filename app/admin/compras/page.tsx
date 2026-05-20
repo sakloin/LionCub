@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { Purchase, Product } from "../../lib/types";
 import { Plus, Save } from "lucide-react";
+import { formatSoles } from "../../lib/money";
 
 interface PurchaseForm {
   product_id: string; product_name: string;
@@ -96,7 +97,7 @@ export default function ComprasAdmin() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-[#3D2010]">Compras & Stock</h1>
-          <p className="text-[#9B6B45] text-sm">Total invertido: <strong className="text-[#D4A520]">S/ {totalInvested.toFixed(2)}</strong></p>
+          <p className="text-[#9B6B45] text-sm">Total invertido: <strong className="text-[#D4A520]">{formatSoles(totalInvested)}</strong></p>
         </div>
         <button
           onClick={() => { setSaveError(null); setShowForm(s => !s); }}
@@ -124,8 +125,8 @@ export default function ComprasAdmin() {
                 <tr key={p.id} className={p.stock <= 3 ? "bg-orange-50" : ""}>
                   <td className="px-3 py-2 text-[#3D2010] font-medium">{p.name} <span className="text-[#9B6B45] text-xs">({p.id})</span></td>
                   <td className={`px-3 py-2 text-right font-bold ${p.stock <= 3 ? "text-orange-500" : "text-[#3D2010]"}`}>{p.stock}</td>
-                  <td className="px-3 py-2 text-right text-[#9B6B45]">S/ {p.cost ?? 0}</td>
-                  <td className="px-3 py-2 text-right font-semibold text-[#D4A520]">S/ {((p.stock ?? 0) * (p.cost ?? 0)).toFixed(2)}</td>
+                  <td className="px-3 py-2 text-right text-[#9B6B45]">{formatSoles(p.cost ?? 0)}</td>
+                  <td className="px-3 py-2 text-right font-semibold text-[#D4A520]">{formatSoles((p.stock ?? 0) * (p.cost ?? 0))}</td>
                 </tr>
               ))}
             </tbody>
@@ -167,7 +168,7 @@ export default function ComprasAdmin() {
               <input type="date" value={form.purchased_at} onChange={e => setForm(f => ({ ...f, purchased_at: e.target.value }))} className="w-full border border-[#F5EDD8] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A520]" />
             </div>
             <div>
-              <label className="block text-xs font-bold text-[#6B3D1E] mb-1">Total: <span className="text-[#D4A520] font-extrabold">S/ {(form.quantity * form.unit_cost).toFixed(2)}</span></label>
+              <label className="block text-xs font-bold text-[#6B3D1E] mb-1">Total: <span className="text-[#D4A520] font-extrabold">{formatSoles(form.quantity * form.unit_cost)}</span></label>
               <input placeholder="Notas opcionales..." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} className="w-full border border-[#F5EDD8] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A520]" />
             </div>
           </div>
@@ -203,8 +204,8 @@ export default function ComprasAdmin() {
                     <td className="px-4 py-2.5 text-[#9B6B45]">{new Date(p.purchased_at + "T00:00:00").toLocaleDateString("es-PE")}</td>
                     <td className="px-4 py-2.5 font-medium text-[#3D2010]">{p.product_name}</td>
                     <td className="px-4 py-2.5 text-right">{p.quantity}</td>
-                    <td className="px-4 py-2.5 text-right text-[#9B6B45]">S/ {Number(p.unit_cost).toFixed(2)}</td>
-                    <td className="px-4 py-2.5 text-right font-bold text-[#D4A520]">S/ {Number(p.total_cost).toFixed(2)}</td>
+                    <td className="px-4 py-2.5 text-right text-[#9B6B45]">{formatSoles(Number(p.unit_cost))}</td>
+                    <td className="px-4 py-2.5 text-right font-bold text-[#D4A520]">{formatSoles(Number(p.total_cost))}</td>
                     <td className="px-4 py-2.5 text-[#9B6B45]">{p.supplier ?? "-"}</td>
                   </tr>
                 ))}

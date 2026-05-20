@@ -5,6 +5,7 @@ import * as XLSX from "xlsx";
 import { supabase } from "../../lib/supabase";
 import { Product } from "../../lib/types";
 import { Plus, Pencil, ToggleLeft, ToggleRight, Save, X, Upload, Trash2, AlertTriangle, FileDown, FileUp, CheckCircle2 } from "lucide-react";
+import { formatSoles } from "../../lib/money";
 
 interface Category { id: string; name: string; }
 
@@ -487,8 +488,8 @@ export default function ProductosAdmin() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-right font-bold text-[#D4A520]">S/ {p.price}</td>
-                  <td className="px-4 py-3 text-right text-[#9B6B45]">S/ {p.cost ?? 0}</td>
+                  <td className="px-4 py-3 text-right font-bold text-[#D4A520]">{formatSoles(p.price)}</td>
+                  <td className="px-4 py-3 text-right text-[#9B6B45]">{formatSoles(p.cost ?? 0)}</td>
                   <td className="px-4 py-3 text-right">
                     <span className={`font-bold ${p.stock <= 3 ? "text-orange-500" : "text-[#3D2010]"}`}>{p.stock}</span>
                   </td>
@@ -627,7 +628,7 @@ export default function ProductosAdmin() {
                             <td className="px-2 py-1.5 border border-[#EDD9B4] font-mono">{r.id}</td>
                             <td className="px-2 py-1.5 border border-[#EDD9B4]">{r.name}</td>
                             <td className="px-2 py-1.5 border border-[#EDD9B4]">{r.category}</td>
-                            <td className="px-2 py-1.5 border border-[#EDD9B4] text-right">S/ {r.price}</td>
+                            <td className="px-2 py-1.5 border border-[#EDD9B4] text-right">{formatSoles(r.price)}</td>
                             <td className="px-2 py-1.5 border border-[#EDD9B4] text-right">{r.stock}</td>
                             <td className="px-2 py-1.5 border border-[#EDD9B4]">
                               {ok ? (

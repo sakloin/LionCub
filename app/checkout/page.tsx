@@ -8,6 +8,7 @@ import { MapPin, Package, CreditCard, CheckCircle, MessageCircle, Calendar, Cloc
 import { supabase } from "../lib/supabase";
 import { PAYMENT_INFO, PROOF_REQUIRED, type PaymentMethod } from "../lib/payment-info";
 import { CULQI_ENABLED } from "../lib/feature-flags";
+import { toCents, fromCents, formatSoles } from "../lib/money";
 
 type Step = "datos" | "envio" | "pago" | "confirmar";
 
@@ -113,8 +114,10 @@ export default function CheckoutPage() {
   }, []);
 
   const isShalom        = form.shipping_method === "shalom";
-  const shippingCost    = isShalom ? 15 : 10;
-  const grandTotal      = total + shippingCost;
+  const shippingCents   = isShalom ? 1500 : 1000;
+  const grandTotalCents = toCents(total) + shippingCents;
+  const shippingCost    = fromCents(shippingCents);
+  const grandTotal      = fromCents(grandTotalCents);
   const availableSlots  = isFriday(form.delivery_date) ? FRI_SLOTS : ALL_SLOTS;
   const requiresProof   = (PROOF_REQUIRED as string[]).includes(form.payment_method);
   const confirmDisabled = submitting || proofUploading || (requiresProof && !proofUrl);
@@ -191,7 +194,7 @@ export default function CheckoutPage() {
       title: "Lion Cub Baby Clothing",
       currency: "PEN",
       description: `Pedido #${createdOrderId.slice(0, 8).toUpperCase()}`,
-      amount: Math.round(grandTotal * 100),
+      amount: toCents(grandTotal),
     });
 
     const token = await new Promise<string | null>((resolve) => {
@@ -210,7 +213,7 @@ export default function CheckoutPage() {
       body: JSON.stringify({
         token,
         orderId: createdOrderId,
-        amount: Math.round(grandTotal * 100),
+        amount: toCents(grandTotal),
         email: form.customer_email || `${form.customer_phone}@lioncub.pe`,
       }),
     });
@@ -282,7 +285,7 @@ export default function CheckoutPage() {
       !isShalom && form.delivery_time_slot ? `Franja horaria: ${form.delivery_time_slot}` : null,
       isShalom ? `Agencia Shalom: ${form.shalom_agency}` : null,
       `Pago: ${form.payment_method}`,
-      `Total: S/ ${grandTotal.toFixed(2)}`,
+      `Total: ${formatSoles(grandTotal)}`,
     ].filter(Boolean).join("\n");
 
     return (
@@ -381,8 +384,8 @@ export default function CheckoutPage() {
                   <h2 className="font-bold text-[#3D2010] text-lg">Método de envío</h2>
                   <div className="grid gap-3">
                     {[
-                      { value: "domicilio", label: "🛵 Entrega a domicilio", desc: "Lima Metropolitana · S/ 10" },
-                      { value: "shalom",    label: "📦 Agencia Shalom",      desc: "A nivel nacional · S/ 15" },
+                      { value: "domicilio", label: "🛵 Entrega a domicilio", desc: "Lima Metropolitana · S/ 10.00" },
+                      { value: "shalom",    label: "📦 Agencia Shalom",      desc: "A nivel nacional · S/ 15.00" },
                     ].map(opt => (
                       <button key={opt.value} onClick={() => field("shipping_method", opt.value)}
                         className={`p-4 rounded-xl border-2 text-left transition-all ${form.shipping_method === opt.value ? "border-[#D4A520] bg-[#FDF8F0]" : "border-[#F5EDD8] hover:border-[#D4A520]/50"}`}>
@@ -579,15 +582,15 @@ export default function CheckoutPage() {
                     <p className="text-sm font-semibold text-[#3D2010] line-clamp-1">{item.product.name}</p>
                     <p className="text-[#9B6B45] text-xs">{item.selectedSize} · {item.selectedColor} · x{item.quantity}</p>
                   </div>
-                  <p className="font-bold text-[#D4A520] text-sm">S/ {(item.product.price * item.quantity).toFixed(2)}</p>
+                  <p className="font-bold text-[#D4A520] text-sm">{formatSoles(fromCents(Math.round(item.product.price * 100) * item.quantity))}</p>
                 </div>
               ))}
             </div>
             <div className="border-t border-[#F5EDD8] pt-3 flex flex-col gap-1.5 text-sm">
-              <div className="flex justify-between"><span className="text-[#9B6B45]">Subtotal</span><span>S/ {total.toFixed(2)}</span></div>
-              <div className="flex justify-between"><span className="text-[#9B6B45]">Envío</span><span>S/ {shippingCost.toFixed(2)}</span></div>
+              <div className="flex justify-between"><span className="text-[#9B6B45]">Subtotal</span><span>{formatSoles(total)}</span></div>
+              <div className="flex justify-between"><span className="text-[#9B6B45]">Envío</span><span>{formatSoles(shippingCost)}</span></div>
               <div className="flex justify-between font-extrabold text-[#3D2010] text-base mt-1">
-                <span>Total</span><span className="text-[#D4A520]">S/ {grandTotal.toFixed(2)}</span>
+                <span>Total</span><span className="text-[#D4A520]">{formatSoles(grandTotal)}</span>
               </div>
             </div>
           </div>

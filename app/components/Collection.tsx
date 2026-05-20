@@ -6,6 +6,7 @@ import { ShoppingCart, Tag, Check, Bell, X } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
 import { supabase } from "../lib/supabase";
+import { formatSoles } from "../lib/money";
 import data from "../data/productos.json";
 
 const { brand, categories, products } = data;
@@ -233,7 +234,7 @@ function ProductCard({
             <p className="text-[#C4956A] text-xs mt-0.5 italic">{product.tagline}</p>
           </div>
           <span className="font-extrabold text-[#D4A520] text-lg whitespace-nowrap">
-            S/ {product.price}
+            {formatSoles(product.price)}
           </span>
         </div>
 

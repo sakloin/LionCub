@@ -2,6 +2,7 @@
 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { TrendingUp, ShoppingCart, Package, AlertTriangle, DollarSign } from "lucide-react";
+import { formatSoles } from "../../lib/money";
 
 interface Stats {
   totalRevenue: number; totalCOGS: number; grossProfit: number; totalPurchases: number;
@@ -39,8 +40,8 @@ export default function DashboardClient({ stats }: { stats: Stats }) {
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Ingresos del mes" value={`S/ ${stats.totalRevenue.toFixed(2)}`} sub={`${stats.paidCount} pedidos pagados`} icon={DollarSign} color="bg-[#F5E9B8] text-[#A07D10]" />
-        <StatCard label="Utilidad bruta" value={`S/ ${stats.grossProfit.toFixed(2)}`} sub={`Margen ${margin}%`} icon={TrendingUp} color="bg-[#D4EAC8] text-[#4A7A3A]" />
+        <StatCard label="Ingresos del mes" value={formatSoles(stats.totalRevenue)} sub={`${stats.paidCount} pedidos pagados`} icon={DollarSign} color="bg-[#F5E9B8] text-[#A07D10]" />
+        <StatCard label="Utilidad bruta" value={formatSoles(stats.grossProfit)} sub={`Margen ${margin}%`} icon={TrendingUp} color="bg-[#D4EAC8] text-[#4A7A3A]" />
         <StatCard label="Pedidos totales" value={String(stats.orderCount)} sub={`${stats.pendingCount} pendientes`} icon={ShoppingCart} color="bg-[#FDE8DC] text-[#C45A2A]" />
         <StatCard label="Productos activos" value={String(stats.productCount)} sub="en catálogo" icon={Package} color="bg-[#E8E8F8] text-[#5A5AB0]" />
       </div>
@@ -55,7 +56,7 @@ export default function DashboardClient({ stats }: { stats: Stats }) {
               <CartesianGrid strokeDasharray="3 3" stroke="#F5EDD8" />
               <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#9B6B45" }} />
               <YAxis tick={{ fontSize: 11, fill: "#9B6B45" }} />
-              <Tooltip formatter={(v: any) => [`S/ ${Number(v).toFixed(2)}`, "Ventas"]} />
+              <Tooltip formatter={(v: any) => [formatSoles(Number(v)), "Ventas"]} />
               <Bar dataKey="total" fill="#D4A520" radius={[6,6,0,0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -75,7 +76,7 @@ export default function DashboardClient({ stats }: { stats: Stats }) {
                     <span className="text-sm text-[#3D2010] font-semibold leading-tight line-clamp-1">{p.name}</span>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="text-xs font-bold text-[#D4A520]">S/ {p.revenue.toFixed(0)}</p>
+                    <p className="text-xs font-bold text-[#D4A520]">{formatSoles(p.revenue)}</p>
                     <p className="text-xs text-[#9B6B45]">{p.qty} uds.</p>
                   </div>
                 </li>
@@ -107,20 +108,20 @@ export default function DashboardClient({ stats }: { stats: Stats }) {
       <div className="bg-[#3D2010] text-white rounded-2xl p-6 grid grid-cols-2 sm:grid-cols-4 gap-6">
         <div className="text-center">
           <p className="text-white/60 text-xs mb-1">Ingresos</p>
-          <p className="text-xl font-extrabold text-[#D4A520]">S/ {stats.totalRevenue.toFixed(2)}</p>
+          <p className="text-xl font-extrabold text-[#D4A520]">{formatSoles(stats.totalRevenue)}</p>
         </div>
         <div className="text-center">
           <p className="text-white/60 text-xs mb-1">Costo mercadería</p>
-          <p className="text-xl font-extrabold text-white">S/ {stats.totalCOGS.toFixed(2)}</p>
+          <p className="text-xl font-extrabold text-white">{formatSoles(stats.totalCOGS)}</p>
         </div>
         <div className="text-center">
           <p className="text-white/60 text-xs mb-1">Compras realizadas</p>
-          <p className="text-xl font-extrabold text-white">S/ {stats.totalPurchases.toFixed(2)}</p>
+          <p className="text-xl font-extrabold text-white">{formatSoles(stats.totalPurchases)}</p>
         </div>
         <div className="text-center">
           <p className="text-white/60 text-xs mb-1">Utilidad bruta</p>
           <p className={`text-xl font-extrabold ${stats.grossProfit >= 0 ? "text-green-400" : "text-red-400"}`}>
-            S/ {stats.grossProfit.toFixed(2)}
+            {formatSoles(stats.grossProfit)}
           </p>
         </div>
       </div>

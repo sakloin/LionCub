@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { CULQI_ENABLED } from "@/app/lib/feature-flags";
+import { fromCents } from "@/app/lib/money";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
       Authorization: `Bearer ${secretKey}`,
     },
     body: JSON.stringify({
-      amount: Math.round(amount), // already in cents (soles × 100) from frontend
+      amount: Number(amount), // integer cents sent by frontend via toCents()
       currency_code: "PEN",
       email,
       source_id: token,
@@ -50,6 +51,10 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+
+  // Culqi returns amount in cents; convert for human-readable logging
+  const chargedSoles = fromCents(culqiData.amount ?? Number(amount));
+  console.log(`[culqi] charged ${chargedSoles} PEN for order ${orderId} — ref ${culqiData.id}`);
 
   // Mark order as paid
   const { error: dbError } = await supabase

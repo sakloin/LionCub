@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { formatSoles } from "../../lib/money";
 
 const COLORS = ["#D4A520","#8BAF7A","#F5C4A8","#6B3D1E","#87CEEB","#FFD1DC"];
 
@@ -82,10 +83,10 @@ export default function ReportesClient({ data }: Props) {
         <h2 className="text-white/60 text-sm font-bold uppercase tracking-wider mb-5">Balance del mes</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
           {[
-            { label:"Ingresos totales", value:`S/ ${monthRevenue.toFixed(2)}`, color:"text-[#D4A520]" },
-            { label:"Costo mercadería", value:`S/ ${monthCOGS.toFixed(2)}`, color:"text-white" },
-            { label:"Compras de stock", value:`S/ ${monthPurchaseCost.toFixed(2)}`, color:"text-white" },
-            { label:"Utilidad bruta", value:`S/ ${monthProfit.toFixed(2)}`, color: monthProfit >= 0 ? "text-green-400" : "text-red-400" },
+            { label:"Ingresos totales", value: formatSoles(monthRevenue),      color:"text-[#D4A520]" },
+            { label:"Costo mercadería", value: formatSoles(monthCOGS),         color:"text-white" },
+            { label:"Compras de stock", value: formatSoles(monthPurchaseCost), color:"text-white" },
+            { label:"Utilidad bruta",   value: formatSoles(monthProfit),       color: monthProfit >= 0 ? "text-green-400" : "text-red-400" },
           ].map(item => (
             <div key={item.label} className="text-center">
               <p className="text-white/50 text-xs mb-1">{item.label}</p>
@@ -113,7 +114,7 @@ export default function ReportesClient({ data }: Props) {
                 <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name} ${((percent ?? 0)*100).toFixed(0)}%`}>
                   {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Pie>
-                <Tooltip formatter={(v: any) => [`S/ ${Number(v).toFixed(2)}`, ""]} />
+                <Tooltip formatter={(v: any) => [formatSoles(Number(v)), ""]} />
               </PieChart>
             </ResponsiveContainer>
           )}
@@ -129,7 +130,7 @@ export default function ReportesClient({ data }: Props) {
               <BarChart data={topProds.slice(0,6)} layout="vertical" barSize={14}>
                 <XAxis type="number" tick={{ fontSize: 11 }} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={100} />
-                <Tooltip formatter={(v: any) => [`S/ ${Number(v).toFixed(2)}`, ""]} />
+                <Tooltip formatter={(v: any) => [formatSoles(Number(v)), ""]} />
                 <Bar dataKey="revenue" fill="#D4A520" radius={[0,4,4,0]} name="Ingresos" />
                 <Bar dataKey="profit" fill="#8BAF7A" radius={[0,4,4,0]} name="Utilidad" />
               </BarChart>
@@ -162,8 +163,8 @@ export default function ReportesClient({ data }: Props) {
                   <tr key={p.name} className="hover:bg-[#FDF8F0]">
                     <td className="px-4 py-2.5 font-medium text-[#3D2010]">{p.name}</td>
                     <td className="px-4 py-2.5 text-right">{p.qty}</td>
-                    <td className="px-4 py-2.5 text-right font-bold text-[#D4A520]">S/ {p.revenue.toFixed(2)}</td>
-                    <td className={`px-4 py-2.5 text-right font-bold ${p.profit >= 0 ? "text-green-600" : "text-red-500"}`}>S/ {p.profit.toFixed(2)}</td>
+                    <td className="px-4 py-2.5 text-right font-bold text-[#D4A520]">{formatSoles(p.revenue)}</td>
+                    <td className={`px-4 py-2.5 text-right font-bold ${p.profit >= 0 ? "text-green-600" : "text-red-500"}`}>{formatSoles(p.profit)}</td>
                     <td className="px-4 py-2.5 text-right text-[#9B6B45]">{p.revenue > 0 ? ((p.profit/p.revenue)*100).toFixed(1) : 0}%</td>
                   </tr>
                 ))}

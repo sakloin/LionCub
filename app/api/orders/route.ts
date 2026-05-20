@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "../../lib/supabase";
 import { CartItem } from "../../lib/types";
+import { fromCents } from "../../lib/money";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
     quantity: item.quantity,
     unit_price: item.product.price,
     unit_cost: item.product.cost ?? 0,
-    subtotal: item.quantity * item.product.price,
+    subtotal: fromCents(Math.round(item.product.price * 100) * item.quantity),
   }));
 
   await supabase.from("order_items").insert(orderItems);

@@ -5,6 +5,7 @@ import { useCart } from "../../context/CartContext";
 import { useLang } from "../../context/LanguageContext";
 import Image from "next/image";
 import Link from "next/link";
+import { formatSoles } from "../../lib/money";
 
 interface Props { open: boolean; onClose: () => void; }
 
@@ -41,7 +42,7 @@ export default function CartDrawer({ open, onClose }: Props) {
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-[#3D2010] text-sm leading-tight line-clamp-1">{item.product.name}</p>
                   <p className="text-[#9B6B45] text-xs">{item.selectedSize} · {item.selectedColor}</p>
-                  <p className="font-extrabold text-[#D4A520] text-sm mt-1">S/ {item.product.price}</p>
+                  <p className="font-extrabold text-[#D4A520] text-sm mt-1">{formatSoles(item.product.price)}</p>
                   <div className="flex items-center gap-2 mt-2">
                     <button onClick={() => updateQty(item.product.id, item.selectedSize, item.selectedColor, item.quantity - 1)} className="w-6 h-6 rounded-full bg-[#F5EDD8] flex items-center justify-center text-[#6B3D1E] hover:bg-[#D4A520] hover:text-white transition-colors">
                       <Minus size={12} />
@@ -65,7 +66,7 @@ export default function CartDrawer({ open, onClose }: Props) {
           <div className="border-t border-[#F5EDD8] px-5 py-4 flex flex-col gap-3">
             <div className="flex justify-between items-center">
               <span className="text-[#9B6B45] font-semibold">{t("Subtotal", "Subtotal")}</span>
-              <span className="font-extrabold text-[#3D2010] text-lg">S/ {total.toFixed(2)}</span>
+              <span className="font-extrabold text-[#3D2010] text-lg">{formatSoles(total)}</span>
             </div>
             <Link
               href="/checkout"
