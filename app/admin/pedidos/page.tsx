@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { Order } from "../../lib/types";
-import { ChevronDown, ChevronUp, Package2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Package2, MessageCircle } from "lucide-react";
 
 interface OrderItemDetail {
   id: string;
@@ -35,6 +35,24 @@ function fmtDate(dateStr: string | null): string {
   return new Date(dateStr + "T12:00:00").toLocaleDateString("es-PE", { weekday: "short", day: "2-digit", month: "short" });
 }
 
+function fmtPhone(raw: string): string | null {
+  const c = raw.replace(/[\s\-\(\)\+]/g, "");
+  if (!c) return null;
+  if (/^51\d{9}$/.test(c)) return c;
+  if (/^\d{9}$/.test(c)) return `51${c}`;
+  if (c.length >= 11) return c;
+  return null;
+}
+
+function orderWaUrl(order: Order): { url: string; valid: boolean } {
+  const phone = fmtPhone(order.customer_phone ?? "");
+  if (!phone) return { url: "", valid: false };
+  const msg = encodeURIComponent(
+    `Hola ${order.customer_name}, te escribo de Lion Cub 🦁 por tu pedido #${order.id.slice(0, 8).toUpperCase()} de S/ ${Number(order.total).toFixed(2)}. ¿En qué te puedo ayudar?`
+  );
+  return { url: `https://wa.me/${phone}?text=${msg}`, valid: true };
+}
+
 export default function PedidosAdmin() {
   const [orders,       setOrders]       = useState<Order[]>([]);
   const [loading,      setLoading]      = useState(true);
@@ -43,8 +61,13 @@ export default function PedidosAdmin() {
   const [expandedId,   setExpandedId]   = useState<string | null>(null);
   const [orderItems,   setOrderItems]   = useState<Record<string, OrderItemDetail[]>>({});
   const [loadingItems, setLoadingItems] = useState<Set<string>>(new Set());
-  // product image map: product_id → image_url
   const [productImgs,  setProductImgs]  = useState<Record<string, string>>({});
+  const [toast,        setToast]        = useState<{ msg: string; ok: boolean } | null>(null);
+
+  function showToast(msg: string, ok = true) {
+    setToast({ msg, ok });
+    setTimeout(() => setToast(null), 2500);
+  }
 
   async function load() {
     setError(null);
@@ -73,7 +96,7 @@ export default function PedidosAdmin() {
   async function toggleExpand(orderId: string) {
     if (expandedId === orderId) { setExpandedId(null); return; }
     setExpandedId(orderId);
-    if (orderItems[orderId]) return; // already cached
+    if (orderItems[orderId]) return;
     setLoadingItems(prev => new Set(prev).add(orderId));
     try {
       const { data } = await supabase
@@ -90,8 +113,15 @@ export default function PedidosAdmin() {
   }
 
   async function updateStatus(id: string, field: "order_status" | "payment_status", value: string) {
-    await supabase.from("orders").update({ [field]: value }).eq("id", id);
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, [field]: value } : o));
+    try {
+      const { error: dbErr } = await supabase.from("orders").update({ [field]: value }).eq("id", id);
+      if (dbErr) throw dbErr;
+      setOrders(prev => prev.map(o => o.id === id ? { ...o, [field]: value } : o));
+      setExpandedId(null);
+      showToast("Pedido actualizado");
+    } catch (e: any) {
+      showToast(e?.message ?? "Error al actualizar", false);
+    }
   }
 
   const filtered = filter === "todos" ? orders : orders.filter(o => o.order_status === filter);
@@ -107,6 +137,13 @@ export default function PedidosAdmin() {
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-bold pointer-events-none transition-all ${toast.ok ? "bg-green-500 text-white" : "bg-red-500 text-white"}`}>
+          {toast.msg}
+        </div>
+      )}
+
       <div>
         <h1 className="text-2xl font-extrabold text-[#3D2010]">Pedidos</h1>
         <p className="text-[#9B6B45] text-sm">{orders.length} pedidos totales</p>
@@ -135,43 +172,64 @@ export default function PedidosAdmin() {
             const isExpanded = expandedId === order.id;
             const items = orderItems[order.id];
             const isLoadingItems = loadingItems.has(order.id);
+            const wa = orderWaUrl(order);
 
             return (
               <div key={order.id} className="bg-white rounded-2xl shadow-sm border border-[#F5EDD8] overflow-hidden">
-                {/* Clickable header */}
-                <button
-                  onClick={() => toggleExpand(order.id)}
-                  className="w-full text-left p-5 hover:bg-[#FDF8F0] transition-colors"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-bold text-[#3D2010]">{order.customer_name}</p>
-                        {isExpanded ? <ChevronUp size={14} className="text-[#9B6B45]" /> : <ChevronDown size={14} className="text-[#9B6B45]" />}
+                {/* Header row: expand area + WA button */}
+                <div className="flex items-stretch">
+                  <button
+                    onClick={() => toggleExpand(order.id)}
+                    className="flex-1 min-w-0 text-left p-5 hover:bg-[#FDF8F0] transition-colors"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-[#3D2010]">{order.customer_name}</p>
+                          {isExpanded ? <ChevronUp size={14} className="text-[#9B6B45]" /> : <ChevronDown size={14} className="text-[#9B6B45]" />}
+                        </div>
+                        <p className="text-[#9B6B45] text-xs">
+                          {order.customer_phone} · {new Date(order.created_at).toLocaleDateString("es-PE", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" })}
+                        </p>
                       </div>
-                      <p className="text-[#9B6B45] text-xs">
-                        {order.customer_phone} · {new Date(order.created_at).toLocaleDateString("es-PE", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" })}
-                      </p>
+                      <p className="font-extrabold text-[#D4A520] text-lg">S/ {Number(order.total).toFixed(2)}</p>
                     </div>
-                    <p className="font-extrabold text-[#D4A520] text-lg">S/ {Number(order.total).toFixed(2)}</p>
-                  </div>
 
-                  <div className="flex flex-wrap gap-2 text-xs">
-                    <span className="bg-[#F5EDD8] text-[#6B3D1E] px-2 py-1 rounded-full font-semibold">
-                      {order.shipping_method === "shalom"
-                        ? `📦 Shalom: ${order.shalom_agency}`
-                        : `🛵 Domicilio: ${order.district}`}
-                    </span>
-                    {order.delivery_date && (
+                    <div className="flex flex-wrap gap-2 text-xs">
                       <span className="bg-[#F5EDD8] text-[#6B3D1E] px-2 py-1 rounded-full font-semibold">
-                        📅 {fmtDate(order.delivery_date)}{order.delivery_time_slot ? ` · ${order.delivery_time_slot}` : ""}
+                        {order.shipping_method === "shalom"
+                          ? `📦 Shalom: ${order.shalom_agency}`
+                          : `🛵 Domicilio: ${order.district}`}
                       </span>
-                    )}
-                    <span className="bg-[#F5EDD8] text-[#6B3D1E] px-2 py-1 rounded-full font-semibold">
-                      💳 {order.payment_method}
-                    </span>
-                  </div>
-                </button>
+                      {order.delivery_date && (
+                        <span className="bg-[#F5EDD8] text-[#6B3D1E] px-2 py-1 rounded-full font-semibold">
+                          📅 {fmtDate(order.delivery_date)}{order.delivery_time_slot ? ` · ${order.delivery_time_slot}` : ""}
+                        </span>
+                      )}
+                      <span className="bg-[#F5EDD8] text-[#6B3D1E] px-2 py-1 rounded-full font-semibold">
+                        💳 {order.payment_method}
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* WhatsApp button */}
+                  {wa.valid ? (
+                    <a
+                      href={wa.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="WhatsApp al cliente"
+                      className="flex items-center px-4 text-[#25D366] hover:bg-green-50 border-l border-[#F5EDD8] transition-colors flex-shrink-0"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <MessageCircle size={20} />
+                    </a>
+                  ) : (
+                    <div title="Teléfono no disponible" className="flex items-center px-4 text-gray-300 border-l border-[#F5EDD8] flex-shrink-0">
+                      <MessageCircle size={20} />
+                    </div>
+                  )}
+                </div>
 
                 {/* Status controls */}
                 <div className="px-5 pb-4 flex flex-wrap gap-3 items-center">
@@ -216,7 +274,6 @@ export default function PedidosAdmin() {
                           const imgUrl = productImgs[item.product_id];
                           return (
                             <div key={item.id} className="flex items-center gap-3 bg-[#FDF8F0] rounded-xl p-3">
-                              {/* Thumbnail */}
                               <div className="w-12 h-12 rounded-lg overflow-hidden bg-[#F5EDD8] flex-shrink-0">
                                 {imgUrl ? (
                                   <img src={imgUrl} alt={item.product_name} className="w-full h-full object-cover" />
@@ -226,8 +283,6 @@ export default function PedidosAdmin() {
                                   </div>
                                 )}
                               </div>
-
-                              {/* Info */}
                               <div className="flex-1 min-w-0">
                                 <p className="font-semibold text-[#3D2010] text-sm leading-tight line-clamp-1">{item.product_name}</p>
                                 <p className="text-[#9B6B45] text-xs">
@@ -237,8 +292,6 @@ export default function PedidosAdmin() {
                                 </p>
                                 <p className="text-[#9B6B45] text-xs">S/ {Number(item.unit_price).toFixed(2)} c/u</p>
                               </div>
-
-                              {/* Qty + subtotal */}
                               <div className="text-right flex-shrink-0">
                                 <p className="text-xs font-bold text-[#3D2010] bg-[#F5EDD8] rounded-full px-2 py-0.5 mb-1">x{item.quantity}</p>
                                 <p className="font-bold text-[#D4A520] text-sm">S/ {Number(item.subtotal).toFixed(2)}</p>
@@ -246,8 +299,6 @@ export default function PedidosAdmin() {
                             </div>
                           );
                         })}
-
-                        {/* Totals row */}
                         <div className="flex justify-end gap-4 pt-2 text-xs text-[#9B6B45] border-t border-[#F5EDD8]">
                           <span>Subtotal: <strong className="text-[#3D2010]">S/ {Number(order.subtotal).toFixed(2)}</strong></span>
                           <span>Envío: <strong className="text-[#3D2010]">S/ {Number(order.shipping_cost).toFixed(2)}</strong></span>

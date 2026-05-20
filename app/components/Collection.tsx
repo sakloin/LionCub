@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
-import { ShoppingCart, Tag, Check } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ShoppingCart, Tag, Check, Bell, X } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
+import { supabase } from "../lib/supabase";
 import data from "../data/productos.json";
 
 const { brand, categories, products } = data;
@@ -25,23 +26,154 @@ const colorHex: Record<string, string> = {
   Floral_border: "#E8B4BB",
 };
 
-function whatsappUrl(product: (typeof products)[0]) {
-  const msg = encodeURIComponent(
-    `Hola Lion Cub! 🦁 Me interesa *${product.name}* (Ref: ${product.id}). ¿Está disponible?`
-  );
-  return `https://wa.me/${brand.whatsapp}?text=${msg}`;
+// ── Waitlist modal ──────────────────────────────────────────────────────────
+
+interface WaitlistModalProps {
+  product: (typeof products)[0];
+  onClose: () => void;
 }
 
-function ProductCard({ product }: { product: (typeof products)[0] }) {
+function WaitlistModal({ product, onClose }: WaitlistModalProps) {
+  const [name,       setName]       = useState("");
+  const [contact,    setContact]    = useState("");
+  const [size,       setSize]       = useState(product.sizes[0] ?? "");
+  const [color,      setColor]      = useState(product.colors[0] ?? "");
+  const [submitting, setSubmitting] = useState(false);
+  const [formError,  setFormError]  = useState<string | null>(null);
+  const [success,    setSuccess]    = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setFormError(null);
+    if (!name.trim()) { setFormError("Ingresa tu nombre"); return; }
+    if (!contact.trim()) { setFormError("Ingresa tu correo o teléfono"); return; }
+    const isEmail = contact.includes("@");
+    if (isEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)) {
+      setFormError("Correo no válido"); return;
+    }
+    if (!isEmail && contact.replace(/\D/g, "").length < 9) {
+      setFormError("El teléfono debe tener al menos 9 dígitos"); return;
+    }
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from("waitlist").insert({
+        product_id:    product.id,
+        customer_name: name.trim(),
+        email:         isEmail ? contact.trim() : null,
+        phone:         !isEmail ? contact.trim() : null,
+        size:          size  || null,
+        color:         color || null,
+      });
+      if (error) throw error;
+      setSuccess(true);
+    } catch (e: any) {
+      setFormError(e?.message ?? "Error al guardar. Por favor intenta de nuevo.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+      <div className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm">
+        {success ? (
+          <div className="text-center py-4 flex flex-col gap-4">
+            <p className="text-5xl">🦁</p>
+            <p className="font-extrabold text-[#3D2010] text-xl">¡Listo!</p>
+            <p className="text-[#9B6B45] text-sm">Te avisaremos apenas tengamos stock 🦁</p>
+            <button onClick={onClose}
+              className="w-full bg-[#D4A520] text-white font-bold py-3 rounded-xl hover:bg-[#A07D10] transition-colors">
+              Cerrar
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="font-extrabold text-[#3D2010] text-lg">Avísame cuando llegue</h3>
+                <p className="text-[#9B6B45] text-xs mt-0.5">{product.name}</p>
+              </div>
+              <button type="button" onClick={onClose} className="text-[#9B6B45] hover:text-[#3D2010] transition-colors mt-0.5">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[#6B3D1E] mb-1">Nombre *</label>
+              <input
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="Tu nombre"
+                className="w-full border border-[#F5EDD8] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A520]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[#6B3D1E] mb-1">Correo o teléfono *</label>
+              <input
+                value={contact}
+                onChange={e => setContact(e.target.value)}
+                placeholder="correo@ejemplo.com ó 987654321"
+                className="w-full border border-[#F5EDD8] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A520]"
+              />
+            </div>
+
+            {product.sizes.length > 0 && (
+              <div>
+                <label className="block text-xs font-bold text-[#6B3D1E] mb-1">Talla de interés</label>
+                <select value={size} onChange={e => setSize(e.target.value)}
+                  className="w-full border border-[#F5EDD8] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A520]">
+                  <option value="">Sin preferencia</option>
+                  {product.sizes.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+            )}
+
+            {product.colors.length > 0 && (
+              <div>
+                <label className="block text-xs font-bold text-[#6B3D1E] mb-1">Color de interés</label>
+                <select value={color} onChange={e => setColor(e.target.value)}
+                  className="w-full border border-[#F5EDD8] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A520]">
+                  <option value="">Sin preferencia</option>
+                  {product.colors.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            )}
+
+            {formError && <p className="text-xs text-red-500">{formError}</p>}
+
+            <button type="submit" disabled={submitting}
+              className="w-full bg-[#D4A520] text-white font-bold py-3 rounded-xl hover:bg-[#A07D10] transition-colors disabled:opacity-60">
+              {submitting ? "Enviando..." : "Avisarme cuando haya stock"}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Product card ────────────────────────────────────────────────────────────
+
+function ProductCard({
+  product,
+  stock,
+  onWaitlist,
+}: {
+  product: (typeof products)[0];
+  stock: number | undefined;
+  onWaitlist: () => void;
+}) {
   const { t } = useLang();
   const { add } = useCart();
-  const [imgError, setImgError] = useState(false);
-  const [selectedSize, setSelectedSize] = useState(product.sizes[0] ?? "");
-  const [selectedColor, setSelectedColor] = useState(product.colors[0] ?? "");
-  const [added, setAdded] = useState(false);
+  const [imgError,       setImgError]       = useState(false);
+  const [selectedSize,   setSelectedSize]   = useState(product.sizes[0] ?? "");
+  const [selectedColor,  setSelectedColor]  = useState(product.colors[0] ?? "");
+  const [added,          setAdded]          = useState(false);
+
+  const outOfStock = stock === 0;
 
   function handleAdd() {
-    // Convert static product to Product type for cart
     add(
       { ...product, cost: 0, stock: 99, has_offer: product.hasOffer, image_url: `/${product.image}`, active: true, created_at: "" } as any,
       selectedSize, selectedColor
@@ -67,8 +199,17 @@ function ProductCard({ product }: { product: (typeof products)[0] }) {
           <div className="w-full h-full flex items-center justify-center text-6xl">🦁</div>
         )}
 
+        {/* Out of stock overlay */}
+        {outOfStock && (
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+            <span className="bg-gray-900 text-white text-sm font-bold px-4 py-2 rounded-full tracking-wide">
+              Agotado
+            </span>
+          </div>
+        )}
+
         {/* Offer badge */}
-        {product.hasOffer && (
+        {product.hasOffer && !outOfStock && (
           <div className="absolute top-3 left-3 flex items-center gap-1 bg-[#D4A520] text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-md">
             <Tag size={10} />
             3 × 15% dto
@@ -107,7 +248,8 @@ function ProductCard({ product }: { product: (typeof products)[0] }) {
               <button
                 key={size}
                 onClick={() => setSelectedSize(size)}
-                className={`text-xs font-semibold px-2.5 py-1 rounded-full transition-all ${selectedSize === size ? "bg-[#D4A520] text-white" : "bg-[#F5EDD8] text-[#6B3D1E] hover:bg-[#F0E0C0]"}`}
+                disabled={outOfStock}
+                className={`text-xs font-semibold px-2.5 py-1 rounded-full transition-all ${selectedSize === size ? "bg-[#D4A520] text-white" : "bg-[#F5EDD8] text-[#6B3D1E] hover:bg-[#F0E0C0]"} ${outOfStock ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 {size}
               </button>
@@ -133,27 +275,53 @@ function ProductCard({ product }: { product: (typeof products)[0] }) {
         </div>
 
         {/* CTA */}
-        <button
-          onClick={handleAdd}
-          className={`mt-auto pt-1 w-full flex items-center justify-center gap-2 py-2.5 font-bold rounded-xl transition-all text-sm ${added ? "bg-green-500 text-white" : "bg-[#D4A520] text-white hover:bg-[#A07D10]"}`}
-        >
-          {added ? <><Check size={15} /> {t("¡Agregado!", "Added!")}</> : <><ShoppingCart size={15} /> {t("Agregar al carrito", "Add to cart")}</>}
-        </button>
+        {outOfStock ? (
+          <div className="mt-auto pt-1 flex flex-col gap-2">
+            <div className="w-full flex items-center justify-center py-2.5 rounded-xl bg-gray-100 text-gray-500 text-sm font-bold">
+              Agotado
+            </div>
+            <button
+              onClick={onWaitlist}
+              className="w-full flex items-center justify-center gap-2 py-2.5 font-bold rounded-xl bg-[#F5EDD8] text-[#6B3D1E] hover:bg-[#F0E0C0] transition-all text-sm"
+            >
+              <Bell size={15} /> {t("Avísame cuando llegue", "Notify me")}
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={handleAdd}
+            className={`mt-auto pt-1 w-full flex items-center justify-center gap-2 py-2.5 font-bold rounded-xl transition-all text-sm ${added ? "bg-green-500 text-white" : "bg-[#D4A520] text-white hover:bg-[#A07D10]"}`}
+          >
+            {added ? <><Check size={15} /> {t("¡Agregado!", "Added!")}</> : <><ShoppingCart size={15} /> {t("Agregar al carrito", "Add to cart")}</>}
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
+// ── Collection ──────────────────────────────────────────────────────────────
+
 export default function Collection() {
   const { t } = useLang();
-  const [activeCategory, setActiveCategory] = useState("all");
+  const [activeCategory,  setActiveCategory]  = useState("all");
+  const [stockMap,        setStockMap]        = useState<Record<string, number>>({});
+  const [waitlistProduct, setWaitlistProduct] = useState<(typeof products)[0] | null>(null);
+
+  useEffect(() => {
+    supabase.from("products").select("id,stock").then(({ data }) => {
+      if (!data) return;
+      const map: Record<string, number> = {};
+      data.forEach((p: any) => { if (typeof p.stock === "number") map[p.id] = p.stock; });
+      setStockMap(map);
+    });
+  }, []);
 
   const filtered =
     activeCategory === "all"
       ? products
       : products.filter((p) => p.category === activeCategory);
 
-  // Group by category in order
   const grouped = categories
     .map((cat) => ({
       ...cat,
@@ -213,7 +381,6 @@ export default function Collection() {
         {/* Products grouped by category */}
         {grouped.map((group) => (
           <div key={group.id} className="mb-16 last:mb-0">
-            {/* Category header */}
             <div className="flex items-end gap-4 mb-6 pb-3 border-b border-[#F5EDD8]">
               <div>
                 <h3 className="text-2xl font-extrabold text-[#3D2010]">{group.name}</h3>
@@ -227,15 +394,27 @@ export default function Collection() {
               )}
             </div>
 
-            {/* Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {group.items.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  stock={stockMap[product.id]}
+                  onWaitlist={() => setWaitlistProduct(product)}
+                />
               ))}
             </div>
           </div>
         ))}
       </div>
+
+      {/* Waitlist modal — rendered at collection level to escape card overflow:hidden */}
+      {waitlistProduct && (
+        <WaitlistModal
+          product={waitlistProduct}
+          onClose={() => setWaitlistProduct(null)}
+        />
+      )}
     </section>
   );
 }

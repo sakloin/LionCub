@@ -3,14 +3,15 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Package, ShoppingCart, TrendingUp, BarChart2, LogOut, Menu, X } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, TrendingUp, BarChart2, Bell, LogOut, Menu, X } from "lucide-react";
 
 const NAV = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/productos", label: "Productos", icon: Package },
-  { href: "/admin/pedidos", label: "Pedidos", icon: ShoppingCart },
-  { href: "/admin/compras", label: "Compras & Stock", icon: TrendingUp },
-  { href: "/admin/reportes", label: "Reportes", icon: BarChart2 },
+  { href: "/admin",          label: "Dashboard",       icon: LayoutDashboard },
+  { href: "/admin/productos", label: "Productos",       icon: Package },
+  { href: "/admin/pedidos",   label: "Pedidos",         icon: ShoppingCart },
+  { href: "/admin/compras",   label: "Compras & Stock", icon: TrendingUp },
+  { href: "/admin/reportes",  label: "Reportes",        icon: BarChart2 },
+  { href: "/admin/espera",    label: "Lista de espera", icon: Bell },
 ];
 
 const ADMIN_KEY = "lioncub_admin_auth";

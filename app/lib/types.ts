@@ -75,3 +75,15 @@ export interface CartItem {
   selectedSize: string;
   selectedColor: string;
 }
+
+export interface WaitlistEntry {
+  id: string;
+  product_id: string;
+  customer_name: string;
+  email: string | null;
+  phone: string | null;
+  size: string | null;
+  color: string | null;
+  notified: boolean;
+  created_at: string;
+}
