@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Nunito, Dancing_Script } from "next/font/google";
 import "./globals.css";
+import Providers from "./components/Providers";
 
 const nunito = Nunito({
   variable: "--font-nunito",
@@ -41,7 +42,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${nunito.variable} ${dancingScript.variable}`}>
-      <body className="min-h-full flex flex-col antialiased">{children}</body>
+      <body className="min-h-full flex flex-col antialiased">
+          <Providers>{children}</Providers>
+        </body>
     </html>
   );
 }
