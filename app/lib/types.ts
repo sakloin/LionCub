@@ -37,6 +37,8 @@ export interface Order {
   payment_status: "pendiente" | "pagado" | "fallido";
   order_status: "nuevo" | "procesando" | "enviado" | "entregado" | "cancelado";
   notes: string | null;
+  delivery_date: string | null;
+  delivery_time_slot: string | null;
   created_at: string;
 }
 
@@ -46,6 +48,8 @@ export interface OrderItem {
   product_id: string;
   product_name: string;
   product_sku: string;
+  selected_size: string | null;
+  selected_color: string | null;
   quantity: number;
   unit_price: number;
   unit_cost: number;
