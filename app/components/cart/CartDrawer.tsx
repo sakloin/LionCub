@@ -1,13 +1,19 @@
 "use client";
 
-import { X, Trash2, Plus, Minus, ShoppingCart } from "lucide-react";
-import { useCart } from "../../context/CartContext";
-import { useLang } from "../../context/LanguageContext";
+import { X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useCart } from "../../context/CartContext";
+import { useLang } from "../../context/LanguageContext";
+import { LionMark } from "../LogoMark";
 import { formatSoles } from "../../lib/money";
 
-interface Props { open: boolean; onClose: () => void; }
+interface Props {
+  open: boolean;
+  onClose: () => void;
+}
+
+const PAYMENT_METHODS = "YAPE · PLIN · TRANSFERENCIA · CONTRA ENTREGA · IZIPAY";
 
 export default function CartDrawer({ open, onClose }: Props) {
   const { items, count, total, remove, updateQty } = useCart();
@@ -15,69 +21,165 @@ export default function CartDrawer({ open, onClose }: Props) {
 
   return (
     <>
-      {open && <div className="fixed inset-0 bg-black/40 z-40 backdrop-blur-sm" onClick={onClose} />}
-      <div className={`fixed right-0 top-0 h-full w-full max-w-sm bg-white z-50 shadow-2xl flex flex-col transform transition-transform duration-300 ${open ? "translate-x-0" : "translate-x-full"}`}>
+      {open && (
+        <div
+          className="fixed inset-0 bg-ink/40 z-40 backdrop-blur-[2px]"
+          onClick={onClose}
+          aria-hidden
+        />
+      )}
+      <aside
+        className={`fixed right-0 top-0 h-full w-full max-w-md bg-bg z-50 flex flex-col transform transition-transform duration-300 ${
+          open ? "translate-x-0" : "translate-x-full"
+        }`}
+        style={{ boxShadow: "var(--lc-shadow-3)" }}
+        role="dialog"
+        aria-label={t("Bolsa", "Bag")}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#F5EDD8]">
-          <div className="flex items-center gap-2">
-            <ShoppingCart size={20} className="text-[#D4A520]" />
-            <h2 className="font-bold text-[#3D2010]">{t("Carrito", "Cart")} ({count})</h2>
+        <div className="px-5 sm:px-6 pt-5 pb-4 border-b border-rule">
+          <div className="flex items-center justify-between">
+            <span className="lc-mono uppercase text-[10px] tracking-[0.24em] text-ink-mute">
+              {t("Bolsa", "Bag")}
+            </span>
+            <button
+              onClick={onClose}
+              aria-label={t("Cerrar", "Close")}
+              className="text-ink-mute hover:text-ink transition-colors"
+            >
+              <X size={18} />
+            </button>
           </div>
-          <button onClick={onClose} className="text-[#9B6B45] hover:text-[#3D2010]"><X size={20} /></button>
+          <h2 className="lc-display text-3xl text-ink leading-none mt-3">
+            {t("Tu", "Your")} <em className="lc-display-i text-gold-deep">{t("bolsa.", "bag.")}</em>
+          </h2>
+          <p className="lc-display-i text-sm text-ink-soft mt-1">
+            {count === 1
+              ? t("1 pieza — lista para envolver", "1 piece — ready to wrap")
+              : t(`${count} piezas — listas para envolver`, `${count} pieces — ready to wrap`)}
+          </p>
         </div>
 
         {/* Items */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
+        <div className="flex-1 overflow-y-auto px-5 sm:px-6">
           {items.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center py-16">
-              <ShoppingCart size={40} className="text-[#F5EDD8]" />
-              <p className="text-[#9B6B45]">{t("Tu carrito está vacío", "Your cart is empty")}</p>
+            <div className="h-full flex flex-col items-center justify-center text-center gap-4 py-16">
+              <LionMark size={56} color="var(--color-ink-mute)" />
+              <p className="lc-display text-2xl text-ink">
+                {t("Tu bolsa está vacía", "Your bag is empty")}
+              </p>
+              <p className="text-sm text-ink-soft max-w-[16rem]">
+                {t(
+                  "Cada pieza, hilada en algodón Pima. Encuentra la tuya.",
+                  "Every piece, spun in Pima cotton. Find yours."
+                )}
+              </p>
+              <a href="#coleccion" onClick={onClose} className="lc-btn lc-btn-outline mt-2">
+                {t("Ver la colección", "Browse the collection")}
+              </a>
             </div>
           ) : (
-            items.map(item => (
-              <div key={`${item.product.id}|${item.selectedSize}|${item.selectedColor}`} className="flex gap-3 bg-[#FDF8F0] rounded-2xl p-3">
-                <div className="w-16 h-16 rounded-xl overflow-hidden relative flex-shrink-0 bg-[#F5EDD8]">
-                  <Image src={item.product.image_url} alt={item.product.name} fill className="object-cover" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-[#3D2010] text-sm leading-tight line-clamp-1">{item.product.name}</p>
-                  <p className="text-[#9B6B45] text-xs">{item.selectedSize} · {item.selectedColor}</p>
-                  <p className="font-extrabold text-[#D4A520] text-sm mt-1">{formatSoles(item.product.price)}</p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <button onClick={() => updateQty(item.product.id, item.selectedSize, item.selectedColor, item.quantity - 1)} className="w-6 h-6 rounded-full bg-[#F5EDD8] flex items-center justify-center text-[#6B3D1E] hover:bg-[#D4A520] hover:text-white transition-colors">
-                      <Minus size={12} />
-                    </button>
-                    <span className="text-sm font-bold text-[#3D2010] w-6 text-center">{item.quantity}</span>
-                    <button onClick={() => updateQty(item.product.id, item.selectedSize, item.selectedColor, item.quantity + 1)} className="w-6 h-6 rounded-full bg-[#F5EDD8] flex items-center justify-center text-[#6B3D1E] hover:bg-[#D4A520] hover:text-white transition-colors">
-                      <Plus size={12} />
-                    </button>
-                    <button onClick={() => remove(item.product.id, item.selectedSize, item.selectedColor)} className="ml-auto text-[#9B6B45] hover:text-red-500 transition-colors">
-                      <Trash2 size={14} />
+            <ul>
+              {items.map((item) => (
+                <li
+                  key={`${item.product.id}|${item.selectedSize}|${item.selectedColor}`}
+                  className="flex gap-4 py-5 border-b border-rule"
+                >
+                  <div className="lc-plate w-20 h-24 shrink-0 rounded-sm">
+                    <Image
+                      src={item.product.image_url}
+                      alt={item.product.name}
+                      width={80}
+                      height={96}
+                      className="object-cover w-full h-full"
+                    />
+                  </div>
+
+                  <div className="flex-1 min-w-0 flex flex-col">
+                    <p className="lc-mono uppercase text-[9px] tracking-[0.22em] text-ink-mute">
+                      {item.product.id}
+                    </p>
+                    <h3 className="lc-display text-lg text-ink leading-tight truncate">
+                      {item.product.name}
+                    </h3>
+                    <p className="text-xs text-ink-soft mt-0.5">
+                      {[item.selectedColor, item.selectedSize].filter(Boolean).join(" · ")}
+                    </p>
+
+                    <div className="mt-auto pt-3 flex items-center justify-between gap-3">
+                      {/* Quantity stepper — text glyphs, no icons */}
+                      <div className="flex items-center border border-rule">
+                        <button
+                          onClick={() =>
+                            updateQty(
+                              item.product.id,
+                              item.selectedSize,
+                              item.selectedColor,
+                              item.quantity - 1
+                            )
+                          }
+                          aria-label={t("Quitar una unidad", "Remove one")}
+                          className="px-3 py-1.5 text-ink-mute hover:text-ink transition-colors"
+                        >
+                          −
+                        </button>
+                        <span className="lc-mono text-[13px] text-ink w-7 text-center">
+                          {item.quantity}
+                        </span>
+                        <button
+                          onClick={() =>
+                            updateQty(
+                              item.product.id,
+                              item.selectedSize,
+                              item.selectedColor,
+                              item.quantity + 1
+                            )
+                          }
+                          aria-label={t("Agregar una unidad", "Add one")}
+                          className="px-3 py-1.5 text-ink hover:text-gold-deep transition-colors"
+                        >
+                          +
+                        </button>
+                      </div>
+
+                      <span className="lc-display text-base text-ink whitespace-nowrap">
+                        {formatSoles(item.product.price * item.quantity)}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() =>
+                        remove(item.product.id, item.selectedSize, item.selectedColor)
+                      }
+                      className="self-start mt-2 lc-mono uppercase text-[9px] tracking-[0.22em] text-ink-mute hover:text-ink transition-colors"
+                    >
+                      {t("Eliminar", "Remove")}
                     </button>
                   </div>
-                </div>
-              </div>
-            ))
+                </li>
+              ))}
+            </ul>
           )}
         </div>
 
         {/* Footer */}
         {items.length > 0 && (
-          <div className="border-t border-[#F5EDD8] px-5 py-4 flex flex-col gap-3">
-            <div className="flex justify-between items-center">
-              <span className="text-[#9B6B45] font-semibold">{t("Subtotal", "Subtotal")}</span>
-              <span className="font-extrabold text-[#3D2010] text-lg">{formatSoles(total)}</span>
+          <div className="border-t border-rule px-5 sm:px-6 py-5 flex flex-col gap-4">
+            <div className="flex items-baseline justify-between">
+              <span className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft">
+                {t("Subtotal", "Subtotal")}
+              </span>
+              <span className="lc-display text-2xl text-ink">{formatSoles(total)}</span>
             </div>
-            <Link
-              href="/checkout"
-              onClick={onClose}
-              className="w-full bg-[#D4A520] text-white font-bold py-3.5 rounded-xl text-center hover:bg-[#A07D10] transition-colors"
-            >
-              {t("Proceder al pago", "Proceed to checkout")}
+            <Link href="/checkout" onClick={onClose} className="lc-btn lc-btn-primary w-full">
+              {t("Continuar al checkout", "Continue to checkout")} →
             </Link>
+            <p className="lc-mono uppercase text-[9px] tracking-[0.22em] text-ink-mute text-center">
+              {PAYMENT_METHODS}
+            </p>
           </div>
         )}
-      </div>
+      </aside>
     </>
   );
 }
