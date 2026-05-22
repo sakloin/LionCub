@@ -2,150 +2,369 @@
 
 import Image from "next/image";
 import { useState, useEffect } from "react";
-import { ShoppingCart, Tag, Check, Bell, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
+import { LionMark } from "./LogoMark";
 import { supabase } from "../lib/supabase";
-import { formatSoles } from "../lib/money";
+import type { Product } from "../lib/types";
 import data from "../data/productos.json";
 
-const { brand, categories, products } = data;
+const { categories, products } = data;
 
-const colorHex: Record<string, string> = {
-  Blanco: "#FFFFFF",
-  Beige: "#D4B896",
-  Celeste: "#87CEEB",
-  Rosa: "#FFB6C1",
-  "Palo Rosa": "#FFD1DC",
-  Azul: "#4A90D9",
-  "Verde menta": "#A8D8A8",
-  Crema: "#FFF5DC",
-  Durazno: "#FFCBA4",
-  Floral: "#F7C5CC",
-  Blanco_border: "#E0E0E0",
-  Crema_border: "#DDD5C0",
-  Floral_border: "#E8B4BB",
+type Prod = (typeof products)[0];
+
+// Editorial, desaturated swatch palette (ported from design-handoff tokens).
+const COLOR_HEX: Record<string, string> = {
+  Blanco: "#FAF7EF",
+  Beige: "#E9DDC4",
+  Celeste: "#C9D9E4",
+  Rosa: "#F2C9C2",
+  "Palo Rosa": "#EDD3CC",
+  Azul: "#A8B8CB",
+  Crema: "#F0E3CB",
+  Durazno: "#EDC8B0",
+  "Verde menta": "#C8D6BD",
+  Floral: "linear-gradient(45deg, #F2C9C2, #C8D6BD)",
 };
+const swatchBg = (c: string) => COLOR_HEX[c] ?? "#CFC3AE";
+
+// Map a JSON product onto the Cart's Product shape (cart reads id/name/price/image).
+function toCartProduct(p: Prod) {
+  return {
+    ...p,
+    cost: 0,
+    stock: 99,
+    has_offer: p.hasOffer,
+    image_url: `/${p.image}`,
+    active: true,
+    created_at: "",
+  } as unknown as Product;
+}
+
+// ── Selection mini-sheet ──────────────────────────────────────────────────
+// Clean cards open this sheet to pick size + color before adding to the bag.
+
+function SelectionSheet({ product, onClose }: { product: Prod; onClose: () => void }) {
+  const { t } = useLang();
+  const { add } = useCart();
+  const [size, setSize] = useState(product.sizes[0] ?? "");
+  const [color, setColor] = useState(product.colors[0] ?? "");
+  const [added, setAdded] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  function handleAdd() {
+    add(toCartProduct(product), size, color);
+    setAdded(true);
+    setTimeout(onClose, 1100);
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/40"
+      onClick={onClose}
+    >
+      <div
+        className="bg-bg w-full sm:max-w-md rounded-t-2xl sm:rounded-sm shadow-2xl animate-fade-in-up"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start gap-4 p-5 sm:p-6 border-b border-rule">
+          <div className="lc-plate w-16 h-20 shrink-0 rounded-sm">
+            <Image
+              src={`/products/${product.id}.jpeg`}
+              alt={product.name}
+              width={64}
+              height={80}
+              className="object-cover w-full h-full"
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            {product.gender !== "Unisex" && (
+              <p className="lc-mono uppercase text-[9px] tracking-[0.24em] text-ink-mute">
+                {product.gender}
+              </p>
+            )}
+            <h3 className="lc-display text-xl text-ink leading-tight mt-0.5">{product.name}</h3>
+            <p className="lc-display-i text-sm text-ink-soft">{product.tagline}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t("Cerrar", "Close")}
+            className="text-ink-mute hover:text-ink transition-colors -mt-1"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {added ? (
+          <div className="px-6 py-10 flex flex-col items-center text-center gap-4">
+            <LionMark size={48} color="var(--color-gold-deep)" />
+            <p className="lc-display text-2xl text-ink">{t("En tu bolsa", "In your bag")}</p>
+            <p className="text-sm text-ink-soft">
+              {t("Lo agregamos con cuidado.", "Added with care.")}
+            </p>
+          </div>
+        ) : (
+          <div className="p-5 sm:p-6 flex flex-col gap-6">
+            {/* Color */}
+            {product.colors.length > 0 && (
+              <div>
+                <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-3">
+                  {t("Color", "Color")} ·{" "}
+                  <span className="text-ink">{color || t("Elige", "Pick")}</span>
+                </p>
+                <div className="flex flex-wrap gap-3.5">
+                  {product.colors.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setColor(c)}
+                      aria-label={c}
+                      title={c}
+                      className="rounded-full"
+                      style={{
+                        boxShadow:
+                          color === c
+                            ? "0 0 0 1px var(--color-ink), 0 0 0 4px var(--color-bg)"
+                            : "none",
+                      }}
+                    >
+                      <span className="lc-sw lc-sw-lg" style={{ background: swatchBg(c) }} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Size */}
+            {product.sizes.length > 0 && (
+              <div>
+                <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-3">
+                  {t("Talla", "Size")} ·{" "}
+                  <span className="text-ink">{size || t("Elige", "Pick")}</span>
+                </p>
+                <div className="flex gap-2.5">
+                  {product.sizes.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setSize(s)}
+                      className={`flex-1 text-center py-3 lc-mono uppercase text-[11px] tracking-[0.16em] border transition-colors ${
+                        size === s
+                          ? "border-ink bg-ink text-bg"
+                          : "border-rule text-ink-soft hover:border-ink"
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-baseline justify-between pt-1">
+              <span className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute">
+                {product.material}
+              </span>
+              <span className="lc-display text-2xl text-ink">
+                <span className="lc-mono text-xs text-ink-mute mr-1">S/</span>
+                {product.price}
+              </span>
+            </div>
+
+            <button type="button" onClick={handleAdd} className="lc-btn lc-btn-primary w-full">
+              {t("Agregar a la bolsa", "Add to bag")}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // ── Waitlist modal ──────────────────────────────────────────────────────────
 
-interface WaitlistModalProps {
-  product: (typeof products)[0];
-  onClose: () => void;
-}
-
-function WaitlistModal({ product, onClose }: WaitlistModalProps) {
-  const [name,       setName]       = useState("");
-  const [contact,    setContact]    = useState("");
-  const [size,       setSize]       = useState(product.sizes[0] ?? "");
-  const [color,      setColor]      = useState(product.colors[0] ?? "");
+function WaitlistModal({ product, onClose }: { product: Prod; onClose: () => void }) {
+  const { t } = useLang();
+  const [name, setName] = useState("");
+  const [contact, setContact] = useState("");
+  const [size, setSize] = useState(product.sizes[0] ?? "");
+  const [color, setColor] = useState(product.colors[0] ?? "");
   const [submitting, setSubmitting] = useState(false);
-  const [formError,  setFormError]  = useState<string | null>(null);
-  const [success,    setSuccess]    = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
-    if (!name.trim()) { setFormError("Ingresa tu nombre"); return; }
-    if (!contact.trim()) { setFormError("Ingresa tu correo o teléfono"); return; }
+    if (!name.trim()) {
+      setFormError(t("Ingresa tu nombre", "Enter your name"));
+      return;
+    }
+    if (!contact.trim()) {
+      setFormError(t("Ingresa tu correo o teléfono", "Enter your email or phone"));
+      return;
+    }
     const isEmail = contact.includes("@");
     if (isEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)) {
-      setFormError("Correo no válido"); return;
+      setFormError(t("Correo no válido", "Invalid email"));
+      return;
     }
     if (!isEmail && contact.replace(/\D/g, "").length < 9) {
-      setFormError("El teléfono debe tener al menos 9 dígitos"); return;
+      setFormError(
+        t("El teléfono debe tener al menos 9 dígitos", "Phone needs at least 9 digits")
+      );
+      return;
     }
     setSubmitting(true);
     try {
       const { error } = await supabase.from("waitlist").insert({
-        product_id:    product.id,
+        product_id: product.id,
         customer_name: name.trim(),
-        email:         isEmail ? contact.trim() : null,
-        phone:         !isEmail ? contact.trim() : null,
-        size:          size  || null,
-        color:         color || null,
+        email: isEmail ? contact.trim() : null,
+        phone: !isEmail ? contact.trim() : null,
+        size: size || null,
+        color: color || null,
       });
       if (error) throw error;
       setSuccess(true);
-    } catch (e: any) {
-      setFormError(e?.message ?? "Error al guardar. Por favor intenta de nuevo.");
+    } catch (err) {
+      setFormError(
+        err instanceof Error
+          ? err.message
+          : t("Error al guardar. Intenta de nuevo.", "Couldn't save. Try again.")
+      );
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/40"
+      onClick={onClose}
+    >
+      <div
+        className="bg-bg w-full sm:max-w-md rounded-t-2xl sm:rounded-sm shadow-2xl animate-fade-in-up"
+        onClick={(e) => e.stopPropagation()}
+      >
         {success ? (
-          <div className="text-center py-4 flex flex-col gap-4">
-            <p className="text-5xl">🦁</p>
-            <p className="font-extrabold text-[#3D2010] text-xl">¡Listo!</p>
-            <p className="text-[#9B6B45] text-sm">Te avisaremos apenas tengamos stock 🦁</p>
-            <button onClick={onClose}
-              className="w-full bg-[#D4A520] text-white font-bold py-3 rounded-xl hover:bg-[#A07D10] transition-colors">
-              Cerrar
+          <div className="px-6 py-12 flex flex-col items-center text-center gap-4">
+            <LionMark size={52} color="var(--color-gold-deep)" />
+            <p className="lc-display text-3xl text-ink">{t("Listo", "Done")}</p>
+            <p className="text-sm text-ink-soft max-w-xs">
+              {t(
+                "Te escribiremos apenas esta pieza vuelva a estar disponible.",
+                "We'll write to you the moment this piece is back in stock."
+              )}
+            </p>
+            <button onClick={onClose} className="lc-btn lc-btn-primary w-full mt-2">
+              {t("Cerrar", "Close")}
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="flex items-start justify-between">
+          <form onSubmit={handleSubmit} className="p-5 sm:p-6 flex flex-col gap-5">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="font-extrabold text-[#3D2010] text-lg">Avísame cuando llegue</h3>
-                <p className="text-[#9B6B45] text-xs mt-0.5">{product.name}</p>
+                <p className="lc-eyebrow mb-1.5">{t("Lista de espera", "Waitlist")}</p>
+                <h3 className="lc-display text-2xl text-ink leading-tight">
+                  {t("Avísame cuando llegue", "Notify me when it's back")}
+                </h3>
+                <p className="lc-display-i text-sm text-ink-soft mt-0.5">{product.name}</p>
               </div>
-              <button type="button" onClick={onClose} className="text-[#9B6B45] hover:text-[#3D2010] transition-colors mt-0.5">
-                <X size={20} />
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label={t("Cerrar", "Close")}
+                className="text-ink-mute hover:text-ink transition-colors mt-1"
+              >
+                <X size={18} />
               </button>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#6B3D1E] mb-1">Nombre *</label>
+              <label className="block lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-1">
+                {t("Nombre", "Name")} *
+              </label>
               <input
                 value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder="Tu nombre"
-                className="w-full border border-[#F5EDD8] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A520]"
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t("Tu nombre", "Your name")}
+                className="lc-input"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#6B3D1E] mb-1">Correo o teléfono *</label>
+              <label className="block lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-1">
+                {t("Correo o teléfono", "Email or phone")} *
+              </label>
               <input
                 value={contact}
-                onChange={e => setContact(e.target.value)}
-                placeholder="correo@ejemplo.com ó 987654321"
-                className="w-full border border-[#F5EDD8] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A520]"
+                onChange={(e) => setContact(e.target.value)}
+                placeholder="correo@ejemplo.com · 987654321"
+                className="lc-input"
               />
             </div>
 
             {product.sizes.length > 0 && (
               <div>
-                <label className="block text-xs font-bold text-[#6B3D1E] mb-1">Talla de interés</label>
-                <select value={size} onChange={e => setSize(e.target.value)}
-                  className="w-full border border-[#F5EDD8] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A520]">
-                  <option value="">Sin preferencia</option>
-                  {product.sizes.map(s => <option key={s} value={s}>{s}</option>)}
+                <label className="block lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-1">
+                  {t("Talla de interés", "Size of interest")}
+                </label>
+                <select value={size} onChange={(e) => setSize(e.target.value)} className="lc-input">
+                  <option value="">{t("Sin preferencia", "No preference")}</option>
+                  {product.sizes.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
                 </select>
               </div>
             )}
 
             {product.colors.length > 0 && (
               <div>
-                <label className="block text-xs font-bold text-[#6B3D1E] mb-1">Color de interés</label>
-                <select value={color} onChange={e => setColor(e.target.value)}
-                  className="w-full border border-[#F5EDD8] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A520]">
-                  <option value="">Sin preferencia</option>
-                  {product.colors.map(c => <option key={c} value={c}>{c}</option>)}
+                <label className="block lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-1">
+                  {t("Color de interés", "Color of interest")}
+                </label>
+                <select
+                  value={color}
+                  onChange={(e) => setColor(e.target.value)}
+                  className="lc-input"
+                >
+                  <option value="">{t("Sin preferencia", "No preference")}</option>
+                  {product.colors.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
                 </select>
               </div>
             )}
 
-            {formError && <p className="text-xs text-red-500">{formError}</p>}
+            {formError && <p className="text-xs text-red-600">{formError}</p>}
 
-            <button type="submit" disabled={submitting}
-              className="w-full bg-[#D4A520] text-white font-bold py-3 rounded-xl hover:bg-[#A07D10] transition-colors disabled:opacity-60">
-              {submitting ? "Enviando..." : "Avisarme cuando haya stock"}
+            <button
+              type="submit"
+              disabled={submitting}
+              className="lc-btn lc-btn-primary w-full disabled:opacity-60"
+            >
+              {submitting
+                ? t("Enviando…", "Sending…")
+                : t("Avísame cuando haya stock", "Notify me when in stock")}
             </button>
           </form>
         )}
@@ -154,150 +373,90 @@ function WaitlistModal({ product, onClose }: WaitlistModalProps) {
   );
 }
 
-// ── Product card ────────────────────────────────────────────────────────────
+// ── Product card (clean) ──────────────────────────────────────────────────────
 
 function ProductCard({
   product,
   stock,
+  onSelect,
   onWaitlist,
 }: {
-  product: (typeof products)[0];
+  product: Prod;
   stock: number | undefined;
+  onSelect: () => void;
   onWaitlist: () => void;
 }) {
   const { t } = useLang();
-  const { add } = useCart();
-  const [imgError,       setImgError]       = useState(false);
-  const [selectedSize,   setSelectedSize]   = useState(product.sizes[0] ?? "");
-  const [selectedColor,  setSelectedColor]  = useState(product.colors[0] ?? "");
-  const [added,          setAdded]          = useState(false);
-
+  const [imgError, setImgError] = useState(false);
   const outOfStock = stock === 0;
 
-  function handleAdd() {
-    add(
-      { ...product, cost: 0, stock: 99, has_offer: product.hasOffer, image_url: `/${product.image}`, active: true, created_at: "" } as any,
-      selectedSize, selectedColor
-    );
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
-  }
-
   return (
-    <div className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-[#F5EDD8] flex flex-col">
-      {/* Image */}
-      <div className="relative aspect-square bg-[#FDF8F0] overflow-hidden">
+    <button type="button" onClick={outOfStock ? onWaitlist : onSelect} className="group text-left flex flex-col">
+      {/* Image plate */}
+      <div className="relative lc-plate aspect-[4/5] rounded-sm bg-pink-soft">
         {!imgError ? (
           <Image
             src={`/products/${product.id}.jpeg`}
             alt={product.name}
             fill
-            className="object-cover group-hover:scale-105 transition-transform duration-500"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className={`object-cover transition-transform duration-500 group-hover:scale-[1.03] ${
+              outOfStock ? "opacity-70" : ""
+            }`}
             onError={() => setImgError(true)}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-6xl">🦁</div>
+          <div className="absolute inset-0 flex items-center justify-center text-ink-mute">
+            <LionMark size={56} />
+          </div>
         )}
 
-        {/* Out of stock overlay */}
         {outOfStock && (
-          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-            <span className="bg-gray-900 text-white text-sm font-bold px-4 py-2 rounded-full tracking-wide">
-              Agotado
+          <div className="absolute inset-0 flex items-center justify-center bg-bg/30">
+            <span className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink bg-bg px-3 py-1.5">
+              {t("Agotado", "Sold out")}
             </span>
           </div>
         )}
 
-        {/* Offer badge */}
         {product.hasOffer && !outOfStock && (
-          <div className="absolute top-3 left-3 flex items-center gap-1 bg-[#D4A520] text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-md">
-            <Tag size={10} />
-            3 × 15% dto
-          </div>
-        )}
-
-        {/* Gender badge */}
-        {product.gender !== "Unisex" && (
-          <div className="absolute top-3 right-3 bg-white/90 text-[#6B3D1E] text-xs font-semibold px-2.5 py-1 rounded-full shadow-sm">
-            {product.gender}
-          </div>
+          <span className="absolute top-3 left-3 lc-mono uppercase text-[9px] tracking-[0.2em] text-gold-deep bg-bg/90 px-2.5 py-1">
+            3 × 15%
+          </span>
         )}
       </div>
 
       {/* Info */}
-      <div className="p-5 flex flex-col gap-3 flex-1">
-        {/* Name + price */}
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <h3 className="font-bold text-[#3D2010] text-base leading-tight">{product.name}</h3>
-            <p className="text-[#C4956A] text-xs mt-0.5 italic">{product.tagline}</p>
+      <div className="pt-4 flex flex-col">
+        {product.gender !== "Unisex" && (
+          <p className="lc-mono uppercase text-[9px] tracking-[0.24em] text-ink-mute mb-1">
+            {product.gender}
+          </p>
+        )}
+        <h3 className="lc-display text-lg text-ink leading-tight">{product.name}</h3>
+        <p className="lc-display-i text-[13px] text-ink-soft mt-0.5">{product.tagline}</p>
+
+        <div className="flex items-center justify-between mt-2.5">
+          <div className="flex gap-1.5">
+            {product.colors.slice(0, 4).map((c) => (
+              <span key={c} className="lc-sw" style={{ background: swatchBg(c) }} title={c} />
+            ))}
           </div>
-          <span className="font-extrabold text-[#D4A520] text-lg whitespace-nowrap">
-            {formatSoles(product.price)}
+          <span className="lc-display text-base text-ink">
+            <span className="lc-mono text-[10px] text-ink-mute mr-1">S/</span>
+            {product.price}
           </span>
         </div>
 
-        {/* Description */}
-        <p className="text-[#9B6B45] text-sm leading-relaxed line-clamp-3">{product.desc}</p>
-
-        {/* Sizes */}
-        <div>
-          <p className="text-[#6B3D1E] text-xs font-bold mb-1.5">{t("Talla", "Size")}</p>
-          <div className="flex flex-wrap gap-1.5">
-            {product.sizes.map((size) => (
-              <button
-                key={size}
-                onClick={() => setSelectedSize(size)}
-                disabled={outOfStock}
-                className={`text-xs font-semibold px-2.5 py-1 rounded-full transition-all ${selectedSize === size ? "bg-[#D4A520] text-white" : "bg-[#F5EDD8] text-[#6B3D1E] hover:bg-[#F0E0C0]"} ${outOfStock ? "opacity-50 cursor-not-allowed" : ""}`}
-              >
-                {size}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Colors */}
-        <div>
-          <p className="text-[#6B3D1E] text-xs font-bold mb-1.5">{t("Colores", "Colors")}</p>
-          <div className="flex flex-wrap gap-2 items-center">
-            {product.colors.map((color) => (
-              <div key={color} className="flex items-center gap-1">
-                <span
-                  className="w-5 h-5 rounded-full border border-[#E0E0E0] flex-shrink-0 shadow-sm"
-                  style={{ backgroundColor: colorHex[color] ?? "#ccc" }}
-                  title={color}
-                />
-                <span className="text-[10px] text-[#9B6B45]">{color}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* CTA */}
-        {outOfStock ? (
-          <div className="mt-auto pt-1 flex flex-col gap-2">
-            <div className="w-full flex items-center justify-center py-2.5 rounded-xl bg-gray-100 text-gray-500 text-sm font-bold">
-              Agotado
-            </div>
-            <button
-              onClick={onWaitlist}
-              className="w-full flex items-center justify-center gap-2 py-2.5 font-bold rounded-xl bg-[#F5EDD8] text-[#6B3D1E] hover:bg-[#F0E0C0] transition-all text-sm"
-            >
-              <Bell size={15} /> {t("Avísame cuando llegue", "Notify me")}
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={handleAdd}
-            className={`mt-auto pt-1 w-full flex items-center justify-center gap-2 py-2.5 font-bold rounded-xl transition-all text-sm ${added ? "bg-green-500 text-white" : "bg-[#D4A520] text-white hover:bg-[#A07D10]"}`}
-          >
-            {added ? <><Check size={15} /> {t("¡Agregado!", "Added!")}</> : <><ShoppingCart size={15} /> {t("Agregar al carrito", "Add to cart")}</>}
-          </button>
-        )}
+        <span
+          className={`mt-3 lc-mono uppercase text-[10px] tracking-[0.2em] ${
+            outOfStock ? "text-ink-mute" : "text-gold-deep"
+          }`}
+        >
+          {outOfStock ? `${t("Avísame", "Notify me")} →` : `${t("Elegir talla", "Choose size")} →`}
+        </span>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -305,61 +464,59 @@ function ProductCard({
 
 export default function Collection() {
   const { t } = useLang();
-  const [activeCategory,  setActiveCategory]  = useState("all");
-  const [stockMap,        setStockMap]        = useState<Record<string, number>>({});
-  const [waitlistProduct, setWaitlistProduct] = useState<(typeof products)[0] | null>(null);
+  const [activeCategory, setActiveCategory] = useState("all");
+  const [stockMap, setStockMap] = useState<Record<string, number>>({});
+  const [selectProduct, setSelectProduct] = useState<Prod | null>(null);
+  const [waitlistProduct, setWaitlistProduct] = useState<Prod | null>(null);
 
   useEffect(() => {
-    supabase.from("products").select("id,stock").then(({ data }) => {
-      if (!data) return;
-      const map: Record<string, number> = {};
-      data.forEach((p: any) => { if (typeof p.stock === "number") map[p.id] = p.stock; });
-      setStockMap(map);
-    });
+    supabase
+      .from("products")
+      .select("id,stock")
+      .then(({ data }) => {
+        if (!data) return;
+        const map: Record<string, number> = {};
+        (data as { id: string; stock: number | null }[]).forEach((p) => {
+          if (typeof p.stock === "number") map[p.id] = p.stock;
+        });
+        setStockMap(map);
+      });
   }, []);
 
   const filtered =
-    activeCategory === "all"
-      ? products
-      : products.filter((p) => p.category === activeCategory);
+    activeCategory === "all" ? products : products.filter((p) => p.category === activeCategory);
 
   const grouped = categories
-    .map((cat) => ({
-      ...cat,
-      items: filtered.filter((p) => p.category === cat.id),
-    }))
+    .map((cat) => ({ ...cat, items: filtered.filter((p) => p.category === cat.id) }))
     .filter((g) => g.items.length > 0);
 
   return (
-    <section id="coleccion" className="bg-[#FDF8F0] py-20">
+    <section id="coleccion" className="bg-bg py-16 sm:py-24">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         {/* Header */}
-        <div className="text-center mb-10">
-          <p className="text-[#D4A520] font-bold text-sm uppercase tracking-widest mb-2">
-            {t("Lo que tenemos para ti", "What we have for you")}
-          </p>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#3D2010] mb-3">
-            {t("Nuestra Colección", "Our Collection")}
+        <div className="text-center max-w-xl mx-auto mb-12">
+          <p className="lc-eyebrow mb-4">{t("La colección completa", "The complete collection")}</p>
+          <h2 className="lc-display text-4xl sm:text-5xl leading-[1] tracking-[-0.02em] text-ink">
+            {t("Nuestra", "Our")}{" "}
+            <em className="lc-display-i text-gold-deep">{t("colección.", "collection.")}</em>
           </h2>
-          <p className="text-[#9B6B45] max-w-lg mx-auto">
+          <p className="mt-5 text-base leading-relaxed font-light text-ink-soft">
             {t(
-              "Cada prenda, 100% Algodón Pima peruano. Sin mezclas, sin compromisos.",
-              "Every garment, 100% Peruvian Pima cotton. No blends, no compromises."
+              "Cada pieza, 100% algodón Pima peruano. Sin mezclas, sin compromisos.",
+              "Every piece, 100% Peruvian Pima cotton. No blends, no compromises."
             )}
           </p>
         </div>
 
-        {/* Category filter tabs */}
-        <div className="flex flex-wrap justify-center gap-2 mb-12">
+        {/* Category filter */}
+        <div className="flex flex-wrap justify-center gap-2.5 mb-14">
           <button
             onClick={() => setActiveCategory("all")}
-            className={`px-5 py-2 rounded-full text-sm font-bold transition-all ${
-              activeCategory === "all"
-                ? "bg-[#D4A520] text-white shadow-md"
-                : "bg-[#F5EDD8] text-[#6B3D1E] hover:bg-[#F0E0C0]"
+            className={`lc-pill transition-colors ${
+              activeCategory === "all" ? "border-ink bg-ink text-bg" : "hover:border-ink hover:text-ink"
             }`}
           >
-            {t("Todo", "All")} ({products.length})
+            {t("Todo", "All")} · {products.length}
           </button>
           {categories.map((cat) => {
             const count = products.filter((p) => p.category === cat.id).length;
@@ -367,54 +524,58 @@ export default function Collection() {
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
-                className={`px-5 py-2 rounded-full text-sm font-bold transition-all ${
+                className={`lc-pill transition-colors ${
                   activeCategory === cat.id
-                    ? "bg-[#D4A520] text-white shadow-md"
-                    : "bg-[#F5EDD8] text-[#6B3D1E] hover:bg-[#F0E0C0]"
+                    ? "border-ink bg-ink text-bg"
+                    : "hover:border-ink hover:text-ink"
                 }`}
               >
-                {cat.name} ({count})
+                {cat.name} · {count}
               </button>
             );
           })}
         </div>
 
-        {/* Products grouped by category */}
-        {grouped.map((group) => (
-          <div key={group.id} className="mb-16 last:mb-0">
-            <div className="flex items-end gap-4 mb-6 pb-3 border-b border-[#F5EDD8]">
-              <div>
-                <h3 className="text-2xl font-extrabold text-[#3D2010]">{group.name}</h3>
-                <p className="text-[#9B6B45] text-sm">{group.desc}</p>
-              </div>
-              {group.id !== "conjuntos" && (
-                <div className="ml-auto flex items-center gap-1.5 bg-[#F5E9B8] text-[#A07D10] text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap">
-                  <Tag size={11} />
-                  {t("Oferta 3 × 15% dto", "Offer 3 × 15% off")}
+        {/* Groups */}
+        {grouped.map((group) => {
+          const hasOffer = group.id !== "conjuntos";
+          return (
+            <div key={group.id} className="mb-16 last:mb-0">
+              <div className="flex items-end gap-4 mb-8 pb-4 border-b border-rule">
+                <div>
+                  <h3 className="lc-display text-2xl sm:text-3xl text-ink leading-tight">
+                    {group.name}
+                  </h3>
+                  <p className="text-sm text-ink-soft mt-1 font-light">{group.desc}</p>
                 </div>
-              )}
-            </div>
+                {hasOffer && (
+                  <span className="ml-auto shrink-0 lc-pill lc-pill-gold whitespace-nowrap">
+                    {t("Oferta 3 × 15%", "Offer 3 × 15%")}
+                  </span>
+                )}
+              </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {group.items.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  stock={stockMap[product.id]}
-                  onWaitlist={() => setWaitlistProduct(product)}
-                />
-              ))}
+              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-10 sm:gap-x-6 sm:gap-y-12">
+                {group.items.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    stock={stockMap[product.id]}
+                    onSelect={() => setSelectProduct(product)}
+                    onWaitlist={() => setWaitlistProduct(product)}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* Waitlist modal — rendered at collection level to escape card overflow:hidden */}
+      {selectProduct && (
+        <SelectionSheet product={selectProduct} onClose={() => setSelectProduct(null)} />
+      )}
       {waitlistProduct && (
-        <WaitlistModal
-          product={waitlistProduct}
-          onClose={() => setWaitlistProduct(null)}
-        />
+        <WaitlistModal product={waitlistProduct} onClose={() => setWaitlistProduct(null)} />
       )}
     </section>
   );
