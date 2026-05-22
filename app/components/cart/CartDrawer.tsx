@@ -87,7 +87,7 @@ export default function CartDrawer({ open, onClose }: Props) {
                 >
                   <div className="lc-plate w-20 h-24 shrink-0 rounded-sm">
                     <Image
-                      src={item.product.image_url}
+                      src={`/products/${item.product.id}.jpeg`}
                       alt={item.product.name}
                       width={80}
                       height={96}
