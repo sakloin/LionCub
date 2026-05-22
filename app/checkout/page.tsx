@@ -105,6 +105,7 @@ export default function CheckoutPage() {
 
   // Culqi state
   const [culqiError, setCulqiError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Load Culqi checkout.js when the flag is enabled
   useEffect(() => {
@@ -193,6 +194,7 @@ export default function CheckoutPage() {
       setCulqiError("Culqi no está disponible. Recarga la página e intenta de nuevo.");
       return;
     }
+    // eslint-disable-next-line react-hooks/immutability
     W.Culqi.publicKey = culqiKey;
     W.Culqi.settings({
       title: "Lion Cub Baby Clothing",
@@ -234,6 +236,7 @@ export default function CheckoutPage() {
   async function submitOrder() {
     setSubmitting(true);
     setCulqiError(null);
+    setSubmitError(null);
     try {
       const res = await fetch("/api/orders", {
         method: "POST",
@@ -249,16 +252,20 @@ export default function CheckoutPage() {
           items,
         }),
       });
-      const data = await res.json();
-      if (data.id) {
-        if (form.payment_method === "culqi") {
-          await handleCulqiFlow(data.id);
-        } else {
-          setOrderId(data.id);
-          setStep("confirmar");
-          clear();
-        }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.id) {
+        setSubmitError(data.error ?? "No pudimos registrar tu pedido. Intenta de nuevo o escríbenos por WhatsApp.");
+        return;
       }
+      if (form.payment_method === "culqi") {
+        await handleCulqiFlow(data.id);
+      } else {
+        setOrderId(data.id);
+        setStep("confirmar");
+        clear();
+      }
+    } catch {
+      setSubmitError("No pudimos conectar con el servidor. Revisa tu conexión e intenta de nuevo.");
     } finally {
       setSubmitting(false);
     }
@@ -637,10 +644,10 @@ export default function CheckoutPage() {
                     </div>
                   )}
 
-                  {/* Culqi error */}
-                  {culqiError && (
+                  {/* Submit / Culqi error */}
+                  {(culqiError || submitError) && (
                     <div className="border border-red-300 bg-red-50 p-3 text-xs text-red-700">
-                      {culqiError}
+                      {culqiError ?? submitError}
                     </div>
                   )}
 
