@@ -1,45 +1,49 @@
 "use client";
 
 import { useLang } from "../context/LanguageContext";
-import { Leaf, Heart, Package, Sparkles } from "lucide-react";
 
 export default function TrustBar() {
   const { t } = useLang();
 
-  const items = [
-    {
-      icon: <Leaf size={22} />,
-      title: t("100% Algodón Pima", "100% Pima Cotton"),
-      desc: t("El más fino de los Andes peruanos", "The finest from the Peruvian Andes"),
-    },
-    {
-      icon: <Heart size={22} />,
-      title: t("Hipoalergénico", "Hypoallergenic"),
-      desc: t("Ideal para pieles sensibles", "Ideal for sensitive skin"),
-    },
-    {
-      icon: <Sparkles size={22} />,
-      title: t("Calidad Premium", "Premium Quality"),
-      desc: t("Suave, resistente y duradero", "Soft, durable & long-lasting"),
-    },
-    {
-      icon: <Package size={22} />,
-      title: t("Envío a Perú y USA", "Ships to Peru & USA"),
-      desc: t("Llega donde tu bebé está", "Delivered wherever your baby is"),
-    },
+  const promises: [string, string][] = [
+    [
+      t("Hipoalergénico", "Hypoallergenic"),
+      t(
+        "Libre de químicos agresivos. Para pieles que apenas están conociendo el mundo.",
+        "Free of harsh chemicals. For skin that's only just meeting the world."
+      ),
+    ],
+    [
+      t("Transpirable", "Breathable"),
+      t(
+        "Regula la temperatura naturalmente: fresco en verano, abrigo en invierno.",
+        "Naturally regulates temperature: cool in summer, warm in winter."
+      ),
+    ],
+    [
+      t("Resistente", "Resilient"),
+      t(
+        "La hebra larga aguanta el uso diario y el lavado constante. La suavidad permanece.",
+        "The long staple withstands daily wear and constant washing. The softness remains."
+      ),
+    ],
   ];
 
   return (
-    <section className="bg-[#F5EDD8] py-10">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {items.map((item, i) => (
-            <div key={i} className="flex flex-col items-center text-center gap-2">
-              <div className="w-12 h-12 bg-[#D4A520]/15 text-[#D4A520] rounded-2xl flex items-center justify-center">
-                {item.icon}
+    <section className="bg-bg-warm">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16 lg:py-20">
+        <div className="grid sm:grid-cols-3 gap-10 sm:gap-12">
+          {promises.map(([title, desc], i) => (
+            <div key={title} className="pt-5 border-t border-rule">
+              <span className="lc-mono text-[10px] tracking-[0.24em] text-gold-deep">
+                0{i + 1}
+              </span>
+              <div className="lc-display text-2xl text-ink mt-3" style={{ fontWeight: 400 }}>
+                {title}
               </div>
-              <p className="font-bold text-[#3D2010] text-sm leading-tight">{item.title}</p>
-              <p className="text-[#9B6B45] text-xs leading-snug">{item.desc}</p>
+              <p className="text-[13.5px] leading-relaxed font-light text-ink-soft mt-2.5">
+                {desc}
+              </p>
             </div>
           ))}
         </div>
