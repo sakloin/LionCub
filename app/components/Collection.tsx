@@ -36,7 +36,7 @@ function toCartProduct(p: Prod) {
     cost: 0,
     stock: 99,
     has_offer: p.hasOffer,
-    image_url: `/${p.image}`,
+    image_url: `/products/${p.id}.jpeg`,
     active: true,
     created_at: "",
   } as unknown as Product;
