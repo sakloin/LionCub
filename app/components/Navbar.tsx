@@ -5,7 +5,7 @@ import { Menu, X, ShoppingBag } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
 import CartDrawer from "./cart/CartDrawer";
-import Image from "next/image";
+import LogoMark from "./LogoMark";
 
 export default function Navbar() {
   const { lang, toggleLang, t } = useLang();
@@ -27,98 +27,85 @@ export default function Navbar() {
     { href: "#contacto", label: t("Contacto", "Contact") },
   ];
 
+  const linkClass =
+    "lc-mono uppercase text-[10px] tracking-[0.24em] text-ink hover:text-gold-deep transition-colors";
+
   return (
     <>
-    <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "bg-[#FDF8F0]/95 backdrop-blur-sm shadow-sm border-b border-[#F5E9B8]"
-          : "bg-transparent"
-      }`}
-    >
-      <nav className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-        {/* Logo */}
-        <a href="#" className="flex items-center gap-2 group">
-          <div className="w-10 h-10 relative">
-            <Image
-              src="/logo.png"
-              alt="Lion Cub Baby Clothing"
-              fill
-              className="object-contain drop-shadow-sm"
-            />
+      <header
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+          scrolled
+            ? "bg-bg/95 backdrop-blur-sm border-b border-rule-soft"
+            : "bg-transparent"
+        }`}
+      >
+        <nav className="max-w-6xl mx-auto px-4 sm:px-6 h-16 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+          {/* Left: desktop links / mobile hamburger */}
+          <div className="flex items-center">
+            <ul className="hidden md:flex items-center gap-7">
+              {links.map((link) => (
+                <li key={link.href}>
+                  <a href={link.href} className={linkClass}>
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <button
+              className="md:hidden p-2 -ml-2 text-ink"
+              onClick={() => setMenuOpen((o) => !o)}
+              aria-label="Menu"
+            >
+              {menuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
           </div>
-          <span className="font-brand text-2xl text-[#6B3D1E] group-hover:text-[#D4A520] transition-colors">
-            Lion Cub
-          </span>
-        </a>
 
-        {/* Desktop links */}
-        <ul className="hidden md:flex items-center gap-6">
-          {links.map((link) => (
-            <li key={link.href}>
+          {/* Center: logo */}
+          <a href="#" className="justify-self-center" aria-label="Lion Cub — inicio">
+            <LogoMark size={26} color="var(--color-ink)" />
+          </a>
+
+          {/* Right: language + cart */}
+          <div className="flex items-center justify-end gap-4 sm:gap-5">
+            <button
+              onClick={toggleLang}
+              className="lc-mono uppercase text-[10px] tracking-[0.24em] text-ink hover:text-gold-deep transition-colors"
+              aria-label="Cambiar idioma / Switch language"
+            >
+              {lang === "es" ? "ES · EN" : "EN · ES"}
+            </button>
+
+            <button
+              onClick={() => setCartOpen(true)}
+              className="relative flex items-center gap-2 lc-mono uppercase text-[10px] tracking-[0.24em] text-ink hover:text-gold-deep transition-colors"
+              aria-label={t("Bolsa", "Bag")}
+            >
+              <span className="hidden sm:inline">{t("Bolsa", "Bag")}</span>
+              <ShoppingBag size={18} className="sm:hidden" />
+              <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-gold text-[#1A1410] text-[9px]">
+                {count}
+              </span>
+            </button>
+          </div>
+        </nav>
+
+        {/* Mobile menu */}
+        {menuOpen && (
+          <div className="md:hidden bg-bg border-t border-rule-soft px-6 py-5 flex flex-col gap-4">
+            {links.map((link) => (
               <a
+                key={link.href}
                 href={link.href}
-                className="text-[#6B3D1E] text-sm font-semibold hover:text-[#D4A520] transition-colors"
+                onClick={() => setMenuOpen(false)}
+                className="lc-mono uppercase text-[11px] tracking-[0.24em] text-ink hover:text-gold-deep transition-colors"
               >
                 {link.label}
               </a>
-            </li>
-          ))}
-        </ul>
-
-        {/* Right controls */}
-        <div className="flex items-center gap-3">
-          {/* Language toggle */}
-          <button
-            onClick={toggleLang}
-            className="text-xs font-bold px-3 py-1.5 rounded-full border border-[#D4A520] text-[#D4A520] hover:bg-[#D4A520] hover:text-white transition-all"
-            aria-label="Cambiar idioma / Switch language"
-          >
-            {lang === "es" ? "EN" : "ES"}
-          </button>
-
-          {/* Cart button */}
-          <button
-            onClick={() => setCartOpen(true)}
-            className="relative p-2 text-[#6B3D1E] hover:text-[#D4A520] transition-colors"
-            aria-label={t("Carrito", "Cart")}
-          >
-            <ShoppingBag size={20} />
-            {count > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#D4A520] text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                {count}
-              </span>
-            )}
-          </button>
-
-          {/* Mobile menu toggle */}
-          <button
-            className="md:hidden p-2 text-[#6B3D1E]"
-            onClick={() => setMenuOpen((o) => !o)}
-            aria-label="Menu"
-          >
-            {menuOpen ? <X size={22} /> : <Menu size={22} />}
-          </button>
-        </div>
-      </nav>
-
-      {/* Mobile menu */}
-      {menuOpen && (
-        <div className="md:hidden bg-[#FDF8F0] border-t border-[#F5E9B8] px-6 py-4 flex flex-col gap-4">
-          {links.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              onClick={() => setMenuOpen(false)}
-              className="text-[#6B3D1E] font-semibold hover:text-[#D4A520] transition-colors"
-            >
-              {link.label}
-            </a>
-          ))}
-        </div>
-      )}
-    </header>
-    <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
+            ))}
+          </div>
+        )}
+      </header>
+      <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
     </>
   );
 }

@@ -1,26 +1,59 @@
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Lion Cub — Design tokens (single source of truth for the public redesign).
+   Editorial luxury: warm cream, refined champagne gold, generous whitespace.
+   Visual reference: design-handoff/design/tokens.css
+   To change a brand color or font, edit it here — utilities (bg-bg-warm,
+   text-ink-soft, font-display, …) and the .lc-* component classes both derive
+   from these values.
+   NOTE: /admin keeps its own Nunito (set in app/admin/layout.tsx). The font
+   fallbacks below resolve to --font-nunito when the editorial fonts are absent,
+   so the admin panel is unaffected by this file.
+   ───────────────────────────────────────────────────────────────────────── */
 @theme {
-  --color-gold: #D4A520;
-  --color-gold-light: #F5E9B8;
-  --color-gold-dark: #A07D10;
-  --color-brown: #6B3D1E;
-  --color-brown-light: #C4956A;
-  --color-brown-muted: #9B6B45;
-  --color-cream: #FDF8F0;
-  --color-cream-dark: #F5EDD8;
-  --color-sage: #8BAF7A;
-  --color-sage-light: #D4EAC8;
-  --color-peach: #F5C4A8;
-  --color-peach-light: #FDE8DC;
+  /* surfaces */
+  --color-bg:        #FDFBF6;
+  --color-bg-warm:   #F5ECDC;
+  --color-bg-soft:   #F8F2E7;
+  --color-bg-card:   #FFFFFF;
+  --color-bg-ink:    #1A1410;
 
-  --font-nunito: var(--font-nunito);
-  --font-dancing: var(--font-dancing);
+  /* ink */
+  --color-ink:       #1A1410;
+  --color-ink-soft:  #5B4F42;
+  --color-ink-mute:  #9B8D7E;
+  --color-rule:      #E8DFCB;
+  --color-rule-soft: #EFE7D4;
+
+  /* brand accent */
+  --color-gold:      #C9A961;
+  --color-gold-deep: #A47C3B;
+  --color-gold-pale: #EFE0BB;
+
+  /* pastels (very desaturated) */
+  --color-pink:      #F0D9D2;
+  --color-pink-soft: #F7E8E3;
+  --color-blue:      #D9E2EA;
+  --color-blue-soft: #ECF1F5;
+  --color-mint:      #DDE6D6;
+  --color-mint-soft: #EDF1E9;
+  --color-lav:       #E2DCE5;
+
+  /* type — fall back to admin's Nunito, then system, when editorial fonts absent */
+  --font-display: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
+  --font-body:    var(--font-inter, var(--font-nunito)), "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono:    var(--font-jetbrains), "JetBrains Mono", "IBM Plex Mono", monospace;
 }
 
 :root {
-  --background: #FDF8F0;
-  --foreground: #3D2010;
+  --background: #FDFBF6;
+  --foreground: #1A1410;
+
+  /* shadows */
+  --lc-shadow-1: 0 1px 2px rgba(26,20,16,.04), 0 2px 6px rgba(26,20,16,.04);
+  --lc-shadow-2: 0 6px 24px rgba(26,20,16,.08);
+  --lc-shadow-3: 0 20px 60px rgba(26,20,16,.12);
 }
 
 * {
@@ -30,42 +63,168 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-nunito), 'Nunito', sans-serif;
+  /* Public uses Inter; admin (no --font-inter) falls back to its Nunito. */
+  font-family: var(--font-inter, var(--font-nunito)), "Inter", system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
+/* Legacy brand class — still referenced by /admin AdminShell (which also sets an
+   inline cursive fallback) and by not-yet-redesigned public sections.
+   The public redesign uses .lc-display-i instead. */
 .font-brand {
-  font-family: var(--font-dancing), 'Dancing Script', cursive;
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-8px); }
+  font-family: var(--font-dancing), "Dancing Script", cursive;
 }
 
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s ease-out forwards;
 }
 
+/* Retained until the sections that use it (Hero, OurStory) are redesigned in
+   a later block; remove once unused. */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%      { transform: translateY(-8px); }
+}
 .animate-float {
   animation: float 4s ease-in-out infinite;
 }
 
-.animate-fade-in-up {
-  animation: fadeInUp 0.6s ease-out forwards;
-}
+/* ─────────────────────────────────────────────────────────────────────────
+   Editorial component primitives (ported from design-handoff/design/tokens.css)
+   ───────────────────────────────────────────────────────────────────────── */
+@layer components {
+  .lc-display {
+    font-family: var(--font-display);
+    font-weight: 300;
+    letter-spacing: -0.012em;
+  }
+  .lc-display-i {
+    font-family: var(--font-display);
+    font-weight: 300;
+    font-style: italic;
+    letter-spacing: -0.012em;
+  }
+  .lc-mono {
+    font-family: var(--font-mono);
+  }
 
-.wave-divider {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  overflow: hidden;
-  line-height: 0;
-}
+  /* Eyebrow */
+  .lc-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--color-gold-deep);
+    font-weight: 400;
+  }
+  .lc-eyebrow-ink { color: var(--color-ink-soft); }
 
-.wave-divider svg {
-  display: block;
-  width: 100%;
+  /* Hairlines */
+  .lc-rule      { height: 1px; background: var(--color-rule); border: 0; }
+  .lc-rule-gold { height: 1px; background: var(--color-gold); border: 0; }
+
+  /* Buttons */
+  .lc-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-weight: 400;
+    padding: 14px 28px;
+    border: 0;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all .25s ease;
+    border-radius: 2px;
+  }
+  .lc-btn-primary { background: var(--color-ink); color: var(--color-bg); }
+  .lc-btn-primary:hover { background: #000; }
+  .lc-btn-outline {
+    background: transparent;
+    color: var(--color-ink);
+    border: 1px solid var(--color-ink);
+  }
+  .lc-btn-ghost {
+    background: transparent;
+    color: var(--color-ink-soft);
+    padding: 14px 0;
+  }
+  .lc-btn-ghost::after {
+    content: "";
+    display: inline-block;
+    width: 24px;
+    height: 1px;
+    background: currentColor;
+    margin-left: 6px;
+    vertical-align: middle;
+    transition: width .3s ease;
+  }
+  .lc-btn-ghost:hover::after { width: 36px; }
+  .lc-btn-whatsapp { background: #1A1410; color: var(--color-bg); }
+  .lc-btn-whatsapp svg { width: 14px; height: 14px; }
+
+  /* Inputs */
+  .lc-input {
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 300;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--color-rule);
+    padding: 12px 0;
+    width: 100%;
+    color: var(--color-ink);
+  }
+  .lc-input:focus { outline: 0; border-bottom-color: var(--color-ink); }
+
+  /* Card */
+  .lc-card { background: var(--color-bg-card); border-radius: 8px; }
+
+  /* Image plate (cream stage) */
+  .lc-plate {
+    position: relative;
+    background: var(--color-bg-warm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .lc-plate img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* Color swatch */
+  .lc-sw {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,0,0,0.08);
+    display: inline-block;
+  }
+  .lc-sw-lg { width: 22px; height: 22px; }
+
+  /* Tags / pills */
+  .lc-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    padding: 6px 12px;
+    border: 1px solid var(--color-rule);
+    color: var(--color-ink-soft);
+    border-radius: 999px;
+    background: var(--color-bg);
+  }
+  .lc-pill-gold { border-color: var(--color-gold); color: var(--color-gold-deep); }
+  .lc-pill-ink  { border-color: var(--color-ink);  color: var(--color-ink); }
 }
