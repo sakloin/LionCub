@@ -293,6 +293,37 @@ export default function CheckoutPage() {
       `Total: ${formatSoles(grandTotal)}`,
     ].filter(Boolean).join("\n");
 
+    const nextSteps: [string, string][] = [
+      [
+        t("Confirmación", "Confirmation"),
+        t(
+          `Te escribimos por WhatsApp al ${form.customer_phone} para coordinar los detalles.`,
+          `We'll message you on WhatsApp at ${form.customer_phone} to sort out the details.`
+        ),
+      ],
+      [
+        t("En el taller", "In the workshop"),
+        t(
+          "Empacamos cada pieza a mano, en algodón Pima, lista para regalar.",
+          "We pack each piece by hand, in Pima cotton, ready to gift."
+        ),
+      ],
+      [
+        t("Entrega", "Delivery"),
+        isShalom
+          ? t(
+              `Coordinamos el envío a tu agencia Shalom · ${form.shalom_agency}.`,
+              `We'll arrange shipping to your Shalom agency · ${form.shalom_agency}.`
+            )
+          : form.delivery_date
+          ? t(
+              `Llega el ${fmtDeliveryDate(form.delivery_date)}${form.delivery_time_slot ? ` · ${form.delivery_time_slot}` : ""}.`,
+              `Arrives ${fmtDeliveryDate(form.delivery_date)}${form.delivery_time_slot ? ` · ${form.delivery_time_slot}` : ""}.`
+            )
+          : t("Coordinamos la entrega contigo.", "We'll coordinate delivery with you."),
+      ],
+    ];
+
     return (
       <div className="min-h-screen bg-bg flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center flex flex-col items-center gap-5">
@@ -321,6 +352,24 @@ export default function CheckoutPage() {
               {form.delivery_time_slot && <p className="text-ink-soft mt-0.5">{form.delivery_time_slot}</p>}
             </div>
           )}
+
+          <div className="w-full text-left border-t border-rule pt-6">
+            <p className="lc-eyebrow mb-5">{t("Próximos pasos", "Next steps")}</p>
+            <ol className="flex flex-col gap-5">
+              {nextSteps.map(([title, desc], i) => (
+                <li key={title} className="flex gap-4">
+                  <span className="lc-mono text-[11px] tracking-[0.1em] text-gold-deep pt-1">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <div>
+                    <p className="lc-display text-lg text-ink leading-tight">{title}</p>
+                    <p className="text-sm text-ink-soft mt-0.5 leading-relaxed">{desc}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+
           <a
             href={`https://wa.me/51920201943?text=${encodeURIComponent(waLines)}`}
             target="_blank" rel="noopener noreferrer"
