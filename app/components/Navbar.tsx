@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Menu, X, ShoppingBag } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
@@ -12,13 +12,6 @@ export default function Navbar() {
   const { count } = useCart();
   const [menuOpen, setMenuOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   const links = [
     { href: "#coleccion", label: t("Colección", "Collection") },
@@ -32,13 +25,8 @@ export default function Navbar() {
 
   return (
     <>
-      <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          scrolled
-            ? "bg-bg/95 backdrop-blur-sm border-b border-rule-soft"
-            : "bg-transparent"
-        }`}
-      >
+      <header className="sticky top-0 z-50 bg-bg/95 backdrop-blur-sm border-b border-rule-soft">
+
         <nav className="max-w-6xl mx-auto px-4 sm:px-6 h-16 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
           {/* Left: desktop links / mobile hamburger */}
           <div className="flex items-center">
