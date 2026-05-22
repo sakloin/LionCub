@@ -1,92 +1,83 @@
 "use client";
 
+import Image from "next/image";
 import { useLang } from "../context/LanguageContext";
-import { Heart } from "lucide-react";
 
 export default function OurStory() {
   const { t } = useLang();
 
-  return (
-    <section id="nuestra-historia" className="bg-[#FDF8F0] py-20">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="grid md:grid-cols-2 gap-14 items-center">
-          {/* Visual side */}
-          <div className="relative">
-            <div className="aspect-[4/5] bg-gradient-to-br from-[#F5E9B8] via-[#FDE8DC] to-[#D4EAC8] rounded-3xl flex items-center justify-center shadow-xl shadow-[#D4A520]/10">
-              <div className="text-center p-10">
-                <div className="text-8xl mb-6 animate-float inline-block">🦁</div>
-                <p className="font-brand text-4xl text-[#6B3D1E] mb-2">Lion Cub</p>
-                <p className="text-[#9B6B45] text-sm">Baby Clothing</p>
-                <div className="mt-6 flex justify-center gap-4">
-                  <span className="text-3xl">🇵🇪</span>
-                  <span className="text-3xl">🇺🇸</span>
-                </div>
-              </div>
-            </div>
+  const values: [string, string][] = [
+    [t("Hecho a mano", "Handmade"), t("en Lima", "in Lima")],
+    [t("100% Natural", "100% Natural"), t("algodón Pima", "Pima cotton")],
+    [t("Origen peruano", "Peruvian origin"), t("costa norte", "northern coast")],
+    [t("Con amor", "With love"), t("en cada pieza", "in every piece")],
+  ];
 
-            {/* Floating stat */}
-            <div className="absolute -bottom-5 -right-2 sm:-right-8 bg-[#D4A520] text-white rounded-2xl shadow-lg px-5 py-4 text-center">
-              <p className="text-3xl font-extrabold">200+</p>
-              <p className="text-xs font-semibold opacity-90">
-                {t("familias felices", "happy families")}
-              </p>
+  return (
+    <section id="nuestra-historia" className="bg-bg-warm">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-20 lg:py-28">
+        <div className="grid md:grid-cols-2 gap-12 lg:gap-20 items-center">
+          {/* Visual */}
+          <div className="relative">
+            <div className="lc-plate aspect-[4/5] bg-pink-soft relative">
+              <Image
+                src="/products/LC-014.jpeg"
+                alt={t("Prenda Lion Cub en algodón Pima", "Lion Cub garment in Pima cotton")}
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-cover"
+              />
+            </div>
+            <div
+              className="absolute -bottom-6 -right-2 sm:-right-6 bg-bg px-6 py-5 text-center"
+              style={{ boxShadow: "var(--lc-shadow-2)" }}
+            >
+              <div className="lc-display text-3xl text-ink">200+</div>
+              <div className="lc-mono uppercase text-[9px] tracking-[0.2em] text-ink-mute mt-1">
+                {t("familias acompañadas", "families served")}
+              </div>
             </div>
           </div>
 
-          {/* Text side */}
-          <div className="flex flex-col gap-6">
-            <div>
-              <p className="text-[#D4A520] font-bold text-sm uppercase tracking-widest mb-2">
-                {t("Quiénes somos", "Who we are")}
+          {/* Text */}
+          <div>
+            <p className="lc-eyebrow">{t("Capítulo 02 · Quiénes somos", "Chapter 02 · Who we are")}</p>
+            <h2 className="lc-display mt-6 text-4xl sm:text-5xl lg:text-6xl leading-[0.95] tracking-[-0.02em] text-ink">
+              {t("Una historia ", "A story ")}
+              <em className="lc-display-i text-gold-deep">{t("familiar.", "of family.")}</em>
+            </h2>
+
+            <div className="mt-7 flex flex-col gap-5 max-w-md">
+              <p className="text-[15px] leading-relaxed font-light text-ink-soft">
+                {t(
+                  "Lion Cub nació del amor por los bebés y el orgullo por lo peruano. Somos una familia que descubrió en el algodón Pima la mejor forma de cuidar a los más pequeños.",
+                  "Lion Cub was born from a love of babies and pride in all things Peruvian. We're a family that discovered in Pima cotton the best way to care for the littlest ones."
+                )}
               </p>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-[#3D2010] leading-tight mb-5">
-                {t("Nuestra Historia", "Our Story")}
-              </h2>
+              <p className="text-[15px] leading-relaxed font-light text-ink-soft">
+                {t(
+                  "Desde Lima llevamos la suavidad del Pima a familias en todo el Perú — y cada vez más, a familias peruanas en Estados Unidos que quieren la mejor calidad para sus bebés y nietos.",
+                  "From Lima we bring the softness of Pima to families across Peru — and increasingly, to Peruvian families in the United States who want the finest quality for their babies and grandchildren."
+                )}
+              </p>
+              <p className="text-[15px] leading-relaxed font-light text-ink-soft">
+                {t(
+                  "Cada prenda es elegida con cuidado, porque sabemos que se la pondrás a alguien muy especial.",
+                  "Every garment is chosen with care, because we know you'll be putting it on someone very special."
+                )}
+              </p>
             </div>
 
-            <p className="text-[#6B3D1E] text-lg leading-relaxed">
-              {t(
-                "Lion Cub nació del amor por los bebés y el orgullo por lo peruano. Somos una familia que descubrió en el algodón pima la mejor forma de cuidar a los más pequeños.",
-                "Lion Cub was born from a love of babies and pride in all things Peruvian. We're a family that discovered in Pima cotton the best way to care for the littlest ones."
-              )}
-            </p>
-
-            <p className="text-[#9B6B45] leading-relaxed">
-              {t(
-                "Desde Lima, llevamos la suavidad del algodón pima peruano a familias en todo el Perú — y cada vez más, a familias peruanas en Estados Unidos que quieren que sus bebés y nietos disfruten de la mejor calidad.",
-                "From Lima, we bring the softness of Peruvian Pima cotton to families across Peru — and increasingly, to Peruvian families in the United States who want their babies and grandchildren to enjoy the finest quality."
-              )}
-            </p>
-
-            <p className="text-[#9B6B45] leading-relaxed">
-              {t(
-                "Cada prenda es elegida con cuidado, porque sabemos que se la pondrás a alguien muy especial.",
-                "Every garment is carefully chosen, because we know you'll be putting it on someone very special."
-              )}
-            </p>
-
-            {/* Values */}
-            <div className="grid grid-cols-2 gap-4 pt-2">
-              {[
-                { emoji: "👐", label: t("Hecho a mano", "Handmade") },
-                { emoji: "🌿", label: t("100% Natural", "100% Natural") },
-                { emoji: "🏔️", label: t("Origen peruano", "Peruvian origin") },
-                { emoji: "💛", label: t("Con amor", "Made with love") },
-              ].map((v, i) => (
-                <div key={i} className="flex items-center gap-3 bg-[#F5EDD8] rounded-xl px-4 py-3">
-                  <span className="text-xl">{v.emoji}</span>
-                  <span className="text-sm font-bold text-[#3D2010]">{v.label}</span>
+            <div className="mt-9 grid grid-cols-2 gap-x-10 gap-y-6">
+              {values.map(([label, sub]) => (
+                <div key={label} className="pt-4 border-t border-rule">
+                  <div className="lc-display-i text-lg text-ink">{label}</div>
+                  <div className="lc-mono uppercase text-[9px] tracking-[0.2em] text-ink-mute mt-1">
+                    {sub}
+                  </div>
                 </div>
               ))}
             </div>
-
-            <a
-              href="#contacto"
-              className="inline-flex items-center gap-2 text-[#D4A520] font-bold hover:text-[#A07D10] transition-colors mt-2"
-            >
-              <Heart size={16} fill="currentColor" />
-              {t("Conoce más sobre nosotros", "Learn more about us")}
-            </a>
           </div>
         </div>
       </div>

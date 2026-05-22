@@ -1,113 +1,145 @@
 "use client";
 
+import Image from "next/image";
 import { useLang } from "../context/LanguageContext";
-import { Leaf, Star } from "lucide-react";
 
 export default function Hero() {
   const { lang, t } = useLang();
 
+  const stats: [string, string][] = [
+    ["200+", t("familias acompañadas", "families served")],
+    ["100%", t("algodón Pima", "Pima cotton")],
+    ["Lima", t("hecho a mano", "handmade")],
+  ];
+
   return (
-    <section className="relative min-h-screen bg-[#FDF8F0] flex items-center overflow-hidden pt-16">
-      {/* Decorative blobs */}
-      <div className="absolute top-20 right-0 w-96 h-96 bg-[#F5E9B8]/40 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
-      <div className="absolute bottom-0 left-0 w-80 h-80 bg-[#D4EAC8]/40 rounded-full blur-3xl translate-y-1/3 -translate-x-1/4" />
-      <div className="absolute top-1/3 left-1/2 w-48 h-48 bg-[#FDE8DC]/50 rounded-full blur-2xl" />
-
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 w-full py-16 grid md:grid-cols-2 gap-12 items-center relative z-10">
-        {/* Text */}
-        <div className="flex flex-col gap-6 animate-fade-in-up">
-          <div className="inline-flex items-center gap-2 bg-[#F5E9B8] text-[#A07D10] text-xs font-bold px-4 py-2 rounded-full w-fit">
-            <Leaf size={12} />
-            {t("100% Algodón Pima · Hecho en Perú", "100% Pima Cotton · Made in Peru")}
-          </div>
-
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#3D2010] leading-tight">
-            {lang === "es" ? (
-              <>
-                Suave como{" "}
-                <span className="font-brand text-[#D4A520]">su piel</span>,
-                <br />
-                puro como tu amor
-              </>
-            ) : (
-              <>
-                Soft as{" "}
-                <span className="font-brand text-[#D4A520]">their skin</span>,
-                <br />
-                pure as your love
-              </>
-            )}
-          </h1>
-
-          <p className="text-[#9B6B45] text-lg leading-relaxed max-w-md">
-            {t(
-              "Prendas de bebé elaboradas con el algodón pima más fino del Perú. Suave, hipoalergénico y diseñado para los primeros momentos más especiales.",
-              "Baby garments crafted from Peru's finest Pima cotton. Soft, hypoallergenic, and designed for the most precious early moments."
-            )}
-          </p>
-
-          <div className="flex items-center gap-2 text-sm text-[#9B6B45]">
-            <div className="flex">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} size={14} fill="#D4A520" className="text-[#D4A520]" />
+    <section className="bg-bg">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-12 pb-16 lg:pt-16 lg:pb-24">
+        <div className="grid lg:grid-cols-[1fr_1.1fr] gap-12 lg:gap-16 items-center animate-fade-in-up">
+          {/* Text */}
+          <div>
+            <p className="lc-eyebrow">
+              {t("Carta del primer abrazo · SS · 2026", "First-embrace letter · SS · 2026")}
+            </p>
+            <h1 className="lc-display mt-6 text-5xl sm:text-6xl lg:text-7xl leading-[0.95] tracking-[-0.03em] text-ink">
+              {lang === "es" ? (
+                <>
+                  Suave como su{" "}
+                  <em className="lc-display-i text-gold-deep">piel,</em>
+                  <br />
+                  puro como su{" "}
+                  <em className="lc-display-i text-gold-deep">llegada.</em>
+                </>
+              ) : (
+                <>
+                  Soft as their{" "}
+                  <em className="lc-display-i text-gold-deep">skin,</em>
+                  <br />
+                  pure as their{" "}
+                  <em className="lc-display-i text-gold-deep">arrival.</em>
+                </>
+              )}
+            </h1>
+            <p className="mt-8 max-w-md text-base leading-relaxed font-light text-ink-soft">
+              {t(
+                "Hilamos cada prenda en algodón Pima peruano — la fibra más suave del mundo. Hipoalergénica, transpirable y delicada, pensada para los primeros días, las primeras noches y los abrazos que vienen.",
+                "We spin every garment in Peruvian Pima cotton — the softest fiber in the world. Hypoallergenic, breathable and delicate, made for the first days, the first nights, and the embraces to come."
+              )}
+            </p>
+            <div className="mt-10 flex flex-wrap items-center gap-4">
+              <a href="#coleccion" className="lc-btn lc-btn-primary">
+                {t("Descubrir la colección", "Discover the collection")}
+              </a>
+              <a href="#por-que-pima" className="lc-btn lc-btn-ghost">
+                {t("Por qué Pima", "Why Pima")}
+              </a>
+            </div>
+            <div className="mt-12 flex flex-wrap gap-8 sm:gap-9">
+              {stats.map(([n, l]) => (
+                <div key={l}>
+                  <div className="lc-display text-3xl text-ink">{n}</div>
+                  <div className="lc-mono uppercase text-[10px] tracking-[0.2em] text-ink-mute mt-1">
+                    {l}
+                  </div>
+                </div>
               ))}
             </div>
-            <span className="font-semibold">
-              {t("Más de 200 familias felices", "Trusted by 200+ happy families")}
-            </span>
           </div>
 
-          <div className="flex flex-wrap gap-4 pt-2">
-            <a
-              href="#coleccion"
-              className="px-8 py-3.5 bg-[#D4A520] text-white font-bold rounded-full hover:bg-[#A07D10] transition-all hover:shadow-lg hover:shadow-[#D4A520]/30 active:scale-95"
-            >
-              {t("Ver Colección", "Shop Collection")}
-            </a>
-            <a
-              href="#por-que-pima"
-              className="px-8 py-3.5 border-2 border-[#6B3D1E] text-[#6B3D1E] font-bold rounded-full hover:bg-[#6B3D1E] hover:text-white transition-all active:scale-95"
-            >
-              {t("¿Por qué Pima?", "Why Pima?")}
-            </a>
+          {/* Image stack */}
+          <div className="relative">
+            {/* Mobile: single plate */}
+            <div className="lg:hidden lc-plate aspect-[4/5] bg-pink-soft">
+              <Image
+                src="/products/LC-010.jpeg"
+                alt={t("Ajuar de algodón Pima", "Pima cotton layette")}
+                fill
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-cover"
+                priority
+              />
+            </div>
+
+            {/* Desktop: layered editorial composition */}
+            <div className="hidden lg:block relative h-[640px]">
+              <div className="absolute inset-[40px_0_0_60px] bg-pink-soft" />
+              <div className="absolute inset-[40px_0_0_60px] lc-plate">
+                <Image
+                  src="/products/LC-001.jpeg"
+                  alt={t("Conjunto de algodón Pima", "Pima cotton set")}
+                  fill
+                  sizes="50vw"
+                  className="object-cover"
+                  priority
+                />
+              </div>
+              <div
+                className="absolute top-0 left-0 w-[220px] h-[280px] overflow-hidden lc-plate"
+                style={{ boxShadow: "var(--lc-shadow-2)" }}
+              >
+                <Image
+                  src="/products/LC-010.jpeg"
+                  alt=""
+                  fill
+                  sizes="220px"
+                  className="object-cover"
+                />
+              </div>
+              <div
+                className="absolute bottom-0 right-6 w-[200px] p-5 bg-bg"
+                style={{ boxShadow: "var(--lc-shadow-2)" }}
+              >
+                <p className="lc-eyebrow mb-2.5">{t("Edición SS 26", "SS 26 edition")}</p>
+                <div className="lc-display-i text-2xl leading-tight text-ink">
+                  Tiernos
+                  <br />
+                  Conejitos
+                </div>
+                <div className="text-[11px] text-ink-mute mt-2">
+                  {t("Set 5 piezas · desde S/ 79", "5-piece set · from S/ 79")}
+                </div>
+                <div className="lc-rule my-3" />
+                <a
+                  href="#coleccion"
+                  className="lc-mono uppercase text-[10px] tracking-[0.2em] text-gold-deep"
+                >
+                  {t("Ver pieza", "View piece")} →
+                </a>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Image area */}
-        <div className="relative flex items-center justify-center">
-          <div className="relative w-full max-w-sm mx-auto animate-float">
-            <div className="aspect-[4/5] bg-gradient-to-br from-[#F5E9B8] to-[#FDE8DC] rounded-3xl overflow-hidden shadow-2xl shadow-[#D4A520]/20 flex items-center justify-center">
-              <div className="text-center p-8">
-                <div className="text-8xl mb-4">🦁</div>
-                <p className="font-brand text-3xl text-[#6B3D1E]">Lion Cub</p>
-                <p className="text-[#9B6B45] text-sm mt-2">Baby Clothing</p>
-              </div>
-            </div>
-
-            <div className="absolute -left-6 top-1/4 bg-white rounded-2xl shadow-lg px-4 py-3 flex items-center gap-2">
-              <span className="text-2xl">🌿</span>
-              <div>
-                <p className="text-xs font-bold text-[#3D2010]">Pima Cotton</p>
-                <p className="text-xs text-[#9B6B45]">{t("Ultra suave", "Ultra soft")}</p>
-              </div>
-            </div>
-
-            <div className="absolute -right-6 bottom-1/4 bg-white rounded-2xl shadow-lg px-4 py-3 flex items-center gap-2">
-              <span className="text-2xl">🇵🇪</span>
-              <div>
-                <p className="text-xs font-bold text-[#3D2010]">{t("Hecho en", "Made in")}</p>
-                <p className="text-xs text-[#9B6B45]">Perú</p>
-              </div>
-            </div>
-          </div>
+        {/* Bottom hairline with scroll cue */}
+        <div className="mt-16 flex items-center gap-4">
+          <span className="lc-mono uppercase text-[10px] tracking-[0.24em] text-ink-mute">
+            {t("Continuar", "Continue")}
+          </span>
+          <span className="flex-1 lc-rule" />
+          <span className="lc-mono uppercase text-[10px] tracking-[0.24em] text-ink-mute">
+            {t("01 · Material", "01 · Material")}
+          </span>
         </div>
-      </div>
-
-      {/* Wave divider */}
-      <div className="absolute bottom-0 left-0 right-0">
-        <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full" preserveAspectRatio="none">
-          <path d="M0,40 C360,80 1080,0 1440,40 L1440,80 L0,80 Z" fill="#F5EDD8" />
-        </svg>
       </div>
     </section>
   );
