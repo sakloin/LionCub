@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/app/lib/supabase";
+import { supabaseAdmin } from "@/app/lib/supabase-admin";
 import { CULQI_ENABLED } from "@/app/lib/feature-flags";
 import { fromCents } from "@/app/lib/money";
 
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   console.log(`[culqi] charged ${chargedSoles} PEN for order ${orderId} — ref ${culqiData.id}`);
 
   // Mark order as paid
-  const { error: dbError } = await supabase
+  const { error: dbError } = await supabaseAdmin
     .from("orders")
     .update({
       payment_status: "pagado",
