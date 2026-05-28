@@ -242,11 +242,15 @@ function WaitlistModal({ product, onClose }: { product: Prod; onClose: () => voi
       if (error) throw error;
       setSuccess(true);
     } catch (err) {
-      setFormError(
-        err instanceof Error
-          ? err.message
-          : t("Error al guardar. Intenta de nuevo.", "Couldn't save. Try again.")
-      );
+      // TEMP DIAGNOSTIC — surface raw Supabase error for waitlist debugging
+      console.error("waitlist insert err:", err);
+      const detail =
+        err && typeof err === "object"
+          ? (err as { message?: string; details?: string; code?: string; hint?: string }).message ||
+            (err as { details?: string }).details ||
+            JSON.stringify(err)
+          : String(err);
+      setFormError(detail || t("Error al guardar. Intenta de nuevo.", "Couldn't save. Try again."));
     } finally {
       setSubmitting(false);
     }
