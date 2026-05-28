@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Package, ShoppingCart, TrendingUp, BarChart2, Bell, LogOut, Menu, X } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, TrendingUp, BarChart2, Bell, LogOut, Menu } from "lucide-react";
+import { supabase } from "../../lib/supabase";
 
 const NAV = [
   { href: "/admin",          label: "Dashboard",       icon: LayoutDashboard },
@@ -14,32 +15,83 @@ const NAV = [
   { href: "/admin/espera",    label: "Lista de espera", icon: Bell },
 ];
 
-const ADMIN_KEY = "lioncub_admin_auth";
+// Comma-separated allowlist of admin emails. The authoritative gate is
+// Supabase RLS (policies keyed on the auth.jwt() email); this client-side
+// check is only for UX. Fails closed: if unset, nobody is treated as admin.
+const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
+  .split(",")
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+
+function isAllowed(email?: string | null) {
+  return !!email && ADMIN_EMAILS.includes(email.toLowerCase());
+}
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [authed, setAuthed] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    if (sessionStorage.getItem(ADMIN_KEY) === "1") setAuthed(true);
+    let mounted = true;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
+      setAuthed(!!session && isAllowed(session.user?.email));
+      setChecking(false);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
+      setAuthed(!!session && isAllowed(session?.user?.email));
+    });
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
-  function login(e: React.FormEvent) {
+  async function login(e: React.FormEvent) {
     e.preventDefault();
-    if (pw === (process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "lioncub2025")) {
-      sessionStorage.setItem(ADMIN_KEY, "1");
+    setError("");
+    setSubmitting(true);
+    try {
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: pw,
+      });
+      if (signInError) {
+        setError("Credenciales inválidas");
+        return;
+      }
+      if (!isAllowed(data.user?.email)) {
+        await supabase.auth.signOut();
+        setError("Esta cuenta no tiene acceso al panel");
+        return;
+      }
       setAuthed(true);
-    } else {
-      setError("Contraseña incorrecta");
+      setPw("");
+    } catch {
+      setError("No se pudo iniciar sesión. Intenta de nuevo.");
+    } finally {
+      setSubmitting(false);
     }
   }
 
-  function logout() {
-    sessionStorage.removeItem(ADMIN_KEY);
+  async function logout() {
+    await supabase.auth.signOut();
     setAuthed(false);
+  }
+
+  if (checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FDF8F0]">
+        <p className="text-[#9B6B45] text-sm">Cargando…</p>
+      </div>
+    );
   }
 
   if (!authed) {
@@ -51,16 +103,25 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             <p className="text-[#9B6B45] text-sm mt-1">Panel de administración</p>
           </div>
           <input
+            type="email"
+            placeholder="Correo"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            autoComplete="username"
+            className="border border-[#F5EDD8] rounded-xl px-4 py-3 text-[#3D2010] focus:outline-none focus:ring-2 focus:ring-[#D4A520]"
+            autoFocus
+          />
+          <input
             type="password"
             placeholder="Contraseña"
             value={pw}
             onChange={e => setPw(e.target.value)}
+            autoComplete="current-password"
             className="border border-[#F5EDD8] rounded-xl px-4 py-3 text-[#3D2010] focus:outline-none focus:ring-2 focus:ring-[#D4A520]"
-            autoFocus
           />
           {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-          <button type="submit" className="bg-[#D4A520] text-white font-bold py-3 rounded-xl hover:bg-[#A07D10] transition-colors">
-            Ingresar
+          <button type="submit" disabled={submitting} className="bg-[#D4A520] text-white font-bold py-3 rounded-xl hover:bg-[#A07D10] transition-colors disabled:opacity-60">
+            {submitting ? "Ingresando…" : "Ingresar"}
           </button>
         </form>
       </div>
