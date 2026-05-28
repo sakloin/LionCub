@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/app/lib/supabase";
+import { supabaseAdmin } from "@/app/lib/supabase-admin";
 import { createHmac } from "crypto";
 
 export const dynamic = "force-dynamic";
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     const chargeId = data?.id as string | undefined;
 
     if (orderId) {
-      await supabase
+      await supabaseAdmin
         .from("orders")
         .update({
           payment_status: "pagado",
