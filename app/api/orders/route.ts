@@ -119,7 +119,44 @@ export async function POST(req: NextRequest) {
   const shippingCents = SHIPPING_CENTS[shippingMethod];
   const totalCents = subtotalCents + shippingCents;
 
-  // ─── Insert the order with server-authoritative money fields ──────────
+  // ─── Atomically reserve stock for every item ──────────────────────────
+  // The pre-validation above catches stock=0 at the boundary; this reservation
+  // closes the race window where a concurrent order took the last unit between
+  // our check and our write. The SQL function returns NULL if the update would
+  // drop stock below 0 (constraint inside the WHERE clause).
+  //
+  // If a reservation fails partway through, we roll back the previous ones by
+  // calling the same RPC with a positive qty_change.
+  const reserved: { id: string; qty: number }[] = [];
+
+  async function releaseReserved() {
+    for (const r of reserved) {
+      const { error: rbErr } = await supabaseAdmin.rpc("adjust_product_stock", {
+        p_id: r.id,
+        p_qty_change: r.qty,
+      });
+      if (rbErr) {
+        console.error("[/api/orders] stock rollback failed:", r.id, rbErr.message);
+      }
+    }
+  }
+
+  for (const item of items) {
+    const { data: newStock, error: rpcErr } = await supabaseAdmin.rpc(
+      "adjust_product_stock",
+      { p_id: item.product.id, p_qty_change: -item.quantity }
+    );
+    if (rpcErr || newStock === null || newStock === undefined) {
+      await releaseReserved();
+      return NextResponse.json(
+        { error: `Sin stock suficiente para ${item.product.id}` },
+        { status: 409 }
+      );
+    }
+    reserved.push({ id: item.product.id, qty: item.quantity });
+  }
+
+  // ─── Insert the order; roll back stock if it fails ────────────────────
   const { data: order, error } = await supabaseAdmin
     .from("orders")
     .insert({
@@ -134,29 +171,23 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error || !order) {
-    return NextResponse.json({ error: error?.message ?? "Error creating order" }, { status: 500 });
+    await releaseReserved();
+    return NextResponse.json(
+      { error: error?.message ?? "Error creating order" },
+      { status: 500 }
+    );
   }
 
+  // ─── Insert order_items; on failure, delete order + roll back stock ───
   const itemsWithOrderId = orderItemRows.map((r) => ({ ...r, order_id: order.id }));
   const { error: itemsErr } = await supabaseAdmin.from("order_items").insert(itemsWithOrderId);
   if (itemsErr) {
-    console.error("[/api/orders] order_items insert failed:", itemsErr.message);
-  }
-
-  // Decrement stock — read-then-write, will be replaced with an atomic RPC
-  // in the F3 sub-branch. Math.max guards against going negative.
-  for (const item of items) {
-    const { data: prod } = await supabaseAdmin
-      .from("products")
-      .select("stock")
-      .eq("id", item.product.id)
-      .single();
-    if (prod) {
-      await supabaseAdmin
-        .from("products")
-        .update({ stock: Math.max(0, prod.stock - item.quantity) })
-        .eq("id", item.product.id);
-    }
+    await supabaseAdmin.from("orders").delete().eq("id", order.id);
+    await releaseReserved();
+    return NextResponse.json(
+      { error: itemsErr.message ?? "Error al crear los items del pedido" },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({ id: order.id });
