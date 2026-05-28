@@ -69,10 +69,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       }
       if (!isAllowed(data.user?.email)) {
         await supabase.auth.signOut();
-        // TEMP DIAGNOSTIC — remove before merge
-        setError(
-          `Sin acceso. JWT email: "${data.user?.email ?? "(null)"}" · allowlist count: ${ADMIN_EMAILS.length}`
-        );
+        setError("Esta cuenta no tiene acceso al panel");
         return;
       }
       setAuthed(true);
