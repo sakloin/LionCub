@@ -63,6 +63,9 @@ export default function PedidosAdmin() {
   const [orderItems,   setOrderItems]   = useState<Record<string, OrderItemDetail[]>>({});
   const [loadingItems, setLoadingItems] = useState<Set<string>>(new Set());
   const [productImgs,  setProductImgs]  = useState<Record<string, string>>({});
+  // Map of the publicUrl/path stored in orders.payment_proof_url → time-limited
+  // signed URL fetched from /api/admin/proof-url. Built after orders load.
+  const [proofUrls,    setProofUrls]    = useState<Record<string, string>>({});
   const [toast,        setToast]        = useState<{ msg: string; ok: boolean } | null>(null);
 
   function showToast(msg: string, ok = true) {
@@ -78,17 +81,55 @@ export default function PedidosAdmin() {
         supabase.from("products").select("id,image_url"),
       ]);
       if (ordersRes.error) throw new Error(ordersRes.error.message);
-      setOrders(ordersRes.data ?? []);
+      const fetched = ordersRes.data ?? [];
+      setOrders(fetched);
       if (prodsRes.data) {
         const map: Record<string, string> = {};
         prodsRes.data.forEach((p: any) => { if (p.image_url) map[p.id] = p.image_url; });
         setProductImgs(map);
       }
+      // Fire-and-forget: request signed URLs for every order that has a proof.
+      // payment-proofs is a private bucket; the publicUrl stored historically
+      // no longer renders, so we always need a fresh signed URL.
+      void fetchProofUrls(fetched);
     } catch (e: any) {
       console.error("[admin/pedidos] load failed:", e);
       setError(e?.message ?? "Error al cargar pedidos");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchProofUrls(orderList: Order[]) {
+    const paths = Array.from(
+      new Set(
+        orderList
+          .map((o) => o.payment_proof_url)
+          .filter((p): p is string => typeof p === "string" && p.length > 0)
+      )
+    );
+    if (paths.length === 0) return;
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) return; // No sesión — el RLS de admin debería haberlo evitado igual.
+      const res = await fetch("/api/admin/proof-url", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ paths }),
+      });
+      if (!res.ok) {
+        console.error("[admin/pedidos] proof-url fetch failed:", res.status);
+        return;
+      }
+      const json = await res.json();
+      const signed = (json?.signedUrls ?? {}) as Record<string, string>;
+      setProofUrls((prev) => ({ ...prev, ...signed }));
+    } catch (e) {
+      console.error("[admin/pedidos] proof-url fetch error:", e);
     }
   }
 
@@ -204,6 +245,7 @@ export default function PedidosAdmin() {
             const wa             = orderWaUrl(order);
             const proofUrl       = (order as any).payment_proof_url as string | null;
             const proofIsPdf     = !!proofUrl && proofUrl.toLowerCase().includes(".pdf");
+            const proofSigned    = proofUrl ? proofUrls[proofUrl] : null;
 
             return (
               <div key={order.id} className="bg-white rounded-2xl shadow-sm border border-[#F5EDD8] overflow-hidden">
@@ -270,17 +312,32 @@ export default function PedidosAdmin() {
                       {["pendiente","pagado","fallido"].map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
 
-                    {/* Proof thumbnail / PDF badge */}
+                    {/* Proof thumbnail / PDF badge — opens via 1h signed URL */}
                     {proofUrl && (
                       proofIsPdf ? (
-                        <a href={proofUrl} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 px-2 py-1 rounded-lg transition-colors"
-                          title="Ver comprobante PDF">
+                        <a
+                          href={proofSigned ?? "#"}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-disabled={!proofSigned}
+                          className={`flex items-center gap-1 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 px-2 py-1 rounded-lg transition-colors ${proofSigned ? "" : "opacity-50 pointer-events-none"}`}
+                          title={proofSigned ? "Ver comprobante PDF" : "Generando enlace…"}>
                           <FileText size={14} /> PDF
                         </a>
                       ) : (
-                        <a href={proofUrl} target="_blank" rel="noopener noreferrer" title="Ver comprobante">
-                          <img src={proofUrl} alt="Comprobante" className="w-8 h-8 rounded-lg object-cover border border-[#F5EDD8] hover:opacity-80 transition-opacity" />
+                        <a
+                          href={proofSigned ?? "#"}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-disabled={!proofSigned}
+                          className={proofSigned ? "" : "opacity-50 pointer-events-none"}
+                          title={proofSigned ? "Ver comprobante" : "Generando enlace…"}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={proofSigned ?? ""}
+                            alt="Comprobante"
+                            className="w-8 h-8 rounded-lg object-cover border border-[#F5EDD8] hover:opacity-80 transition-opacity bg-[#F5EDD8]"
+                          />
                         </a>
                       )
                     )}
