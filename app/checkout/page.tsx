@@ -100,6 +100,11 @@ export default function CheckoutPage() {
   // Proof upload state
   const [proofFile,       setProofFile]       = useState<File | null>(null);
   const [proofUrl,        setProofUrl]        = useState("");
+  // Local in-session preview generated from the File object. Independent of
+  // storage privacy — once payment-proofs went private the publicUrl stored in
+  // proofUrl no longer renders for the client. The object URL works while the
+  // checkout session lives and is revoked on reset/unmount.
+  const [proofPreviewUrl, setProofPreviewUrl] = useState<string | null>(null);
   const [proofUploading,  setProofUploading]  = useState(false);
   const [proofError,      setProofError]      = useState<string | null>(null);
 
@@ -133,9 +138,20 @@ export default function CheckoutPage() {
   function resetProof() {
     setProofFile(null);
     setProofUrl("");
+    setProofPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
     setProofError(null);
     setProofUploading(false);
   }
+
+  // Revoke the local object URL when the page unmounts so we don't leak it.
+  useEffect(() => {
+    return () => {
+      if (proofPreviewUrl) URL.revokeObjectURL(proofPreviewUrl);
+    };
+  }, [proofPreviewUrl]);
 
   function handleDateChange(dateStr: string) {
     setDateError(null);
@@ -163,6 +179,15 @@ export default function CheckoutPage() {
       setProofError("El archivo no puede superar 5 MB"); return;
     }
     setProofFile(file);
+    // Local preview: works regardless of bucket privacy.
+    if (file.type.startsWith("image/")) {
+      setProofPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return URL.createObjectURL(file);
+      });
+    } else {
+      setProofPreviewUrl(null);
+    }
     setProofUploading(true);
     try {
       const ext  = file.type === "application/pdf" ? "pdf" : file.type === "image/png" ? "png" : "jpg";
@@ -171,8 +196,10 @@ export default function CheckoutPage() {
         .from("payment-proofs")
         .upload(path, file, { contentType: file.type });
       if (upErr) throw upErr;
-      const { data: { publicUrl } } = supabase.storage.from("payment-proofs").getPublicUrl(path);
-      setProofUrl(publicUrl);
+      // Bucket is private now; store the bucket-relative path so the admin
+      // signing endpoint can resolve it. (Historical orders kept the old
+      // publicUrl string — the admin normalizer handles both.)
+      setProofUrl(path);
     } catch (err) {
       setProofError(err instanceof Error ? err.message : "Error al subir el comprobante. Intenta de nuevo.");
       setProofFile(null);
@@ -618,16 +645,17 @@ export default function CheckoutPage() {
                         </label>
                       ) : (
                         <div className="flex items-center gap-3 border border-rule bg-bg-warm p-3">
-                          {proofUrl.toLowerCase().endsWith(".pdf") ? (
-                            <a href={proofUrl} target="_blank" rel="noopener noreferrer"
-                              className="flex items-center gap-2 text-sm font-semibold text-ink hover:text-gold-deep">
-                              <FileText size={28} /> {proofFile?.name ?? "comprobante.pdf"}
-                            </a>
+                          {proofUrl.toLowerCase().endsWith(".pdf") || !proofPreviewUrl ? (
+                            <div className="flex items-center gap-2 text-sm font-semibold text-ink">
+                              <FileText size={28} /> {proofFile?.name ?? "comprobante"}
+                            </div>
                           ) : (
-                            <a href={proofUrl} target="_blank" rel="noopener noreferrer">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={proofUrl} alt="Comprobante" className="w-14 h-14 object-cover border border-rule" />
-                            </a>
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={proofPreviewUrl}
+                              alt="Comprobante"
+                              className="w-14 h-14 object-cover border border-rule"
+                            />
                           )}
                           <div className="flex-1">
                             <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-gold-deep">{t("Comprobante subido", "Proof uploaded")}</p>

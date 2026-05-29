@@ -70,17 +70,32 @@ export async function POST(req: NextRequest) {
   }
 
   // 4) Sign via the service-role client.
+  const normalizedPaths = [...originalByNormalized.keys()];
   const { data, error } = await supabaseAdmin.storage
     .from(BUCKET)
-    .createSignedUrls([...originalByNormalized.keys()], EXPIRY_SECONDS);
+    .createSignedUrls(normalizedPaths, EXPIRY_SECONDS);
   if (error) {
+    console.error("[/api/admin/proof-url] createSignedUrls failed:", {
+      bucket: BUCKET,
+      paths: normalizedPaths,
+      message: error.message,
+    });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   // 5) Build a { originalInput -> signedUrl } map so the caller can match the
-  //    response back to the rows it sent in.
+  //    response back to the rows it sent in. Surface per-entry errors in logs
+  //    so we notice if individual paths fail to sign (e.g. object missing).
   const signedUrls: Record<string, string> = {};
   for (const entry of data ?? []) {
+    if (entry.error) {
+      console.warn("[/api/admin/proof-url] entry error:", {
+        bucket: BUCKET,
+        path: entry.path,
+        message: entry.error,
+      });
+      continue;
+    }
     if (!entry.signedUrl || !entry.path) continue;
     const original = originalByNormalized.get(entry.path);
     if (original) signedUrls[original] = entry.signedUrl;
