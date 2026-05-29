@@ -23,6 +23,20 @@ interface ImportRow {
 const TEMPLATE_COLS = ["name","tagline","description","category","price","cost","stock","sizes","colors","gender","material","has_offer","active"] as const;
 const COL_WIDTHS     = [28,22,40,16,9,9,8,24,22,10,24,12,8];
 
+const COST_TEMPLATE_COLS = ["id", "cost"] as const;
+
+interface CostImportRow {
+  rowNum: number;
+  id: string;
+  cost: number;
+  /** Nombre actual del producto (lookup contra `products`) — solo para mostrar en el preview. */
+  productName: string | null;
+  /** Cost actual del producto, para el audit_log y para que el usuario vea el delta. */
+  currentCost: number | null;
+  errors: string[];
+  warnings: string[];
+}
+
 const FALLBACK_CATS: Category[] = [
   { id: "conjuntos", name: "Conjuntos" },
   { id: "bodies",   name: "Bodies"    },
@@ -91,6 +105,11 @@ export default function ProductosAdmin() {
   const [importError,   setImportError]   = useState<string | null>(null);
   const [importSaving,  setImportSaving]  = useState(false);
   const [importResult,  setImportResult]  = useState<{ imported: number; skipped: number } | null>(null);
+
+  // Cost-only import (autodetected from the uploaded sheet — separate state so
+  // the UI can show a different preview / confirm action than the full import).
+  const [costImportRows,    setCostImportRows]    = useState<CostImportRow[] | null>(null);
+  const [costImportResult,  setCostImportResult]  = useState<{ updated: number; skipped: number } | null>(null);
 
   async function load() {
     setError(null);
@@ -249,10 +268,34 @@ export default function ProductosAdmin() {
     XLSX.writeFile(wb, "plantilla-productos-lioncub.xlsx");
   }
 
+  /** Carga masiva de costos: descarga un .xlsx con SOLO `id` y `cost`,
+   *  prerellenado con los productos activos ordenados por id. El usuario
+   *  edita solo el costo y vuelve a subir el archivo por el mismo botón
+   *  "Importar Excel"; el parser detecta el modo automáticamente. */
+  function downloadCostTemplate() {
+    const header = [...COST_TEMPLATE_COLS];
+    const note   = ["", "← editar este número (Soles)"];
+    const activeSorted = [...products]
+      .filter((p) => p.active)
+      .sort((a, b) => a.id.localeCompare(b.id));
+    const dataRows = activeSorted.map((p) => [p.id, Number(p.cost) || 0]);
+    const ws = XLSX.utils.aoa_to_sheet([header, note, ...dataRows]);
+    ws["!cols"] = [{ wch: 12 }, { wch: 14 }];
+    // Style the note row in italic / muted.
+    COST_TEMPLATE_COLS.forEach((_, ci) => {
+      const ref = XLSX.utils.encode_cell({ r: 1, c: ci });
+      if (ws[ref]) ws[ref].s = { font: { italic: true, color: { rgb: "888888" } } };
+    });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Costos");
+    XLSX.writeFile(wb, "plantilla-costos-lioncub.xlsx");
+  }
+
   // ── Excel import ───────────────────────────────────────────────────────────
   function handleImportFile(file: File) {
     setImportError(null);
     setImportResult(null);
+    setCostImportResult(null);
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -265,10 +308,65 @@ export default function ProductosAdmin() {
         const rows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
         if (rows.length < 2) throw new Error("El archivo no tiene filas de datos (solo encabezados o vacío).");
 
-        // Detect header row — first row whose first non-empty cell is "name"
+        // ─── Mode detection ──────────────────────────────────────────────
+        // Full template starts with "name" in column A. Cost-only template
+        // has "id" and "cost" in its header row but NO "name".
         let headerIdx = rows.findIndex(r => String(r[0] ?? "").trim().toLowerCase() === "name");
-        if (headerIdx === -1) throw new Error(`No se encontró una fila con encabezado "name". Asegúrate de usar la plantilla descargada.`);
 
+        if (headerIdx === -1) {
+          const costHeaderIdx = rows.findIndex(r => {
+            const lower = (r as any[]).map(c => String(c ?? "").trim().toLowerCase());
+            return lower.includes("id") && lower.includes("cost") && !lower.includes("name");
+          });
+          if (costHeaderIdx === -1) {
+            throw new Error('No se encontró encabezado "name" ni columnas "id"+"cost". Descarga "Plantilla" o "Plantilla solo costos".');
+          }
+          // ─── Parse cost-only template ──────────────────────────────────
+          const costHeaders  = rows[costHeaderIdx].map((h: any) => String(h ?? "").trim().toLowerCase());
+          const idCol        = costHeaders.indexOf("id");
+          const costCol      = costHeaders.indexOf("cost");
+          const productsById = new Map(products.map(p => [p.id, p]));
+          const seenIds      = new Set<string>();
+          const parsedCost: CostImportRow[] = [];
+
+          rows.slice(costHeaderIdx + 1).forEach((raw, idx) => {
+            const rowNum = costHeaderIdx + idx + 2;
+            const rawId   = String(raw[idCol]   ?? "").trim();
+            const rawCost = String(raw[costCol] ?? "").trim();
+            // Skip blank and instruction rows
+            if (!rawId || rawId.startsWith("←")) return;
+
+            const errors:   string[] = [];
+            const warnings: string[] = [];
+            const product = productsById.get(rawId);
+            if (!product) errors.push(`id "${rawId}" no existe en products`);
+            if (seenIds.has(rawId)) errors.push("id duplicado en el archivo");
+            seenIds.add(rawId);
+
+            const costNum = Number(rawCost);
+            if (rawCost === "" || isNaN(costNum)) errors.push("cost debe ser numérico");
+            else if (costNum < 0) errors.push("cost debe ser >= 0");
+            else if (costNum === 0) warnings.push("cost = 0 — confirma que es correcto");
+
+            parsedCost.push({
+              rowNum,
+              id: rawId,
+              cost: isNaN(costNum) ? 0 : costNum,
+              productName: product?.name ?? null,
+              currentCost: product ? Number(product.cost ?? 0) : null,
+              errors,
+              warnings,
+            });
+          });
+
+          if (parsedCost.length === 0) throw new Error("No se encontraron filas de datos en el archivo.");
+
+          setCostImportRows(parsedCost);
+          setImportRows(null);
+          return;
+        }
+
+        // ─── Parse full template (existing logic) ────────────────────────
         const headers = rows[headerIdx].map((h: any) => String(h ?? "").trim().toLowerCase());
         const missing = TEMPLATE_COLS.filter(c => !headers.includes(c));
         if (missing.length > 0) throw new Error(`Columnas faltantes en el Excel: ${missing.join(", ")}. Usa la plantilla oficial.`);
@@ -343,6 +441,7 @@ export default function ProductosAdmin() {
         console.error("[admin/productos] import parse failed:", e);
         setImportError(e?.message ?? "Error al leer el archivo");
         setImportRows(null);
+        setCostImportRows(null);
       }
     };
     reader.onerror = () => setImportError("No se pudo leer el archivo");
@@ -377,8 +476,77 @@ export default function ProductosAdmin() {
 
   function closeImport() {
     setImportRows(null);
+    setCostImportRows(null);
     setImportError(null);
     if (importRef.current) importRef.current.value = "";
+  }
+
+  /** Aplica los updates de cost del modo "Plantilla solo costos" y
+   *  escribe una fila por cambio en audit_log (table_name='products',
+   *  field_changed='cost', old/new, changed_by=auth.user.id). */
+  async function confirmCostImport() {
+    if (!costImportRows) return;
+    const valid = costImportRows.filter(r => r.errors.length === 0);
+    if (valid.length === 0) {
+      setImportError("No hay filas válidas para actualizar.");
+      return;
+    }
+    setImportSaving(true);
+    setImportError(null);
+    try {
+      const { data: userRes } = await supabase.auth.getUser();
+      const changedBy = userRes.user?.id ?? null;
+
+      // Updates en serie para que el audit_log refleje exactamente lo
+      // aplicado (si una falla a mitad de camino, las anteriores ya están
+      // logueadas y vemos en el resumen cuántas se procesaron).
+      const failedRows: { rowNum: number; id: string; message: string }[] = [];
+      const auditPayload: Record<string, unknown>[] = [];
+      let updated = 0;
+      for (const row of valid) {
+        const { error: upErr } = await supabase
+          .from("products")
+          .update({ cost: row.cost })
+          .eq("id", row.id);
+        if (upErr) {
+          failedRows.push({ rowNum: row.rowNum, id: row.id, message: upErr.message });
+          continue;
+        }
+        updated += 1;
+        auditPayload.push({
+          table_name:    "products",
+          record_id:     row.id,
+          field_changed: "cost",
+          old_value:     row.currentCost === null ? null : String(row.currentCost),
+          new_value:     String(row.cost),
+          changed_by:    changedBy,
+        });
+      }
+
+      if (auditPayload.length > 0) {
+        const { error: auditErr } = await supabase.from("audit_log").insert(auditPayload);
+        if (auditErr) {
+          console.warn("[admin/productos] audit_log insert failed:", auditErr.message);
+        }
+      }
+
+      const skipped = costImportRows.filter(r => r.errors.length > 0).length + failedRows.length;
+      setCostImportResult({ updated, skipped });
+      setCostImportRows(null);
+      if (failedRows.length > 0) {
+        setImportError(
+          "Algunos updates fallaron: " +
+          failedRows.slice(0, 3).map(r => `fila ${r.rowNum} (${r.id}): ${r.message}`).join(" · ") +
+          (failedRows.length > 3 ? ` y ${failedRows.length - 3} más` : "")
+        );
+      }
+      await load();
+    } catch (e: any) {
+      console.error("[admin/productos] cost import failed:", e);
+      setImportError(e?.message ?? "Error al actualizar costos");
+    } finally {
+      setImportSaving(false);
+    }
   }
 
   // ── Filtered list ──────────────────────────────────────────────────────────
@@ -409,12 +577,21 @@ export default function ProductosAdmin() {
           <button
             onClick={downloadTemplate}
             className="flex items-center gap-2 border border-[#D4A520] text-[#D4A520] font-bold px-3 py-2 rounded-xl hover:bg-[#FDF8F0] transition-colors text-xs"
+            title="Descargar plantilla completa con todos los campos"
           >
             <FileDown size={14} /> Plantilla
           </button>
           <button
-            onClick={() => { setImportError(null); setImportResult(null); importRef.current?.click(); }}
+            onClick={downloadCostTemplate}
+            className="flex items-center gap-2 border border-[#6B3D1E] text-[#6B3D1E] font-bold px-3 py-2 rounded-xl hover:bg-[#FDF8F0] transition-colors text-xs"
+            title="Descargar plantilla con id y cost de los productos activos para carga masiva de costos"
+          >
+            <FileDown size={14} /> Plantilla solo costos
+          </button>
+          <button
+            onClick={() => { setImportError(null); setImportResult(null); setCostImportResult(null); importRef.current?.click(); }}
             className="flex items-center gap-2 border border-[#9B6B45] text-[#9B6B45] font-bold px-3 py-2 rounded-xl hover:bg-[#FDF8F0] transition-colors text-xs"
+            title="Sube cualquiera de las plantillas — el modo se detecta automáticamente"
           >
             <FileUp size={14} /> Importar Excel
           </button>
@@ -433,6 +610,17 @@ export default function ProductosAdmin() {
           </button>
         </div>
       </div>
+
+      {/* Cost import result banner */}
+      {costImportResult && (
+        <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-2xl px-5 py-3 text-green-700">
+          <CheckCircle2 size={18} className="flex-shrink-0" />
+          <span className="text-sm font-semibold">
+            {costImportResult.updated} costo{costImportResult.updated !== 1 ? "s" : ""} actualizado{costImportResult.updated !== 1 ? "s" : ""}.
+            {costImportResult.skipped > 0 && ` ${costImportResult.skipped} omitido${costImportResult.skipped !== 1 ? "s" : ""} por errores.`}
+          </span>
+        </div>
+      )}
 
       {/* Import result banner */}
       {importResult && (
@@ -572,14 +760,14 @@ export default function ProductosAdmin() {
       )}
 
       {/* ── Import preview modal ────────────────────────────────────────────── */}
-      {(importRows || importError) && (
+      {(importRows || costImportRows || importError) && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#F5EDD8]">
               <h2 className="font-extrabold text-[#3D2010] text-lg flex items-center gap-2">
                 <FileUp size={20} className="text-[#D4A520]" />
-                Vista previa — importación
+                {costImportRows ? "Vista previa — actualización de costos" : "Vista previa — importación"}
               </h2>
               <button onClick={closeImport} className="text-[#9B6B45] hover:text-[#3D2010]"><X size={20} /></button>
             </div>
@@ -646,6 +834,69 @@ export default function ProductosAdmin() {
               </>
             )}
 
+            {/* Cost-only preview */}
+            {costImportRows && costImportRows.length > 0 && (
+              <>
+                <div className="px-6 pt-3 pb-1 flex items-center gap-4 text-sm flex-wrap">
+                  <span className="flex items-center gap-1.5 text-green-700 font-semibold">
+                    <CheckCircle2 size={15} />
+                    {costImportRows.filter(r => r.errors.length === 0).length} válidas
+                  </span>
+                  <span className="flex items-center gap-1.5 text-red-600 font-semibold">
+                    <AlertTriangle size={15} />
+                    {costImportRows.filter(r => r.errors.length > 0).length} con errores
+                  </span>
+                  {costImportRows.some(r => r.warnings.length > 0) && (
+                    <span className="flex items-center gap-1.5 text-amber-600 font-semibold">
+                      <AlertTriangle size={15} />
+                      {costImportRows.filter(r => r.warnings.length > 0).length} con advertencias
+                    </span>
+                  )}
+                  <span className="text-[#9B6B45] text-xs ml-auto">Las filas con error NO se actualizarán</span>
+                </div>
+
+                <div className="overflow-auto flex-1 px-6 pb-4">
+                  <table className="w-full text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-[#F5EDD8] text-[#6B3D1E]">
+                        <th className="px-2 py-2 text-left  font-bold border border-[#EDD9B4]">Fila</th>
+                        <th className="px-2 py-2 text-left  font-bold border border-[#EDD9B4]">ID</th>
+                        <th className="px-2 py-2 text-left  font-bold border border-[#EDD9B4]">Producto</th>
+                        <th className="px-2 py-2 text-right font-bold border border-[#EDD9B4]">Costo actual</th>
+                        <th className="px-2 py-2 text-right font-bold border border-[#EDD9B4]">Costo nuevo</th>
+                        <th className="px-2 py-2 text-left  font-bold border border-[#EDD9B4]">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {costImportRows.map(r => {
+                        const ok      = r.errors.length === 0;
+                        const warn    = ok && r.warnings.length > 0;
+                        const rowCls  = !ok ? "bg-red-50" : warn ? "bg-amber-50" : "bg-green-50";
+                        return (
+                          <tr key={r.rowNum} className={rowCls}>
+                            <td className="px-2 py-1.5 border border-[#EDD9B4] text-[#9B6B45]">{r.rowNum}</td>
+                            <td className="px-2 py-1.5 border border-[#EDD9B4] font-mono">{r.id}</td>
+                            <td className="px-2 py-1.5 border border-[#EDD9B4]">{r.productName ?? <span className="text-red-600">no encontrado</span>}</td>
+                            <td className="px-2 py-1.5 border border-[#EDD9B4] text-right">{r.currentCost === null ? "—" : formatSoles(r.currentCost)}</td>
+                            <td className="px-2 py-1.5 border border-[#EDD9B4] text-right font-semibold">{formatSoles(r.cost)}</td>
+                            <td className="px-2 py-1.5 border border-[#EDD9B4]">
+                              {!ok ? (
+                                <span className="text-red-600">{r.errors.join(" · ")}</span>
+                              ) : warn ? (
+                                <span className="text-amber-700">{r.warnings.join(" · ")}</span>
+                              ) : (
+                                <span className="text-green-700 font-semibold">Lista para actualizar</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+
             {/* Footer actions */}
             {importRows && (
               <div className="flex gap-3 px-6 py-4 border-t border-[#F5EDD8]">
@@ -664,6 +915,28 @@ export default function ProductosAdmin() {
                   {importSaving
                     ? "Importando..."
                     : `Importar ${importRows.filter(r => r.errors.length === 0).length} producto${importRows.filter(r => r.errors.length === 0).length !== 1 ? "s" : ""}`
+                  }
+                </button>
+              </div>
+            )}
+
+            {costImportRows && (
+              <div className="flex gap-3 px-6 py-4 border-t border-[#F5EDD8]">
+                <button
+                  onClick={closeImport}
+                  className="flex-1 py-2.5 border border-[#F5EDD8] rounded-xl text-[#9B6B45] font-semibold hover:bg-[#F5EDD8] transition-colors text-sm"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmCostImport}
+                  disabled={importSaving || costImportRows.filter(r => r.errors.length === 0).length === 0}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#D4A520] text-white font-bold rounded-xl hover:bg-[#A07D10] transition-colors text-sm disabled:opacity-50"
+                >
+                  <FileUp size={15} />
+                  {importSaving
+                    ? "Actualizando..."
+                    : `Actualizar ${costImportRows.filter(r => r.errors.length === 0).length} costo${costImportRows.filter(r => r.errors.length === 0).length !== 1 ? "s" : ""}`
                   }
                 </button>
               </div>
