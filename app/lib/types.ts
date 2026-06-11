@@ -1,5 +1,34 @@
 export type Category = "conjuntos" | "bodies" | "baberos" | "mantas";
 
+export interface ProductSize {
+  id: string;
+  name: string;
+  sort_order: number;
+  active: boolean;
+}
+
+export interface ProductColor {
+  id: string;
+  name: string;
+  hex_code: string | null;
+  active: boolean;
+}
+
+export interface ProductVariant {
+  id: string;
+  product_id: string;
+  size_id: string;
+  color_id: string;
+  sku_variant: string;
+  stock: number;
+  cost: number | null;
+  price_override: number | null;
+  active: boolean;
+  // Loaded via PostgREST join (`size:product_sizes(...)`) — denormalized for display.
+  size?: ProductSize;
+  color?: ProductColor;
+}
+
 export interface Product {
   id: string;
   sku: string;
@@ -9,15 +38,14 @@ export interface Product {
   category: Category;
   price: number;
   cost: number;
-  stock: number;
-  sizes: string[];
-  colors: string[];
   gender: string;
   material: string;
   has_offer: boolean;
   image_url: string;
   active: boolean;
   created_at: string;
+  // Loaded via PostgREST join. Empty array if the product has no variants yet.
+  variants?: ProductVariant[];
 }
 
 export interface Order {
@@ -50,6 +78,7 @@ export interface OrderItem {
   id: string;
   order_id: string;
   product_id: string;
+  variant_id: string | null;
   product_name: string;
   product_sku: string;
   selected_size: string | null;
@@ -75,7 +104,18 @@ export interface Purchase {
 
 export interface CartItem {
   product: Product;
+  /** Variant snapshot. Variants always exist now — the public catalog cannot
+   *  surface a product without at least one. The id is the canonical link to
+   *  product_variants and is what /api/orders uses to decrement stock. */
+  variant: {
+    id: string;
+    size_name: string;
+    color_name: string;
+    stock_at_pick: number;
+  };
   quantity: number;
+  /** Legacy mirrors retained because the cart-drawer + checkout UI still read
+   *  these. Always equal to variant.size_name / variant.color_name. */
   selectedSize: string;
   selectedColor: string;
 }

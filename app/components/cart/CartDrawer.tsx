@@ -82,12 +82,12 @@ export default function CartDrawer({ open, onClose }: Props) {
             <ul>
               {items.map((item) => (
                 <li
-                  key={`${item.product.id}|${item.selectedSize}|${item.selectedColor}`}
+                  key={item.variant.id}
                   className="flex gap-4 py-5 border-b border-rule"
                 >
                   <div className="lc-plate w-20 h-24 shrink-0 rounded-sm">
                     <Image
-                      src={`/products/${item.product.id}.jpeg`}
+                      src={item.product.image_url || `/products/${item.product.id}.jpeg`}
                       alt={item.product.name}
                       width={80}
                       height={96}
@@ -103,21 +103,14 @@ export default function CartDrawer({ open, onClose }: Props) {
                       {item.product.name}
                     </h3>
                     <p className="text-xs text-ink-soft mt-0.5">
-                      {[item.selectedColor, item.selectedSize].filter(Boolean).join(" · ")}
+                      {[item.variant.color_name, item.variant.size_name].filter(Boolean).join(" · ")}
                     </p>
 
                     <div className="mt-auto pt-3 flex items-center justify-between gap-3">
                       {/* Quantity stepper — text glyphs, no icons */}
                       <div className="flex items-center border border-rule">
                         <button
-                          onClick={() =>
-                            updateQty(
-                              item.product.id,
-                              item.selectedSize,
-                              item.selectedColor,
-                              item.quantity - 1
-                            )
-                          }
+                          onClick={() => updateQty(item.variant.id, item.quantity - 1)}
                           aria-label={t("Quitar una unidad", "Remove one")}
                           className="px-3 py-1.5 text-ink-mute hover:text-ink transition-colors"
                         >
@@ -127,14 +120,7 @@ export default function CartDrawer({ open, onClose }: Props) {
                           {item.quantity}
                         </span>
                         <button
-                          onClick={() =>
-                            updateQty(
-                              item.product.id,
-                              item.selectedSize,
-                              item.selectedColor,
-                              item.quantity + 1
-                            )
-                          }
+                          onClick={() => updateQty(item.variant.id, item.quantity + 1)}
                           aria-label={t("Agregar una unidad", "Add one")}
                           className="px-3 py-1.5 text-ink hover:text-gold-deep transition-colors"
                         >
@@ -148,9 +134,7 @@ export default function CartDrawer({ open, onClose }: Props) {
                     </div>
 
                     <button
-                      onClick={() =>
-                        remove(item.product.id, item.selectedSize, item.selectedColor)
-                      }
+                      onClick={() => remove(item.variant.id)}
                       className="self-start mt-2 lc-mono uppercase text-[9px] tracking-[0.22em] text-ink-mute hover:text-ink transition-colors"
                     >
                       {t("Eliminar", "Remove")}
