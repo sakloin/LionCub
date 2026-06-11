@@ -46,9 +46,24 @@ const FALLBACK_CATS: Category[] = [
 
 const EMPTY: any = {
   id: "", sku: "", name: "", tagline: "", description: "",
-  category: "conjuntos", price: 0, cost: 0, stock: 0,
-  sizes: [], colors: [], gender: "Unisex", has_offer: false, image_url: "", active: true,
+  category: "conjuntos", price: 0, cost: 0,
+  gender: "Unisex", has_offer: false, image_url: "", active: true,
 };
+
+interface SizeOption  { id: string; name: string; sort_order: number; active: boolean; }
+interface ColorOption { id: string; name: string; hex_code: string | null; active: boolean; }
+
+/** Optional starter variant collected when creating a new product. The admin
+ *  picks 1 talla + 1 color + initial stock and the save() handler writes a
+ *  single product_variants row right after the product insert. Editing an
+ *  existing product doesn't touch variants from this UI — that goes in the
+ *  Fase 2/3 variant matrix. */
+interface InitialVariant {
+  size_id:  string;
+  color_id: string;
+  stock:    number;
+}
+const EMPTY_INITIAL_VARIANT: InitialVariant = { size_id: "", color_id: "", stock: 0 };
 
 /** Returns the next available LC-NNN id given a list of existing products
  *  plus any ids already reserved in the current batch. */
@@ -111,16 +126,36 @@ export default function ProductosAdmin() {
   const [costImportRows,    setCostImportRows]    = useState<CostImportRow[] | null>(null);
   const [costImportResult,  setCostImportResult]  = useState<{ updated: number; skipped: number } | null>(null);
 
+  // Variant catalogs (loaded from product_sizes / product_colors).
+  const [sizes,  setSizes]  = useState<SizeOption[]>([]);
+  const [colors, setColors] = useState<ColorOption[]>([]);
+  // Variant starter — only meaningful when creating a new product.
+  const [initialVariant, setInitialVariant] = useState<InitialVariant>(EMPTY_INITIAL_VARIANT);
+  // Stock per product, computed from product_variants (sum of variants.stock).
+  const [stockByProduct, setStockByProduct] = useState<Record<string, number>>({});
+
   async function load() {
     setError(null);
     try {
-      const [prodRes, catRes] = await Promise.all([
-        supabase.from("products").select("*").order("id"),
+      const [prodRes, catRes, sizeRes, colorRes, variantRes] = await Promise.all([
+        supabase.from("products").select("*").order("created_at", { ascending: true }),
         supabase.from("categories").select("id,name").order("name"),
+        supabase.from("product_sizes").select("id,name,sort_order,active").order("sort_order"),
+        supabase.from("product_colors").select("id,name,hex_code,active").order("name"),
+        supabase.from("product_variants").select("product_id,stock,active"),
       ]);
       if (prodRes.error) throw new Error(prodRes.error.message);
       setProducts(prodRes.data ?? []);
-      if (catRes.data && catRes.data.length > 0) setCategories(catRes.data);
+      if (catRes.data   && catRes.data.length   > 0) setCategories(catRes.data);
+      if (sizeRes.data)  setSizes(sizeRes.data as SizeOption[]);
+      if (colorRes.data) setColors(colorRes.data as ColorOption[]);
+      // Roll up per-product stock from variants for the table column.
+      const stockMap: Record<string, number> = {};
+      for (const v of (variantRes.data ?? []) as { product_id: string; stock: number; active: boolean }[]) {
+        if (!v.active) continue;
+        stockMap[v.product_id] = (stockMap[v.product_id] ?? 0) + v.stock;
+      }
+      setStockByProduct(stockMap);
     } catch (e: any) {
       console.error("[admin/productos] load failed:", e);
       setError(e?.message ?? "Error al cargar productos");
@@ -142,14 +177,45 @@ export default function ProductosAdmin() {
       if (_isNew) payload.sku = payload.id;
 
       if (_isNew) {
-        const { error: e } = await supabase.from("products").insert(payload);
-        if (e) throw new Error(e.message);
+        // Validate the initial variant — every new product needs at least one
+        // variant so it shows on the public store.
+        if (!initialVariant.size_id || !initialVariant.color_id) {
+          throw new Error("Selecciona la talla y el color de la variante inicial.");
+        }
+        if (!Number.isFinite(initialVariant.stock) || initialVariant.stock < 0) {
+          throw new Error("El stock inicial debe ser un número >= 0.");
+        }
+        const { error: insErr } = await supabase.from("products").insert(payload);
+        if (insErr) throw new Error(insErr.message);
+
+        // Compose a readable variant SKU: <product_id>-<size>-<COLOR>.
+        const sizeName  = sizes.find(s  => s.id === initialVariant.size_id)?.name  ?? "";
+        const colorName = colors.find(c => c.id === initialVariant.color_id)?.name ?? "";
+        const variantSku = `${payload.id}-${sizeName}-${colorName.toUpperCase().replace(/[^A-Z0-9]+/g, "")}`;
+
+        const { error: vErr } = await supabase.from("product_variants").insert({
+          product_id:  payload.id,
+          size_id:     initialVariant.size_id,
+          color_id:    initialVariant.color_id,
+          sku_variant: variantSku,
+          stock:       Math.floor(initialVariant.stock),
+          cost:        null,            // si NULL hereda products.cost
+          price_override: null,
+          active:      true,
+        });
+        if (vErr) {
+          // Rollback product to keep the catalog consistent — without a
+          // variant the product wouldn't appear on the store anyway.
+          await supabase.from("products").delete().eq("id", payload.id);
+          throw new Error(`Variante: ${vErr.message}`);
+        }
       } else {
-        const { error: e } = await supabase.from("products").update(payload).eq("id", editing.id);
-        if (e) throw new Error(e.message);
+        const { error: updErr } = await supabase.from("products").update(payload).eq("id", editing.id);
+        if (updErr) throw new Error(updErr.message);
       }
       await load();
       setEditing(null);
+      setInitialVariant(EMPTY_INITIAL_VARIANT);
     } catch (e: any) {
       console.error("[admin/productos] save failed:", e);
       setSaveError(e?.message ?? "Error al guardar producto");
@@ -574,34 +640,9 @@ export default function ProductosAdmin() {
           <p className="text-[#9B6B45] text-sm">{products.length} productos en catálogo</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={downloadTemplate}
-            className="flex items-center gap-2 border border-[#D4A520] text-[#D4A520] font-bold px-3 py-2 rounded-xl hover:bg-[#FDF8F0] transition-colors text-xs"
-            title="Descargar plantilla completa con todos los campos"
-          >
-            <FileDown size={14} /> Plantilla
-          </button>
-          <button
-            onClick={downloadCostTemplate}
-            className="flex items-center gap-2 border border-[#6B3D1E] text-[#6B3D1E] font-bold px-3 py-2 rounded-xl hover:bg-[#FDF8F0] transition-colors text-xs"
-            title="Descargar plantilla con id y cost de los productos activos para carga masiva de costos"
-          >
-            <FileDown size={14} /> Plantilla solo costos
-          </button>
-          <button
-            onClick={() => { setImportError(null); setImportResult(null); setCostImportResult(null); importRef.current?.click(); }}
-            className="flex items-center gap-2 border border-[#9B6B45] text-[#9B6B45] font-bold px-3 py-2 rounded-xl hover:bg-[#FDF8F0] transition-colors text-xs"
-            title="Sube cualquiera de las plantillas — el modo se detecta automáticamente"
-          >
-            <FileUp size={14} /> Importar Excel
-          </button>
-          <input
-            ref={importRef}
-            type="file"
-            accept=".xlsx,.xls"
-            className="hidden"
-            onChange={e => { const f = e.target.files?.[0]; if (f) handleImportFile(f); e.target.value = ""; }}
-          />
+          {/* Plantillas e import por Excel: deshabilitadas en Fase 1 — el modelo
+              de variantes (talla x color) cambia las columnas necesarias.
+              Se rediseñan junto con el variant matrix en una fase próxima. */}
           <button
             onClick={() => { setSaveError(null); const autoId = nextId(products); setEditing({ ...EMPTY, id: autoId, sku: autoId, _isNew: true }); }}
             className="flex items-center gap-2 bg-[#D4A520] text-white font-bold px-4 py-2.5 rounded-xl hover:bg-[#A07D10] transition-colors text-sm"
@@ -679,7 +720,10 @@ export default function ProductosAdmin() {
                   <td className="px-4 py-3 text-right font-bold text-[#D4A520]">{formatSoles(p.price)}</td>
                   <td className="px-4 py-3 text-right text-[#9B6B45]">{formatSoles(p.cost ?? 0)}</td>
                   <td className="px-4 py-3 text-right">
-                    <span className={`font-bold ${p.stock <= 3 ? "text-orange-500" : "text-[#3D2010]"}`}>{p.stock}</span>
+                    {(() => {
+                      const s = stockByProduct[p.id] ?? 0;
+                      return <span className={`font-bold ${s <= 3 ? "text-orange-500" : "text-[#3D2010]"}`}>{s}</span>;
+                    })()}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <button onClick={() => toggleActive(p)} className={`flex items-center gap-1 mx-auto text-xs font-semibold ${p.active ? "text-green-600" : "text-[#9B6B45]"}`}>
@@ -980,8 +1024,7 @@ export default function ProductosAdmin() {
               { key: "tagline",     label: "Tagline (opcional)",   type: "text",     ph: "" },
               { key: "description", label: "Descripción",          type: "textarea", ph: "" },
               { key: "price",       label: "Precio (S/)",          type: "number",   ph: "" },
-              { key: "cost",        label: "Costo (S/)",           type: "number",   ph: "" },
-              { key: "stock",       label: "Stock",                type: "number",   ph: "" },
+              { key: "cost",        label: "Costo base (S/) — opcional", type: "number", ph: "" },
             ] as const).map(({ key, label, type, ph }) => (
               <div key={key}>
                 <label className="block text-xs font-bold text-[#6B3D1E] mb-1">{label}</label>
@@ -1048,8 +1091,57 @@ export default function ProductosAdmin() {
                 className="hidden"
                 onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = ""; }}
               />
-              <p className="text-[10px] text-[#9B6B45] mt-1">jpg · png · webp — bucket "product-images" debe ser público en Supabase Storage</p>
+              <p className="text-[10px] text-[#9B6B45] mt-1">jpg · png · webp — bucket &quot;product-images&quot; debe ser público en Supabase Storage</p>
             </div>
+
+            {/* Variante inicial — solo para producto nuevo (Fase 1).
+                Para editar variantes existentes habrá una pantalla aparte. */}
+            {editing._isNew && (
+              <div className="border border-[#F5EDD8] bg-[#FDF8F0] rounded-2xl p-4 flex flex-col gap-3">
+                <p className="text-xs font-bold text-[#6B3D1E]">Variante inicial — talla, color y stock</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#9B6B45] mb-1">Talla</label>
+                    <select
+                      value={initialVariant.size_id}
+                      onChange={e => setInitialVariant(prev => ({ ...prev, size_id: e.target.value }))}
+                      className="w-full border border-[#F5EDD8] rounded-xl px-2 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#D4A520]"
+                    >
+                      <option value="">— elegir —</option>
+                      {sizes.filter(s => s.active).map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#9B6B45] mb-1">Color</label>
+                    <select
+                      value={initialVariant.color_id}
+                      onChange={e => setInitialVariant(prev => ({ ...prev, color_id: e.target.value }))}
+                      className="w-full border border-[#F5EDD8] rounded-xl px-2 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#D4A520]"
+                    >
+                      <option value="">— elegir —</option>
+                      {colors.filter(c => c.active).map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#9B6B45] mb-1">Stock inicial</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={initialVariant.stock}
+                      onChange={e => setInitialVariant(prev => ({ ...prev, stock: Number(e.target.value) || 0 }))}
+                      className="w-full border border-[#F5EDD8] rounded-xl px-2 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#D4A520]"
+                    />
+                  </div>
+                </div>
+                <p className="text-[10px] text-[#9B6B45]">
+                  Más adelante podrás agregar más variantes (tallas / colores) al producto.
+                </p>
+              </div>
+            )}
 
             {/* Category */}
             <div>

@@ -678,9 +678,15 @@ export default function CheckoutPage() {
             <p className="lc-eyebrow mb-4">{t("Tu pedido", "Your order")}</p>
             <ul className="flex flex-col">
               {items.map(item => (
-                <li key={`${item.product.id}|${item.selectedSize}|${item.selectedColor}`} className="flex gap-3 py-3 border-b border-rule first:pt-0">
+                <li key={item.variant.id} className="flex gap-3 py-3 border-b border-rule first:pt-0">
                   <div className="lc-plate w-14 h-14 shrink-0 rounded-sm">
-                    <Image src={`/products/${item.product.id}.jpeg`} alt={item.product.name} width={56} height={56} className="object-cover w-full h-full" />
+                    <Image
+                      src={item.product.image_url || `/products/${item.product.id}.jpeg`}
+                      alt={item.product.name}
+                      width={56}
+                      height={56}
+                      className="object-cover w-full h-full"
+                    />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="lc-display text-base text-ink leading-tight truncate">{item.product.name}</p>

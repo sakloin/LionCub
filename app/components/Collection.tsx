@@ -1,55 +1,113 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { X } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
 import { LionMark } from "./LogoMark";
 import { supabase } from "../lib/supabase";
-import type { Product } from "../lib/types";
-import data from "../data/productos.json";
+import type { Product, ProductVariant } from "../lib/types";
 
-const { categories, products } = data;
+// ── Categories ────────────────────────────────────────────────────────────
+// Editorial labels for the category strip. The product.category column is the
+// canonical id used both in /admin and in the public filter. Unknown
+// categories fall back to a "Otros" group at the end.
 
-type Prod = (typeof products)[0];
+interface CategoryDef {
+  id: string;
+  name: string;
+  desc: string;
+  hasOffer: boolean;
+}
 
-// Editorial, desaturated swatch palette (ported from design-handoff tokens).
-const COLOR_HEX: Record<string, string> = {
-  Blanco: "#FAF7EF",
-  Beige: "#E9DDC4",
-  Celeste: "#C9D9E4",
-  Rosa: "#F2C9C2",
-  "Palo Rosa": "#EDD3CC",
-  Azul: "#A8B8CB",
-  Crema: "#F0E3CB",
-  Durazno: "#EDC8B0",
-  "Verde menta": "#C8D6BD",
-  Floral: "linear-gradient(45deg, #F2C9C2, #C8D6BD)",
-};
-const swatchBg = (c: string) => COLOR_HEX[c] ?? "#CFC3AE";
+const CATEGORIES: CategoryDef[] = [
+  {
+    id: "conjuntos",
+    name: "Conjuntos & Ajuares",
+    desc: "Sets completos hechos para el primer abrazo y los días que siguen.",
+    hasOffer: false,
+  },
+  { id: "bodies",  name: "Bodies",  desc: "La prenda base del guardarropa — suave, versátil, esencial.", hasOffer: true },
+  { id: "baberos", name: "Baberos", desc: "Los detalles tiernos que cuidan cada comida.",                hasOffer: true },
+  { id: "mantas",  name: "Mantas",  desc: "Abrigos ligeros que envuelven con dulzura.",                  hasOffer: true },
+];
 
-// Map a JSON product onto the Cart's Product shape (cart reads id/name/price/image).
-function toCartProduct(p: Prod) {
-  return {
-    ...p,
-    cost: 0,
-    stock: 99,
-    has_offer: p.hasOffer,
-    image_url: `/products/${p.id}.jpeg`,
-    active: true,
-    created_at: "",
-  } as unknown as Product;
+// ── Helpers ───────────────────────────────────────────────────────────────
+
+function swatchBg(hex: string | null | undefined): string {
+  return hex ?? "#CFC3AE";
+}
+
+/** Sum of active variant stocks. A product with zero stock across the board is
+ *  treated as sold-out and routes the card click to the waitlist. */
+function totalStock(p: Product): number {
+  return (p.variants ?? []).filter(v => v.active).reduce((s, v) => s + v.stock, 0);
+}
+
+/** Distinct colour list for a product (one swatch per colour regardless of
+ *  size), sorted by appearance. */
+function distinctColors(p: Product): { id: string; name: string; hex: string | null }[] {
+  const seen = new Map<string, { id: string; name: string; hex: string | null }>();
+  for (const v of p.variants ?? []) {
+    if (!v.active || !v.color) continue;
+    if (!seen.has(v.color_id)) {
+      seen.set(v.color_id, { id: v.color_id, name: v.color.name, hex: v.color.hex_code });
+    }
+  }
+  return [...seen.values()];
 }
 
 // ── Selection mini-sheet ──────────────────────────────────────────────────
-// Clean cards open this sheet to pick size + color before adding to the bag.
+// Kukuli-style flow: pick a size first → only the colours available for that
+// size are enabled → confirm the (size,colour) variant and add to bag.
 
-function SelectionSheet({ product, onClose }: { product: Prod; onClose: () => void }) {
+function SelectionSheet({ product, onClose }: { product: Product; onClose: () => void }) {
   const { t } = useLang();
   const { add } = useCart();
-  const [size, setSize] = useState(product.sizes[0] ?? "");
-  const [color, setColor] = useState(product.colors[0] ?? "");
+
+  // Only consider active variants with positive stock for selection.
+  const buyable = (product.variants ?? []).filter(v => v.active && v.stock > 0);
+
+  // Unique sizes (sorted by sort_order) and unique colours, both restricted to
+  // variants the customer can actually purchase.
+  const sizes = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; sort_order: number }>();
+    for (const v of buyable) {
+      if (!v.size) continue;
+      if (!map.has(v.size_id)) map.set(v.size_id, { id: v.size_id, name: v.size.name, sort_order: v.size.sort_order });
+    }
+    return [...map.values()].sort((a, b) => a.sort_order - b.sort_order);
+  }, [buyable]);
+
+  const [sizeId, setSizeId] = useState<string>(sizes[0]?.id ?? "");
+
+  const colorsForSize = useMemo(() => {
+    if (!sizeId) return [];
+    const map = new Map<string, { id: string; name: string; hex: string | null; variantId: string; stock: number }>();
+    for (const v of buyable) {
+      if (v.size_id !== sizeId || !v.color) continue;
+      if (!map.has(v.color_id)) {
+        map.set(v.color_id, {
+          id: v.color_id,
+          name: v.color.name,
+          hex: v.color.hex_code,
+          variantId: v.id,
+          stock: v.stock,
+        });
+      }
+    }
+    return [...map.values()];
+  }, [sizeId, buyable]);
+
+  const [colorId, setColorId] = useState<string>("");
+  // Reset the colour pick whenever the size changes, defaulting to the first
+  // available one so the user can confirm fast.
+  useEffect(() => {
+    setColorId(colorsForSize[0]?.id ?? "");
+  }, [colorsForSize]);
+
+  const selectedVariant = buyable.find(v => v.size_id === sizeId && v.color_id === colorId) ?? null;
   const [added, setAdded] = useState(false);
 
   useEffect(() => {
@@ -59,10 +117,13 @@ function SelectionSheet({ product, onClose }: { product: Prod; onClose: () => vo
   }, [onClose]);
 
   function handleAdd() {
-    add(toCartProduct(product), size, color);
+    if (!selectedVariant) return;
+    add(product, { variant: selectedVariant });
     setAdded(true);
     setTimeout(onClose, 1100);
   }
+
+  const displayPrice = selectedVariant?.price_override ?? product.price;
 
   return (
     <div
@@ -77,7 +138,7 @@ function SelectionSheet({ product, onClose }: { product: Prod; onClose: () => vo
         <div className="flex items-start gap-4 p-5 sm:p-6 border-b border-rule">
           <div className="lc-plate w-16 h-20 shrink-0 rounded-sm">
             <Image
-              src={`/products/${product.id}.jpeg`}
+              src={product.image_url || `/products/${product.id}.jpeg`}
               alt={product.name}
               width={64}
               height={80}
@@ -85,7 +146,7 @@ function SelectionSheet({ product, onClose }: { product: Prod; onClose: () => vo
             />
           </div>
           <div className="flex-1 min-w-0">
-            {product.gender !== "Unisex" && (
+            {product.gender && product.gender !== "Unisex" && (
               <p className="lc-mono uppercase text-[9px] tracking-[0.24em] text-ink-mute">
                 {product.gender}
               </p>
@@ -113,60 +174,73 @@ function SelectionSheet({ product, onClose }: { product: Prod; onClose: () => vo
           </div>
         ) : (
           <div className="p-5 sm:p-6 flex flex-col gap-6">
-            {/* Color */}
-            {product.colors.length > 0 && (
+            {/* Size — pick first */}
+            {sizes.length > 0 && (
               <div>
                 <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-3">
-                  {t("Color", "Color")} ·{" "}
-                  <span className="text-ink">{color || t("Elige", "Pick")}</span>
+                  {t("Talla", "Size")} ·{" "}
+                  <span className="text-ink">
+                    {sizes.find(s => s.id === sizeId)?.name ?? t("Elige", "Pick")}
+                  </span>
                 </p>
-                <div className="flex flex-wrap gap-3.5">
-                  {product.colors.map((c) => (
+                <div className="flex flex-wrap gap-2.5">
+                  {sizes.map((s) => (
                     <button
-                      key={c}
+                      key={s.id}
                       type="button"
-                      onClick={() => setColor(c)}
-                      aria-label={c}
-                      title={c}
-                      className="rounded-full"
-                      style={{
-                        boxShadow:
-                          color === c
-                            ? "0 0 0 1px var(--color-ink), 0 0 0 4px var(--color-bg)"
-                            : "none",
-                      }}
+                      onClick={() => setSizeId(s.id)}
+                      className={`min-w-[3rem] text-center py-3 px-4 lc-mono uppercase text-[11px] tracking-[0.16em] border transition-colors ${
+                        sizeId === s.id
+                          ? "border-ink bg-ink text-bg"
+                          : "border-rule text-ink-soft hover:border-ink"
+                      }`}
                     >
-                      <span className="lc-sw lc-sw-lg" style={{ background: swatchBg(c) }} />
+                      {s.name}
                     </button>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Size */}
-            {product.sizes.length > 0 && (
+            {/* Color — only those available for the chosen size */}
+            {colorsForSize.length > 0 && (
               <div>
                 <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-3">
-                  {t("Talla", "Size")} ·{" "}
-                  <span className="text-ink">{size || t("Elige", "Pick")}</span>
+                  {t("Color", "Color")} ·{" "}
+                  <span className="text-ink">
+                    {colorsForSize.find(c => c.id === colorId)?.name ?? t("Elige", "Pick")}
+                  </span>
                 </p>
-                <div className="flex gap-2.5">
-                  {product.sizes.map((s) => (
+                <div className="flex flex-wrap gap-3.5">
+                  {colorsForSize.map((c) => (
                     <button
-                      key={s}
+                      key={c.id}
                       type="button"
-                      onClick={() => setSize(s)}
-                      className={`flex-1 text-center py-3 lc-mono uppercase text-[11px] tracking-[0.16em] border transition-colors ${
-                        size === s
-                          ? "border-ink bg-ink text-bg"
-                          : "border-rule text-ink-soft hover:border-ink"
-                      }`}
+                      onClick={() => setColorId(c.id)}
+                      aria-label={c.name}
+                      title={c.name}
+                      className="rounded-full"
+                      style={{
+                        boxShadow:
+                          colorId === c.id
+                            ? "0 0 0 1px var(--color-ink), 0 0 0 4px var(--color-bg)"
+                            : "none",
+                      }}
                     >
-                      {s}
+                      <span className="lc-sw lc-sw-lg" style={{ background: swatchBg(c.hex) }} />
                     </button>
                   ))}
                 </div>
               </div>
+            )}
+
+            {/* Stock readout for the picked variant */}
+            {selectedVariant && (
+              <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute">
+                {selectedVariant.stock === 1
+                  ? t("1 unidad disponible", "1 unit available")
+                  : `${selectedVariant.stock} ${t("unidades disponibles", "units available")}`}
+              </p>
             )}
 
             <div className="flex items-baseline justify-between pt-1">
@@ -175,12 +249,17 @@ function SelectionSheet({ product, onClose }: { product: Prod; onClose: () => vo
               </span>
               <span className="lc-display text-2xl text-ink">
                 <span className="lc-mono text-xs text-ink-mute mr-1">S/</span>
-                {product.price}
+                {displayPrice}
               </span>
             </div>
 
-            <button type="button" onClick={handleAdd} className="lc-btn lc-btn-primary w-full">
-              {t("Agregar a la bolsa", "Add to bag")}
+            <button
+              type="button"
+              onClick={handleAdd}
+              disabled={!selectedVariant}
+              className="lc-btn lc-btn-primary w-full disabled:opacity-50"
+            >
+              {selectedVariant ? t("Agregar a la bolsa", "Add to bag") : t("Elige una variante", "Pick a variant")}
             </button>
           </div>
         )}
@@ -191,15 +270,20 @@ function SelectionSheet({ product, onClose }: { product: Prod; onClose: () => vo
 
 // ── Waitlist modal ──────────────────────────────────────────────────────────
 
-function WaitlistModal({ product, onClose }: { product: Prod; onClose: () => void }) {
+function WaitlistModal({ product, onClose }: { product: Product; onClose: () => void }) {
   const { t } = useLang();
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
-  const [size, setSize] = useState(product.sizes[0] ?? "");
-  const [color, setColor] = useState(product.colors[0] ?? "");
+  const [size, setSize] = useState("");
+  const [color, setColor] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  // Distinct sizes/colours available across the product's variants (even out
+  // of stock — the customer is signalling intent, not buying right now).
+  const sizes  = [...new Set((product.variants ?? []).map(v => v.size?.name).filter(Boolean) as string[])];
+  const colors = [...new Set((product.variants ?? []).map(v => v.color?.name).filter(Boolean) as string[])];
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -224,9 +308,7 @@ function WaitlistModal({ product, onClose }: { product: Prod; onClose: () => voi
       return;
     }
     if (!isEmail && contact.replace(/\D/g, "").length < 9) {
-      setFormError(
-        t("El teléfono debe tener al menos 9 dígitos", "Phone needs at least 9 digits")
-      );
+      setFormError(t("El teléfono debe tener al menos 9 dígitos", "Phone needs at least 9 digits"));
       return;
     }
     setSubmitting(true);
@@ -236,27 +318,24 @@ function WaitlistModal({ product, onClose }: { product: Prod; onClose: () => voi
         customer_name: name.trim(),
         email: isEmail ? contact.trim() : null,
         phone: !isEmail ? contact.trim() : null,
-        size: size || null,
+        size:  size  || null,
         color: color || null,
       });
       if (error) throw error;
       setSuccess(true);
     } catch (err) {
-      setFormError(
-        err instanceof Error
-          ? err.message
-          : t("Error al guardar. Intenta de nuevo.", "Couldn't save. Try again.")
-      );
+      const detail =
+        err && typeof err === "object"
+          ? (err as { message?: string }).message ?? JSON.stringify(err)
+          : String(err);
+      setFormError(detail || t("Error al guardar. Intenta de nuevo.", "Couldn't save. Try again."));
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/40"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/40" onClick={onClose}>
       <div
         className="bg-bg w-full sm:max-w-md rounded-t-2xl sm:rounded-sm shadow-2xl animate-fade-in-up"
         onClick={(e) => e.stopPropagation()}
@@ -319,14 +398,14 @@ function WaitlistModal({ product, onClose }: { product: Prod; onClose: () => voi
               />
             </div>
 
-            {product.sizes.length > 0 && (
+            {sizes.length > 0 && (
               <div>
                 <label className="block lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-1">
                   {t("Talla de interés", "Size of interest")}
                 </label>
                 <select value={size} onChange={(e) => setSize(e.target.value)} className="lc-input">
                   <option value="">{t("Sin preferencia", "No preference")}</option>
-                  {product.sizes.map((s) => (
+                  {sizes.map((s) => (
                     <option key={s} value={s}>
                       {s}
                     </option>
@@ -335,18 +414,14 @@ function WaitlistModal({ product, onClose }: { product: Prod; onClose: () => voi
               </div>
             )}
 
-            {product.colors.length > 0 && (
+            {colors.length > 0 && (
               <div>
                 <label className="block lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-1">
                   {t("Color de interés", "Color of interest")}
                 </label>
-                <select
-                  value={color}
-                  onChange={(e) => setColor(e.target.value)}
-                  className="lc-input"
-                >
+                <select value={color} onChange={(e) => setColor(e.target.value)} className="lc-input">
                   <option value="">{t("Sin preferencia", "No preference")}</option>
-                  {product.colors.map((c) => (
+                  {colors.map((c) => (
                     <option key={c} value={c}>
                       {c}
                     </option>
@@ -373,30 +448,30 @@ function WaitlistModal({ product, onClose }: { product: Prod; onClose: () => voi
   );
 }
 
-// ── Product card (clean) ──────────────────────────────────────────────────────
+// ── Product card ────────────────────────────────────────────────────────────
 
 function ProductCard({
   product,
-  stock,
   onSelect,
   onWaitlist,
 }: {
-  product: Prod;
-  stock: number | undefined;
+  product: Product;
   onSelect: () => void;
   onWaitlist: () => void;
 }) {
   const { t } = useLang();
   const [imgError, setImgError] = useState(false);
+  const stock = totalStock(product);
   const outOfStock = stock === 0;
+  const swatches = distinctColors(product).slice(0, 4);
 
   return (
     <button type="button" onClick={outOfStock ? onWaitlist : onSelect} className="group text-left flex flex-col">
       {/* Image plate */}
       <div className="relative lc-plate aspect-[4/5] rounded-sm bg-pink-soft">
-        {!imgError ? (
+        {!imgError && product.image_url ? (
           <Image
-            src={`/products/${product.id}.jpeg`}
+            src={product.image_url}
             alt={product.name}
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
@@ -419,7 +494,7 @@ function ProductCard({
           </div>
         )}
 
-        {product.hasOffer && !outOfStock && (
+        {product.has_offer && !outOfStock && (
           <span className="absolute top-3 left-3 lc-mono uppercase text-[9px] tracking-[0.2em] text-gold-deep bg-bg/90 px-2.5 py-1">
             3 × 15%
           </span>
@@ -438,8 +513,8 @@ function ProductCard({
 
         <div className="flex items-center justify-between mt-2.5">
           <div className="flex gap-1.5">
-            {product.colors.slice(0, 4).map((c) => (
-              <span key={c} className="lc-sw" style={{ background: swatchBg(c) }} title={c} />
+            {swatches.map((c) => (
+              <span key={c.id} className="lc-sw" style={{ background: swatchBg(c.hex) }} title={c.name} />
             ))}
           </div>
           <span className="lc-display text-base text-ink">
@@ -465,30 +540,61 @@ function ProductCard({
 export default function Collection() {
   const { t } = useLang();
   const [activeCategory, setActiveCategory] = useState("all");
-  const [stockMap, setStockMap] = useState<Record<string, number>>({});
-  const [selectProduct, setSelectProduct] = useState<Prod | null>(null);
-  const [waitlistProduct, setWaitlistProduct] = useState<Prod | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectProduct, setSelectProduct] = useState<Product | null>(null);
+  const [waitlistProduct, setWaitlistProduct] = useState<Product | null>(null);
 
   useEffect(() => {
-    supabase
-      .from("products")
-      .select("id,stock")
-      .then(({ data }) => {
-        if (!data) return;
-        const map: Record<string, number> = {};
-        (data as { id: string; stock: number | null }[]).forEach((p) => {
-          if (typeof p.stock === "number") map[p.id] = p.stock;
-        });
-        setStockMap(map);
-      });
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      // PostgREST join: pull the variants (and their joined size/color) in the
+      // same round trip so the public store never re-queries per row.
+      const { data, error } = await supabase
+        .from("products")
+        .select(
+          `
+          id, sku, name, tagline, description, category, price, cost,
+          gender, material, has_offer, image_url, active, created_at,
+          variants:product_variants(
+            id, product_id, size_id, color_id, sku_variant, stock,
+            cost, price_override, active,
+            size:product_sizes(id, name, sort_order, active),
+            color:product_colors(id, name, hex_code, active)
+          )
+          `
+        )
+        .eq("active", true)
+        .order("created_at", { ascending: true });
+      if (cancelled) return;
+      if (error) {
+        // Fail soft — show empty state, log for diagnostics.
+        // eslint-disable-next-line no-console
+        console.error("[Collection] products fetch failed:", error.message);
+        setProducts([]);
+      } else {
+        setProducts((data ?? []) as unknown as Product[]);
+      }
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
   }, []);
 
-  const filtered =
-    activeCategory === "all" ? products : products.filter((p) => p.category === activeCategory);
-
-  const grouped = categories
-    .map((cat) => ({ ...cat, items: filtered.filter((p) => p.category === cat.id) }))
-    .filter((g) => g.items.length > 0);
+  // Group by category and only show categories that have products. Unknown
+  // categories surface in an "Otros" bucket so a new category id from the
+  // admin doesn't disappear from the storefront.
+  const grouped = useMemo(() => {
+    const filtered =
+      activeCategory === "all" ? products : products.filter((p) => p.category === activeCategory);
+    const known = CATEGORIES.map((c) => ({ ...c, items: filtered.filter((p) => p.category === c.id) }));
+    const knownIds = new Set(CATEGORIES.map((c) => c.id));
+    const others = filtered.filter((p) => !knownIds.has(p.category));
+    if (others.length > 0) {
+      known.push({ id: "_otros", name: "Otros", desc: "", hasOffer: false, items: others });
+    }
+    return known.filter((g) => g.items.length > 0);
+  }, [products, activeCategory]);
 
   return (
     <section id="coleccion" className="bg-bg py-16 sm:py-24">
@@ -509,66 +615,90 @@ export default function Collection() {
         </div>
 
         {/* Category filter */}
-        <div className="flex flex-wrap justify-center gap-2.5 mb-14">
-          <button
-            onClick={() => setActiveCategory("all")}
-            className={`lc-pill transition-colors ${
-              activeCategory === "all" ? "border-ink bg-ink text-bg" : "hover:border-ink hover:text-ink"
-            }`}
-          >
-            {t("Todo", "All")} · {products.length}
-          </button>
-          {categories.map((cat) => {
-            const count = products.filter((p) => p.category === cat.id).length;
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
-                className={`lc-pill transition-colors ${
-                  activeCategory === cat.id
-                    ? "border-ink bg-ink text-bg"
-                    : "hover:border-ink hover:text-ink"
-                }`}
-              >
-                {cat.name} · {count}
-              </button>
-            );
-          })}
-        </div>
+        {products.length > 0 && (
+          <div className="flex flex-wrap justify-center gap-2.5 mb-14">
+            <button
+              onClick={() => setActiveCategory("all")}
+              className={`lc-pill transition-colors ${
+                activeCategory === "all" ? "border-ink bg-ink text-bg" : "hover:border-ink hover:text-ink"
+              }`}
+            >
+              {t("Todo", "All")} · {products.length}
+            </button>
+            {CATEGORIES.map((cat) => {
+              const count = products.filter((p) => p.category === cat.id).length;
+              if (count === 0) return null;
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setActiveCategory(cat.id)}
+                  className={`lc-pill transition-colors ${
+                    activeCategory === cat.id
+                      ? "border-ink bg-ink text-bg"
+                      : "hover:border-ink hover:text-ink"
+                  }`}
+                >
+                  {cat.name} · {count}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Loading */}
+        {loading && (
+          <div className="text-center py-16">
+            <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute">
+              {t("Cargando…", "Loading…")}
+            </p>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!loading && products.length === 0 && (
+          <div className="text-center py-20 flex flex-col items-center gap-5">
+            <LionMark size={64} color="var(--color-ink-mute)" />
+            <p className="lc-display text-2xl text-ink max-w-md">
+              {t("Pronto llegan novedades.", "New pieces coming soon.")}
+            </p>
+            <p className="text-sm text-ink-soft max-w-md">
+              {t(
+                "Estamos preparando cada pieza con detalle. Vuelve pronto.",
+                "We're preparing each piece carefully. Come back soon."
+              )}
+            </p>
+          </div>
+        )}
 
         {/* Groups */}
-        {grouped.map((group) => {
-          const hasOffer = group.id !== "conjuntos";
-          return (
-            <div key={group.id} className="mb-16 last:mb-0">
-              <div className="flex items-end gap-4 mb-8 pb-4 border-b border-rule">
-                <div>
-                  <h3 className="lc-display text-2xl sm:text-3xl text-ink leading-tight">
-                    {group.name}
-                  </h3>
-                  <p className="text-sm text-ink-soft mt-1 font-light">{group.desc}</p>
-                </div>
-                {hasOffer && (
-                  <span className="ml-auto shrink-0 lc-pill lc-pill-gold whitespace-nowrap">
-                    {t("Oferta 3 × 15%", "Offer 3 × 15%")}
-                  </span>
-                )}
+        {!loading && grouped.map((group) => (
+          <div key={group.id} className="mb-16 last:mb-0">
+            <div className="flex items-end gap-4 mb-8 pb-4 border-b border-rule">
+              <div>
+                <h3 className="lc-display text-2xl sm:text-3xl text-ink leading-tight">
+                  {group.name}
+                </h3>
+                {group.desc && <p className="text-sm text-ink-soft mt-1 font-light">{group.desc}</p>}
               </div>
-
-              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-10 sm:gap-x-6 sm:gap-y-12">
-                {group.items.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    stock={stockMap[product.id]}
-                    onSelect={() => setSelectProduct(product)}
-                    onWaitlist={() => setWaitlistProduct(product)}
-                  />
-                ))}
-              </div>
+              {group.hasOffer && (
+                <span className="ml-auto shrink-0 lc-pill lc-pill-gold whitespace-nowrap">
+                  {t("Oferta 3 × 15%", "Offer 3 × 15%")}
+                </span>
+              )}
             </div>
-          );
-        })}
+
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-10 sm:gap-x-6 sm:gap-y-12">
+              {group.items.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  onSelect={() => setSelectProduct(product)}
+                  onWaitlist={() => setWaitlistProduct(product)}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
 
       {selectProduct && (

@@ -11,11 +11,27 @@ const SHIPPING_CENTS: Record<string, number> = {
   shalom: 1500,
 };
 
+interface VariantRow {
+  id: string;
+  product_id: string;
+  stock: number;
+  cost: number | null;
+  price_override: number | null;
+  active: boolean;
+}
+interface ProductRow {
+  id: string;
+  name: string;
+  price: number;
+  cost: number | null;
+  active: boolean;
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json();
   // Discard any money fields the client tries to send; they are recomputed
-  // below from the products table. Items are kept (we need ids, quantities,
-  // size/color selections) but unit_price/cost on each item are ignored too.
+  // below from the products + product_variants tables. The cart's variant
+  // object is also ignored beyond `variant.id`.
   const {
     items,
     subtotal: _ignoredSubtotal,
@@ -45,8 +61,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Método de envío inválido" }, { status: 400 });
   }
   for (const item of items) {
+    if (!item?.variant?.id || typeof item.variant.id !== "string") {
+      return NextResponse.json({ error: "Item sin variante" }, { status: 400 });
+    }
     if (!item?.product?.id || typeof item.product.id !== "string") {
-      return NextResponse.json({ error: "Item con id inválido" }, { status: 400 });
+      return NextResponse.json({ error: "Item con product id inválido" }, { status: 400 });
     }
     if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
       return NextResponse.json(
@@ -56,74 +75,85 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ─── Fetch authoritative product data (single round-trip) ──────────────
-  const ids = Array.from(new Set(items.map((i) => i.product.id)));
-  const { data: products, error: prodErr } = await supabaseAdmin
-    .from("products")
-    .select("id, name, price, cost, stock, active")
-    .in("id", ids);
+  // ─── Fetch authoritative variant + product data (single round-trip) ───
+  const variantIds = Array.from(new Set(items.map((i) => i.variant.id)));
+  const { data: variantsRaw, error: vErr } = await supabaseAdmin
+    .from("product_variants")
+    .select("id, product_id, stock, cost, price_override, active")
+    .in("id", variantIds);
+  if (vErr) {
+    return NextResponse.json({ error: "Error al validar variantes" }, { status: 500 });
+  }
+  const variantMap = new Map<string, VariantRow>();
+  for (const v of (variantsRaw ?? []) as VariantRow[]) variantMap.set(v.id, v);
 
-  if (prodErr) {
+  const productIds = Array.from(new Set((variantsRaw ?? []).map((v) => (v as VariantRow).product_id)));
+  const { data: productsRaw, error: pErr } = await supabaseAdmin
+    .from("products")
+    .select("id, name, price, cost, active")
+    .in("id", productIds);
+  if (pErr) {
     return NextResponse.json({ error: "Error al validar productos" }, { status: 500 });
   }
+  const productMap = new Map<string, ProductRow>();
+  for (const p of (productsRaw ?? []) as ProductRow[]) productMap.set(p.id, p);
 
-  type ProdRow = { id: string; name: string; price: number; cost: number | null; stock: number | null; active: boolean };
-  const prodMap = new Map<string, ProdRow>();
-  for (const p of (products ?? []) as ProdRow[]) {
-    prodMap.set(p.id, p);
-  }
-
-  // ─── Validate each item against the DB (existence, active, stock) ─────
+  // ─── Validate each item against the DB ───────────────────────────────
   for (const item of items) {
-    const p = prodMap.get(item.product.id);
-    if (!p) {
+    const v = variantMap.get(item.variant.id);
+    if (!v) {
       return NextResponse.json(
-        { error: `Producto no encontrado: ${item.product.id}` },
+        { error: `Variante no encontrada para ${item.product.id}` },
         { status: 400 }
       );
     }
-    if (p.active === false) {
-      return NextResponse.json(
-        { error: `Producto no disponible: ${item.product.id}` },
-        { status: 409 }
-      );
+    if (!v.active) {
+      return NextResponse.json({ error: "Variante no disponible" }, { status: 409 });
     }
-    if (typeof p.stock === "number" && p.stock < item.quantity) {
+    const p = productMap.get(v.product_id);
+    if (!p || p.active === false) {
+      return NextResponse.json({ error: "Producto no disponible" }, { status: 409 });
+    }
+    if (v.stock < item.quantity) {
       return NextResponse.json(
-        { error: `Sin stock suficiente para ${p.name} (${item.product.id})` },
+        { error: `Sin stock suficiente para ${p.name}` },
         { status: 409 }
       );
     }
   }
 
-  // ─── Recompute prices, subtotal, shipping, total in cents ──────────────
+  // ─── Recompute prices, subtotal, shipping, total in cents ────────────
   let subtotalCents = 0;
   const orderItemRows = items.map((item) => {
-    const p = prodMap.get(item.product.id)!;
-    const unitPriceCents = toCents(p.price);
+    const v = variantMap.get(item.variant.id)!;
+    const p = productMap.get(v.product_id)!;
+    const unitPrice = v.price_override ?? p.price;
+    const unitCost  = v.cost ?? p.cost ?? 0;
+    const unitPriceCents = toCents(unitPrice);
     const itemSubtotalCents = unitPriceCents * item.quantity;
     subtotalCents += itemSubtotalCents;
     return {
-      product_id: p.id,
-      product_name: p.name,
-      product_sku: p.id,
-      selected_size: item.selectedSize,
-      selected_color: item.selectedColor,
-      quantity: item.quantity,
-      unit_price: p.price,
-      unit_cost: p.cost ?? 0,
-      subtotal: fromCents(itemSubtotalCents),
+      product_id:     p.id,
+      variant_id:     v.id,
+      product_name:   p.name,
+      product_sku:    p.id,
+      selected_size:  item.selectedSize ?? item.variant.size_name ?? null,
+      selected_color: item.selectedColor ?? item.variant.color_name ?? null,
+      quantity:       item.quantity,
+      unit_price:     unitPrice,
+      unit_cost:      unitCost,
+      subtotal:       fromCents(itemSubtotalCents),
     };
   });
 
   const shippingCents = SHIPPING_CENTS[shippingMethod];
   const totalCents = subtotalCents + shippingCents;
 
-  // ─── Atomically reserve stock for every item ──────────────────────────
+  // ─── Atomically reserve stock for every variant ──────────────────────
   // The pre-validation above catches stock=0 at the boundary; this reservation
   // closes the race window where a concurrent order took the last unit between
   // our check and our write. The SQL function returns NULL if the update would
-  // drop stock below 0 (constraint inside the WHERE clause).
+  // drop the variant's stock below 0.
   //
   // If a reservation fails partway through, we roll back the previous ones by
   // calling the same RPC with a positive qty_change.
@@ -131,8 +161,8 @@ export async function POST(req: NextRequest) {
 
   async function releaseReserved() {
     for (const r of reserved) {
-      const { error: rbErr } = await supabaseAdmin.rpc("adjust_product_stock", {
-        p_id: r.id,
+      const { error: rbErr } = await supabaseAdmin.rpc("adjust_variant_stock", {
+        p_variant_id: r.id,
         p_qty_change: r.qty,
       });
       if (rbErr) {
@@ -143,8 +173,8 @@ export async function POST(req: NextRequest) {
 
   for (const item of items) {
     const { data: newStock, error: rpcErr } = await supabaseAdmin.rpc(
-      "adjust_product_stock",
-      { p_id: item.product.id, p_qty_change: -item.quantity }
+      "adjust_variant_stock",
+      { p_variant_id: item.variant.id, p_qty_change: -item.quantity }
     );
     if (rpcErr || newStock === null || newStock === undefined) {
       await releaseReserved();
@@ -153,7 +183,7 @@ export async function POST(req: NextRequest) {
         { status: 409 }
       );
     }
-    reserved.push({ id: item.product.id, qty: item.quantity });
+    reserved.push({ id: item.variant.id, qty: item.quantity });
   }
 
   // ─── Insert the order; roll back stock if it fails ────────────────────
@@ -161,11 +191,11 @@ export async function POST(req: NextRequest) {
     .from("orders")
     .insert({
       ...orderData,
-      subtotal: fromCents(subtotalCents),
-      total: fromCents(totalCents),
+      subtotal:      fromCents(subtotalCents),
+      total:         fromCents(totalCents),
       shipping_cost: fromCents(shippingCents),
       payment_status: "pendiente",
-      order_status: "nuevo",
+      order_status:   "nuevo",
     })
     .select()
     .single();
