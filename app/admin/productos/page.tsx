@@ -116,6 +116,14 @@ export default function ProductosAdmin() {
   const [newCatName, setNewCatName] = useState("");
   const [savingCat,  setSavingCat]  = useState(false);
 
+  // Inline size / color creation (inside the variant picker)
+  const [addingSize,  setAddingSize]  = useState(false);
+  const [newSizeName, setNewSizeName] = useState("");
+  const [addingColor, setAddingColor] = useState(false);
+  const [newColorName, setNewColorName] = useState("");
+  const [newColorHex,  setNewColorHex]  = useState("#CFC3AE");
+  const [savingAttr,   setSavingAttr]   = useState(false);
+
   // Image upload
   const [uploading,  setUploading]  = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -483,6 +491,68 @@ export default function ProductosAdmin() {
       setSaveError(e?.message ?? "Error al crear categoría");
     } finally {
       setSavingCat(false);
+    }
+  }
+
+  // Create a size inline and preselect it in the variant picker.
+  async function handleAddSize() {
+    const name = newSizeName.trim();
+    if (!name) return;
+    setSavingAttr(true);
+    setPickerError(null);
+    try {
+      const existing = sizes.find(s => s.name.toLowerCase() === name.toLowerCase());
+      if (existing) {
+        setNewVariantPicker(p => ({ ...p, size_id: existing.id }));
+      } else {
+        const sort_order = (sizes.reduce((m, s) => Math.max(m, s.sort_order), 0)) + 1;
+        const { data, error } = await supabase
+          .from("product_sizes")
+          .insert({ name, sort_order, active: true })
+          .select("id,name,sort_order,active")
+          .single();
+        if (error) throw new Error(error.message);
+        setSizes(prev => [...prev, data as SizeOption].sort((a, b) => a.sort_order - b.sort_order));
+        setNewVariantPicker(p => ({ ...p, size_id: (data as SizeOption).id }));
+      }
+      setNewSizeName("");
+      setAddingSize(false);
+    } catch (e: any) {
+      console.error("[admin/productos] add size failed:", e);
+      setPickerError(e?.message ?? "Error al crear talla");
+    } finally {
+      setSavingAttr(false);
+    }
+  }
+
+  // Create a color inline and preselect it in the variant picker.
+  async function handleAddColor() {
+    const name = newColorName.trim();
+    if (!name) return;
+    setSavingAttr(true);
+    setPickerError(null);
+    try {
+      const existing = colors.find(c => c.name.toLowerCase() === name.toLowerCase());
+      if (existing) {
+        setNewVariantPicker(p => ({ ...p, color_id: existing.id }));
+      } else {
+        const { data, error } = await supabase
+          .from("product_colors")
+          .insert({ name, hex_code: newColorHex || null, active: true })
+          .select("id,name,hex_code,active")
+          .single();
+        if (error) throw new Error(error.message);
+        setColors(prev => [...prev, data as ColorOption].sort((a, b) => a.name.localeCompare(b.name)));
+        setNewVariantPicker(p => ({ ...p, color_id: (data as ColorOption).id }));
+      }
+      setNewColorName("");
+      setNewColorHex("#CFC3AE");
+      setAddingColor(false);
+    } catch (e: any) {
+      console.error("[admin/productos] add color failed:", e);
+      setPickerError(e?.message ?? "Error al crear color");
+    } finally {
+      setSavingAttr(false);
     }
   }
 
@@ -1398,23 +1468,31 @@ export default function ProductosAdmin() {
                 <div className="grid grid-cols-12 gap-2">
                   <select
                     value={newVariantPicker.size_id}
-                    onChange={e => setNewVariantPicker(p => ({ ...p, size_id: e.target.value }))}
+                    onChange={e => {
+                      if (e.target.value === "__new__") { setAddingSize(true); }
+                      else { setNewVariantPicker(p => ({ ...p, size_id: e.target.value })); }
+                    }}
                     className="col-span-4 border border-[#F5EDD8] rounded-lg px-2 py-1.5 text-xs bg-white"
                   >
                     <option value="">talla</option>
                     {sizes.filter(s => s.active).map(s => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
+                    <option value="__new__">+ Nueva talla</option>
                   </select>
                   <select
                     value={newVariantPicker.color_id}
-                    onChange={e => setNewVariantPicker(p => ({ ...p, color_id: e.target.value }))}
+                    onChange={e => {
+                      if (e.target.value === "__new__") { setAddingColor(true); }
+                      else { setNewVariantPicker(p => ({ ...p, color_id: e.target.value })); }
+                    }}
                     className="col-span-4 border border-[#F5EDD8] rounded-lg px-2 py-1.5 text-xs bg-white"
                   >
                     <option value="">color</option>
                     {colors.filter(c => c.active).map(c => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
+                    <option value="__new__">+ Nuevo color</option>
                   </select>
                   <input
                     type="number"
@@ -1432,6 +1510,60 @@ export default function ProductosAdmin() {
                     + Agregar
                   </button>
                 </div>
+
+                {/* Inline: create new size */}
+                {addingSize && (
+                  <div className="flex gap-2 items-center bg-white border border-[#D4A520] rounded-lg p-2">
+                    <input
+                      autoFocus
+                      placeholder="Nueva talla (ej. 3M, 6M)"
+                      value={newSizeName}
+                      onChange={e => setNewSizeName(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === "Enter") { e.preventDefault(); handleAddSize(); }
+                        if (e.key === "Escape") { setAddingSize(false); setNewSizeName(""); }
+                      }}
+                      className="flex-1 border border-[#F5EDD8] rounded-lg px-2 py-1.5 text-xs"
+                    />
+                    <button type="button" onClick={handleAddSize} disabled={savingAttr || !newSizeName.trim()}
+                      className="bg-[#D4A520] text-white text-xs font-bold rounded-lg px-3 py-1.5 hover:bg-[#A07D10] disabled:opacity-50 whitespace-nowrap">
+                      {savingAttr ? "..." : "Crear"}
+                    </button>
+                    <button type="button" onClick={() => { setAddingSize(false); setNewSizeName(""); }}
+                      className="border border-[#F5EDD8] text-[#9B6B45] rounded-lg px-2 py-1.5"><X size={14} /></button>
+                  </div>
+                )}
+
+                {/* Inline: create new color */}
+                {addingColor && (
+                  <div className="flex gap-2 items-center bg-white border border-[#D4A520] rounded-lg p-2">
+                    <input
+                      type="color"
+                      value={newColorHex}
+                      onChange={e => setNewColorHex(e.target.value)}
+                      className="w-9 h-9 rounded-lg border border-[#F5EDD8] shrink-0 cursor-pointer"
+                      title="Color de muestra"
+                    />
+                    <input
+                      autoFocus
+                      placeholder="Nuevo color (ej. Coral)"
+                      value={newColorName}
+                      onChange={e => setNewColorName(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === "Enter") { e.preventDefault(); handleAddColor(); }
+                        if (e.key === "Escape") { setAddingColor(false); setNewColorName(""); }
+                      }}
+                      className="flex-1 border border-[#F5EDD8] rounded-lg px-2 py-1.5 text-xs"
+                    />
+                    <button type="button" onClick={handleAddColor} disabled={savingAttr || !newColorName.trim()}
+                      className="bg-[#D4A520] text-white text-xs font-bold rounded-lg px-3 py-1.5 hover:bg-[#A07D10] disabled:opacity-50 whitespace-nowrap">
+                      {savingAttr ? "..." : "Crear"}
+                    </button>
+                    <button type="button" onClick={() => { setAddingColor(false); setNewColorName(""); }}
+                      className="border border-[#F5EDD8] text-[#9B6B45] rounded-lg px-2 py-1.5"><X size={14} /></button>
+                  </div>
+                )}
+
                 {pickerError && <p className="text-[11px] text-red-600">{pickerError}</p>}
               </div>
             </div>
