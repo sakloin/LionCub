@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as XLSX from "@e965/xlsx";
 import { supabase } from "../../lib/supabase";
-import { Product } from "../../lib/types";
+import { Product, ProductImage } from "../../lib/types";
 import { Plus, Pencil, ToggleLeft, ToggleRight, Save, X, Upload, Trash2, AlertTriangle, FileDown, FileUp, CheckCircle2 } from "lucide-react";
 import { formatSoles } from "../../lib/money";
 
@@ -124,9 +124,16 @@ export default function ProductosAdmin() {
   const [newColorHex,  setNewColorHex]  = useState("#CFC3AE");
   const [savingAttr,   setSavingAttr]   = useState(false);
 
-  // Image upload
+  // Image upload (legacy single-image, kept for backwards compat with rows
+  // that have products.image_url set but no product_images yet).
   const [uploading,  setUploading]  = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Gallery (Fase 3) — multiple images per product with star ★ portada and
+  // 👁 hover toggles. Persisted to product_images on save.
+  const [gallery, setGallery] = useState<ProductImage[]>([]);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
+  const galleryRef = useRef<HTMLInputElement>(null);
 
   // Delete
   const [deleteTarget,   setDeleteTarget]   = useState<Product | null>(null);
@@ -205,6 +212,8 @@ export default function ProductosAdmin() {
     setEditing({ ...p });
     setVariantDrafts([]);
     setOriginalVariantIds(new Set());
+    setGallery([]);
+    void loadGallery(p.id);
     // Pull current variants; failure is non-fatal — the admin will see an
     // empty list and can re-create as needed.
     const { data, error: vErr } = await supabase
@@ -242,6 +251,7 @@ export default function ProductosAdmin() {
     setEditing({ ...EMPTY, id: autoId, sku: autoId, _isNew: true });
     setVariantDrafts([]);
     setOriginalVariantIds(new Set());
+    setGallery([]);
   }
 
   /** Adds the picker selection as a fresh draft, if the (size, color) pair
@@ -316,6 +326,19 @@ export default function ProductosAdmin() {
         }
       }
 
+      // Cada producto debe tener galería con una ★ portada. La portada
+      // sincroniza también products.image_url para que el carrito, checkout
+      // y tabla admin (que aún leen products.image_url directo) sigan
+      // funcionando sin tocarlos en esta fase.
+      const primaryImg = gallery.find(g => g.is_primary);
+      if (gallery.length > 0 && !primaryImg) {
+        throw new Error("Marca una imagen como ★ Portada.");
+      }
+      if (gallery.length === 0 && !editing.image_url) {
+        throw new Error("Sube al menos una imagen del producto.");
+      }
+      payload.image_url = primaryImg?.url ?? editing.image_url ?? "";
+
       if (_isNew) {
         const { error: insErr } = await supabase.from("products").insert(payload);
         if (insErr) throw new Error(insErr.message);
@@ -373,10 +396,40 @@ export default function ProductosAdmin() {
         }
       }
 
+      // ─── Persist gallery (Fase 3) ──────────────────────────────────────
+      // DELETE + INSERT pattern: simpler than diffing, and the unique partial
+      // indexes (one is_primary, one is_hover per product) tolerate it because
+      // both ops run within the same statement transaction implied by the
+      // PostgREST round-trip on the second call. Storage objects keep their
+      // existing public URLs.
+      if (gallery.length > 0) {
+        const productId = editing.id as string;
+        const { error: delImgErr } = await supabase
+          .from("product_images")
+          .delete()
+          .eq("product_id", productId);
+        if (delImgErr) throw new Error(`Galería (limpieza): ${delImgErr.message}`);
+
+        const imgRows = gallery.map((g, idx) => ({
+          product_id:   productId,
+          url:          g.url,
+          storage_path: g.storage_path,
+          sort_order:   idx,
+          is_primary:   g.is_primary,
+          is_hover:     g.is_hover,
+          alt_text:     g.alt_text,
+          image_type:   g.image_type,
+          color_id:     g.color_id,
+        }));
+        const { error: insImgErr } = await supabase.from("product_images").insert(imgRows);
+        if (insImgErr) throw new Error(`Galería: ${insImgErr.message}`);
+      }
+
       await load();
       setEditing(null);
       setVariantDrafts([]);
       setOriginalVariantIds(new Set());
+      setGallery([]);
     } catch (e: any) {
       console.error("[admin/productos] save failed:", e);
       setSaveError(e?.message ?? "Error al guardar producto");
@@ -468,6 +521,122 @@ export default function ProductosAdmin() {
     } finally {
       setUploading(false);
     }
+  }
+
+  // ── Gallery (multi-image) helpers ─────────────────────────────────────────
+  //
+  // The gallery lives in local component state while the modal is open. The
+  // user adds files, toggles ★ portada / 👁 hover, or removes thumbnails;
+  // the DELETE+REINSERT happens in save() so all the changes commit together.
+  // Uploads go to storage immediately so the public URL is available to render
+  // the thumbnail — if the modal is cancelled mid-edit, the storage object is
+  // an orphan but that's tolerable for an admin tool.
+
+  /** Fetch the existing gallery for a product. Empty array for new products. */
+  async function loadGallery(productId: string) {
+    const { data, error } = await supabase
+      .from("product_images")
+      .select("*")
+      .eq("product_id", productId)
+      .order("sort_order");
+    if (error) {
+      console.error("[admin/productos] gallery load failed:", error.message);
+      setGallery([]);
+      return;
+    }
+    setGallery((data ?? []) as ProductImage[]);
+  }
+
+  /** Upload one or more files into the product's storage folder, append them
+   *  to the gallery state. The first one uploaded for an empty gallery is
+   *  marked is_primary so a product is never published without a cover. */
+  async function handleGalleryUpload(files: FileList | null) {
+    if (!files || files.length === 0 || !editing) return;
+    const productId = (editing.id as string)?.trim();
+    if (!productId) {
+      setSaveError("ID del producto no disponible — recarga e intenta de nuevo.");
+      return;
+    }
+    setUploadingGallery(true);
+    setSaveError(null);
+    try {
+      const newItems: ProductImage[] = [];
+      for (const file of Array.from(files)) {
+        if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+          console.warn("[admin/productos] skipped non-image file:", file.name);
+          continue;
+        }
+        const ext  = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+        const uuid = crypto.randomUUID();
+        const path = `products/${productId}/${uuid}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("product-images")
+          .upload(path, file, { contentType: file.type });
+        if (upErr) throw new Error(`Storage upload: ${upErr.message}`);
+        const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
+        if (!urlData?.publicUrl) throw new Error("No se pudo obtener la URL pública.");
+        newItems.push({
+          id: uuid,                  // temporary id — replaced when persisted
+          product_id: productId,
+          url: urlData.publicUrl,
+          storage_path: path,
+          sort_order: gallery.length + newItems.length,
+          is_primary: false,
+          is_hover: false,
+          alt_text: null,
+          image_type: null,
+          color_id: null,
+        });
+      }
+      setGallery(prev => {
+        const merged = [...prev, ...newItems];
+        // Ensure at least one ★ portada exists.
+        if (!merged.some(g => g.is_primary) && merged.length > 0) {
+          merged[0] = { ...merged[0], is_primary: true };
+        }
+        return merged;
+      });
+    } catch (e: any) {
+      console.error("[admin/productos] gallery upload failed:", e);
+      setSaveError("Error al subir imagen: " + (e?.message ?? "desconocido"));
+    } finally {
+      setUploadingGallery(false);
+    }
+  }
+
+  /** Mark one item as the single ★ portada (clears the others). */
+  function togglePrimary(itemId: string) {
+    setGallery(prev => prev.map(g => ({ ...g, is_primary: g.id === itemId })));
+  }
+
+  /** Toggle 👁 hover on / off. Only one item can be hover at a time; setting
+   *  it on a new one clears any previous hover. */
+  function toggleHover(itemId: string) {
+    setGallery(prev => prev.map(g => {
+      if (g.id === itemId) return { ...g, is_hover: !g.is_hover };
+      return { ...g, is_hover: false };
+    }));
+  }
+
+  /** Remove an item from the local gallery (no DB write yet — save() handles
+   *  it). The storage object is also removed eagerly to keep the bucket from
+   *  accumulating orphans. */
+  async function removeGalleryItem(itemId: string) {
+    const item = gallery.find(g => g.id === itemId);
+    if (!item) return;
+    // Eager storage cleanup — best-effort, swallowed on failure.
+    const { error: rmErr } = await supabase.storage
+      .from("product-images")
+      .remove([item.storage_path]);
+    if (rmErr) console.warn("[admin/productos] storage cleanup failed:", rmErr.message);
+    setGallery(prev => {
+      const next = prev.filter(g => g.id !== itemId);
+      // If we removed the portada, promote the first remaining item.
+      if (item.is_primary && next.length > 0) {
+        next[0] = { ...next[0], is_primary: true };
+      }
+      return next;
+    });
   }
 
   // ── Inline category ────────────────────────────────────────────────────────
@@ -1294,48 +1463,107 @@ export default function ProductosAdmin() {
               </div>
             ))}
 
-            {/* Image upload */}
+            {/* Gallery (Fase 3) — varias imágenes por producto con toggles
+                ★ Portada (la miniatura del catálogo) y 👁 Hover (la que cambia
+                al pasar el mouse en la card). */}
             <div>
-              <label className="block text-xs font-bold text-[#6B3D1E] mb-1">Imagen del producto</label>
-              {editing.image_url && (
-                <div className="mb-2">
-                  <div className="w-28 h-28 rounded-xl overflow-hidden border border-[#F5EDD8] bg-[#F5EDD8] flex items-center justify-center">
-                    <img
-                      src={editing.image_url}
-                      alt="preview"
-                      className="w-full h-full object-cover"
-                      onError={e => {
-                        (e.currentTarget as HTMLImageElement).style.display = "none";
-                        const parent = e.currentTarget.parentElement;
-                        if (parent && !parent.querySelector(".img-err")) {
-                          const msg = document.createElement("p");
-                          msg.className = "img-err text-[10px] text-red-500 text-center px-2";
-                          msg.textContent = "Imagen no cargó — verifica que el bucket sea público";
-                          parent.appendChild(msg);
-                        }
-                      }}
-                    />
+              <label className="block text-xs font-bold text-[#6B3D1E] mb-1">Galería de imágenes</label>
+              <p className="text-[10px] text-[#9B6B45] mb-3">
+                Sube varias. Marca <strong>★ Portada</strong> en la principal y <strong>👁 Hover</strong> en la del detalle (la que aparece al pasar el mouse).
+              </p>
+
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                {gallery.map((img) => (
+                  <div key={img.id} className="relative border border-[#F5EDD8] rounded-xl p-2 bg-white">
+                    <div className="w-full aspect-square rounded-lg overflow-hidden bg-[#F5EDD8] mb-2">
+                      <img
+                        src={img.url}
+                        alt={img.alt_text ?? ""}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <button
+                        type="button"
+                        onClick={() => togglePrimary(img.id)}
+                        className={`text-[10px] font-bold py-1 px-2 rounded transition-colors ${
+                          img.is_primary
+                            ? "bg-[#D4A520] text-white"
+                            : "bg-white border border-[#F5EDD8] text-[#9B6B45] hover:border-[#D4A520]"
+                        }`}
+                      >
+                        {img.is_primary ? "★ Portada" : "☆ Portada"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleHover(img.id)}
+                        className={`text-[10px] font-bold py-1 px-2 rounded transition-colors ${
+                          img.is_hover
+                            ? "bg-[#6B3D1E] text-white"
+                            : "bg-white border border-[#F5EDD8] text-[#9B6B45] hover:border-[#6B3D1E]"
+                        }`}
+                      >
+                        👁 Hover
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeGalleryItem(img.id)}
+                      title="Eliminar"
+                      className="absolute top-1 right-1 bg-white rounded-full p-1 shadow border border-[#F5EDD8] text-[#9B6B45] hover:text-red-500"
+                    >
+                      <X size={12} />
+                    </button>
                   </div>
-                  <p className="text-[10px] text-[#9B6B45] mt-1 break-all max-w-xs">{editing.image_url}</p>
+                ))}
+
+                {/* Add tile */}
+                <label
+                  className={`border-2 border-dashed border-[#F5EDD8] rounded-xl flex flex-col items-center justify-center aspect-square cursor-pointer hover:bg-[#FDF8F0] transition-colors ${
+                    uploadingGallery ? "opacity-50 cursor-wait" : ""
+                  }`}
+                >
+                  <input
+                    ref={galleryRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    className="hidden"
+                    disabled={uploadingGallery}
+                    onChange={e => { void handleGalleryUpload(e.target.files); e.target.value = ""; }}
+                  />
+                  {uploadingGallery ? (
+                    <>
+                      <Upload size={20} className="text-[#9B6B45] animate-pulse" />
+                      <span className="text-[10px] text-[#9B6B45] mt-1">Subiendo…</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus size={22} className="text-[#9B6B45]" />
+                      <span className="text-[10px] text-[#9B6B45] mt-1 text-center px-1">+ Subir<br/>imágenes</span>
+                    </>
+                  )}
+                </label>
+              </div>
+
+              {/* Legacy: si el producto tiene products.image_url pero la galería
+                  todavía no se cargó (productos viejos), muestro la portada
+                  histórica con una nota. Reemplazar = sube nuevas en la
+                  galería y guarda; la primary se sincroniza con image_url. */}
+              {gallery.length === 0 && editing.image_url && (
+                <div className="mt-3 flex items-center gap-3 border border-[#F5EDD8] bg-[#FDF8F0] rounded-xl p-2">
+                  <img
+                    src={editing.image_url}
+                    alt="legacy"
+                    className="w-14 h-14 object-cover rounded-lg border border-[#F5EDD8]"
+                  />
+                  <p className="text-[10px] text-[#9B6B45]">
+                    Portada actual (Fase 1/2). Sube imágenes nuevas arriba para reemplazar y aprovechar el hover.
+                  </p>
                 </div>
               )}
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                className="flex items-center gap-2 px-4 py-2 border border-[#D4A520] text-[#D4A520] text-xs font-bold rounded-xl hover:bg-[#FDF8F0] transition-colors disabled:opacity-50"
-              >
-                <Upload size={14} />
-                {uploading ? "Subiendo..." : editing.image_url ? "Cambiar imagen" : "Subir imagen"}
-              </button>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="hidden"
-                onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = ""; }}
-              />
-              <p className="text-[10px] text-[#9B6B45] mt-1">jpg · png · webp — bucket &quot;product-images&quot; debe ser público en Supabase Storage</p>
+
+              <p className="text-[10px] text-[#9B6B45] mt-2">jpg · png · webp — bucket <code>product-images</code> debe ser público.</p>
             </div>
 
             {/* Variantes — matriz editable de talla × color con stock por

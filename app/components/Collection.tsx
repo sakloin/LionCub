@@ -464,22 +464,41 @@ function ProductCard({
   const stock = totalStock(product);
   const outOfStock = stock === 0;
   const swatches = distinctColors(product).slice(0, 4);
+  // Pick the primary / hover images from product_images. Fall back to the
+  // legacy products.image_url field (Fase 1 / 2 products before a gallery
+  // was uploaded) so cards never go blank during the migration.
+  const imgs       = product.images ?? [];
+  const primaryUrl = imgs.find(i => i.is_primary)?.url ?? product.image_url ?? null;
+  const hoverUrl   = imgs.find(i => i.is_hover)?.url ?? null;
 
   return (
     <button type="button" onClick={outOfStock ? onWaitlist : onSelect} className="group text-left flex flex-col">
       {/* Image plate */}
       <div className="relative lc-plate aspect-[4/5] rounded-sm bg-pink-soft">
-        {!imgError && product.image_url ? (
-          <Image
-            src={product.image_url}
-            alt={product.name}
-            fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            className={`object-cover transition-transform duration-500 group-hover:scale-[1.03] ${
-              outOfStock ? "opacity-70" : ""
-            }`}
-            onError={() => setImgError(true)}
-          />
+        {!imgError && primaryUrl ? (
+          <>
+            <Image
+              src={primaryUrl}
+              alt={product.name}
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              className={`object-cover transition-opacity duration-300 ${
+                hoverUrl ? "md:group-hover:opacity-0" : ""
+              } ${outOfStock ? "opacity-70" : ""}`}
+              onError={() => setImgError(true)}
+            />
+            {hoverUrl && (
+              <Image
+                src={hoverUrl}
+                alt=""
+                fill
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                className={`object-cover opacity-0 transition-opacity duration-300 hidden md:block md:group-hover:opacity-100 ${
+                  outOfStock ? "opacity-70" : ""
+                }`}
+              />
+            )}
+          </>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-ink-mute">
             <LionMark size={56} />
@@ -562,6 +581,10 @@ export default function Collection() {
             cost, price_override, active,
             size:product_sizes(id, name, sort_order, active),
             color:product_colors(id, name, hex_code, active)
+          ),
+          images:product_images(
+            id, product_id, url, storage_path, sort_order,
+            is_primary, is_hover, alt_text, image_type, color_id
           )
           `
         )
