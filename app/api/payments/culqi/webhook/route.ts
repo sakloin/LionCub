@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/app/lib/supabase-admin";
 import { createHmac, timingSafeEqual } from "crypto";
+import { sendPaymentConfirmed, type EmailOrder, type EmailOrderItem } from "@/app/lib/email";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
     const chargeId = data?.id as string | undefined;
 
     if (orderId) {
-      await supabaseAdmin
+      const { data: updated, error: updErr } = await supabaseAdmin
         .from("orders")
         .update({
           payment_status: "pagado",
@@ -59,7 +60,23 @@ export async function POST(req: NextRequest) {
           payment_reference: chargeId ?? null,
           payment_paid_at: new Date().toISOString(),
         })
-        .eq("id", orderId);
+        .eq("id", orderId)
+        .select()
+        .single();
+
+      // Fire the payment-confirmed email. Best-effort: if Resend is down,
+      // we still ACK the webhook so Culqi doesn't retry forever.
+      if (!updErr && updated) {
+        try {
+          const { data: orderItems } = await supabaseAdmin
+            .from("order_items")
+            .select("product_name, selected_size, selected_color, quantity, unit_price, subtotal")
+            .eq("order_id", orderId);
+          await sendPaymentConfirmed(updated as EmailOrder, (orderItems ?? []) as EmailOrderItem[]);
+        } catch (err: any) {
+          console.error("[culqi/webhook] payment-confirmed email threw:", err?.message ?? err);
+        }
+      }
     }
   }
 

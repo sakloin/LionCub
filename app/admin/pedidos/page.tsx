@@ -154,6 +154,28 @@ export default function PedidosAdmin() {
     }
   }
 
+  // Best-effort customer + admin "payment confirmed" email after a manual
+  // mark from /admin/pedidos. The status update has already gone through
+  // by the time we get here; if Resend is down the admin still sees the
+  // status flipped — just no email.
+  async function fireNotifyPaidEmail(orderId: string) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+      await fetch("/api/admin/orders/notify-paid", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({ order_id: orderId }),
+      });
+    } catch (e: any) {
+      console.error("[admin/pedidos] notify-paid failed:", e?.message ?? e);
+    }
+  }
+
   async function updateStatus(id: string, field: "order_status" | "payment_status", value: string) {
     try {
       const { error: dbErr } = await supabase.from("orders").update({ [field]: value }).eq("id", id);
@@ -161,6 +183,9 @@ export default function PedidosAdmin() {
       setOrders(prev => prev.map(o => o.id === id ? { ...o, [field]: value } : o));
       setExpandedId(null);
       showToast("Pedido actualizado");
+      if (field === "payment_status" && value === "pagado") {
+        void fireNotifyPaidEmail(id);
+      }
     } catch (e: any) {
       showToast(e?.message ?? "Error al actualizar", false);
     }
@@ -173,6 +198,7 @@ export default function PedidosAdmin() {
       setOrders(prev => prev.map(o => o.id === id ? { ...o, payment_status: "pagado" } : o));
       setExpandedId(null);
       showToast("Pago confirmado ✓");
+      void fireNotifyPaidEmail(id);
     } catch (e: any) {
       showToast(e?.message ?? "Error al confirmar pago", false);
     }
