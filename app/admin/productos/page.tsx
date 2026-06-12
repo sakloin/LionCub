@@ -202,6 +202,17 @@ export default function ProductosAdmin() {
 
   useEffect(() => { load(); }, []);
 
+  // ESC closes the create/edit modal so the admin doesn't have to reach for
+  // the X button or scroll to Cancelar.
+  useEffect(() => {
+    if (!editing) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setEditing(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [editing]);
+
   /** Opens the modal for an existing product and loads its variants into
    *  draft state so the admin can edit / add / remove without leaving the
    *  page. New-product callers use openNewProduct(). */
@@ -228,6 +239,12 @@ export default function ProductosAdmin() {
       id: string; size_id: string; color_id: string; sku_variant: string;
       stock: number; cost: number | null; price_override: number | null; active: boolean;
     }[];
+    // When the DB has NULL (variant inherits from product base), prefill the
+    // input with the product's base value. This gives the admin a visible
+    // default they can leave alone or edit. On save, equal-to-base inputs
+    // are stored back as NULL so the inheritance stays alive.
+    const baseCost  = p.cost  != null ? String(p.cost)  : "";
+    const basePrice = p.price != null ? String(p.price) : "";
     setVariantDrafts(
       rows.map(r => ({
         id:                 r.id,
@@ -235,8 +252,8 @@ export default function ProductosAdmin() {
         color_id:           r.color_id,
         sku_variant:        r.sku_variant,
         stock:              r.stock,
-        cost_str:           r.cost === null ? "" : String(r.cost),
-        price_override_str: r.price_override === null ? "" : String(r.price_override),
+        cost_str:           r.cost === null ? baseCost  : String(r.cost),
+        price_override_str: r.price_override === null ? basePrice : String(r.price_override),
         active:             r.active,
       }))
     );
@@ -274,14 +291,20 @@ export default function ProductosAdmin() {
       setPickerError("Esa combinación talla/color ya está en la tabla.");
       return;
     }
+    // Default cost + price to the product's base values so the admin doesn't
+    // have to retype the same number on every row. If the row value matches
+    // the base at save time we'll persist NULL (= "inherit"); only real
+    // per-variant overrides become stored numbers.
+    const baseCost  = editing?.cost  != null ? String(editing.cost)  : "";
+    const basePrice = editing?.price != null ? String(editing.price) : "";
     setVariantDrafts(prev => [
       ...prev,
       {
         size_id:            newVariantPicker.size_id,
         color_id:           newVariantPicker.color_id,
         stock,
-        cost_str:           "",
-        price_override_str: "",
+        cost_str:           baseCost,
+        price_override_str: basePrice,
         active:             true,
       },
     ]);
@@ -381,8 +404,8 @@ export default function ProductosAdmin() {
               color_id:       d.color_id,
               sku_variant:    d.sku_variant ?? recomputeSku(editing.id, d),
               stock:          d.stock,
-              cost:           d.cost_str === "" ? null : Number(d.cost_str),
-              price_override: d.price_override_str === "" ? null : Number(d.price_override_str),
+              cost:           resolveCost(d),
+              price_override: resolvePriceOverride(d),
               active:         d.active,
               updated_at:     new Date().toISOString(),
             })
@@ -443,6 +466,24 @@ export default function ProductosAdmin() {
 
   /** Builds the insert payload for a variant from its draft, deriving the
    *  SKU from the product id + chosen size/color names. */
+  /** A variant-level field is only stored when it actually differs from the
+   *  product base. Equal-to-base or empty input → NULL, so /api/orders and
+   *  the public store inherit from products.cost / products.price. */
+  function resolveCost(d: VariantDraft): number | null {
+    if (d.cost_str === "") return null;
+    const n = Number(d.cost_str);
+    if (!Number.isFinite(n)) return null;
+    if (editing && Number(editing.cost) === n) return null;
+    return n;
+  }
+  function resolvePriceOverride(d: VariantDraft): number | null {
+    if (d.price_override_str === "") return null;
+    const n = Number(d.price_override_str);
+    if (!Number.isFinite(n)) return null;
+    if (editing && Number(editing.price) === n) return null;
+    return n;
+  }
+
   function buildVariantInsertRow(productId: string, d: VariantDraft) {
     return {
       product_id:     productId,
@@ -450,8 +491,8 @@ export default function ProductosAdmin() {
       color_id:       d.color_id,
       sku_variant:    recomputeSku(productId, d),
       stock:          d.stock,
-      cost:           d.cost_str === "" ? null : Number(d.cost_str),
-      price_override: d.price_override_str === "" ? null : Number(d.price_override_str),
+      cost:           resolveCost(d),
+      price_override: resolvePriceOverride(d),
       active:         d.active,
     };
   }
