@@ -3,6 +3,7 @@ import { supabaseAdmin } from "../../lib/supabase-admin";
 import { CartItem, Offer } from "../../lib/types";
 import { toCents, fromCents } from "../../lib/money";
 import { applyOfferCents, bestOfferFor } from "../../lib/offers";
+import { sendOrderReceived, type EmailOrder } from "../../lib/email";
 
 // Server-side authoritative shipping costs (in cents). Mirrors the values the
 // public checkout uses, but the server owns the truth — never trust the
@@ -251,6 +252,22 @@ export async function POST(req: NextRequest) {
       { error: itemsErr.message ?? "Error al crear los items del pedido" },
       { status: 500 }
     );
+  }
+
+  // ─── Fire-and-forget transactional emails ─────────────────────────────
+  // Best-effort: a Resend outage must NOT roll back a successful order.
+  // The helper itself swallows + logs errors; we still wrap for safety.
+  try {
+    await sendOrderReceived(order as EmailOrder, orderItemRows.map(r => ({
+      product_name:   r.product_name,
+      selected_size:  r.selected_size,
+      selected_color: r.selected_color,
+      quantity:       r.quantity,
+      unit_price:     r.unit_price,
+      subtotal:       r.subtotal,
+    })));
+  } catch (e: any) {
+    console.error("[/api/orders] order-received email threw:", e?.message ?? e);
   }
 
   return NextResponse.json({ id: order.id });
