@@ -45,20 +45,6 @@
     "Palo Rosa",
     "Azul"
   ],
-  "offers": {
-    "bodies": {
-      "rule": "buy_3_get_15_off_third",
-      "desc": "Lleva 3 bodies y recibe 15% de descuento en el tercero"
-    },
-    "baberos": {
-      "rule": "buy_3_get_15_off_third",
-      "desc": "Lleva 3 baberos y recibe 15% de descuento en el tercero"
-    },
-    "mantas": {
-      "rule": "buy_3_get_15_off_third",
-      "desc": "Lleva 3 mantas y recibe 15% de descuento en la tercera"
-    }
-  },
   "products": [
     {
       "id": "LC-001",

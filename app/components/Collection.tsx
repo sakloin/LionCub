@@ -14,13 +14,14 @@ import { formatSoles } from "../lib/money";
 // ── Categories ────────────────────────────────────────────────────────────
 // Editorial labels for the category strip. The product.category column is the
 // canonical id used both in /admin and in the public filter. Unknown
-// categories fall back to a "Otros" group at the end.
+// categories fall back to a "Otros" group at the end. Offer badges are
+// driven by /admin/ofertas (Fase 4), so there is no hard-coded offer flag
+// here anymore.
 
 interface CategoryDef {
   id: string;
   name: string;
   desc: string;
-  hasOffer: boolean;
 }
 
 const CATEGORIES: CategoryDef[] = [
@@ -28,11 +29,10 @@ const CATEGORIES: CategoryDef[] = [
     id: "conjuntos",
     name: "Conjuntos & Ajuares",
     desc: "Sets completos hechos para el primer abrazo y los días que siguen.",
-    hasOffer: false,
   },
-  { id: "bodies",  name: "Bodies",  desc: "La prenda base del guardarropa — suave, versátil, esencial.", hasOffer: true },
-  { id: "baberos", name: "Baberos", desc: "Los detalles tiernos que cuidan cada comida.",                hasOffer: true },
-  { id: "mantas",  name: "Mantas",  desc: "Abrigos ligeros que envuelven con dulzura.",                  hasOffer: true },
+  { id: "bodies",  name: "Bodies",  desc: "La prenda base del guardarropa — suave, versátil, esencial." },
+  { id: "baberos", name: "Baberos", desc: "Los detalles tiernos que cuidan cada comida." },
+  { id: "mantas",  name: "Mantas",  desc: "Abrigos ligeros que envuelven con dulzura." },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -655,7 +655,7 @@ export default function Collection() {
     const knownIds = new Set(CATEGORIES.map((c) => c.id));
     const others = filtered.filter((p) => !knownIds.has(p.category));
     if (others.length > 0) {
-      known.push({ id: "_otros", name: "Otros", desc: "", hasOffer: false, items: others });
+      known.push({ id: "_otros", name: "Otros", desc: "", items: others });
     }
     return known.filter((g) => g.items.length > 0);
   }, [products, activeCategory]);
