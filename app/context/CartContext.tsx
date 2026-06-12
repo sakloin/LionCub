@@ -9,6 +9,12 @@ interface VariantPick {
    *  carry the joined size/color records. Defaults to variant.size?.name etc. */
   sizeName?: string;
   colorName?: string;
+  /** Post-discount unit price the user picked at. Defaults to
+   *  variant.price_override ?? product.price (no discount). */
+  unitPrice?: number;
+  /** Pre-discount unit price (variant.price_override ?? product.price).
+   *  Stored so the cart can show a strikethrough. */
+  basePrice?: number;
 }
 
 interface CartCtx {
@@ -61,6 +67,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const v = pick.variant;
     const sizeName  = pick.sizeName  ?? v.size?.name  ?? "";
     const colorName = pick.colorName ?? v.color?.name ?? "";
+    const basePrice = pick.basePrice ?? v.price_override ?? product.price;
+    const unitPrice = pick.unitPrice ?? basePrice;
     setItems(prev => {
       const exists = prev.find(i => i.variant.id === v.id);
       if (exists) {
@@ -75,6 +83,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
             size_name: sizeName,
             color_name: colorName,
             stock_at_pick: v.stock,
+            unit_price_at_pick: unitPrice,
+            base_unit_price_at_pick: basePrice,
           },
           quantity: 1,
           selectedSize: sizeName,
@@ -96,10 +106,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
   function clear() { setItems([]); }
 
   const count = items.reduce((s, i) => s + i.quantity, 0);
-  // Price = variant override if set, else product base.
+  // Price = post-discount snapshot when present (offers system), else
+  // variant override, else product base. The server still reprices on order
+  // submit — this is just for the cart display.
   const total = items.reduce((acc, i) => {
     const v = i.product.variants?.find(x => x.id === i.variant.id);
-    const unit = v?.price_override ?? i.product.price;
+    const unit = i.variant.unit_price_at_pick ?? v?.price_override ?? i.product.price;
     return acc + Math.round(unit * 100) * i.quantity;
   }, 0) / 100;
 

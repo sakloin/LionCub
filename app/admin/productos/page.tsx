@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import * as XLSX from "@e965/xlsx";
 import { supabase } from "../../lib/supabase";
 import { Product, ProductImage } from "../../lib/types";
-import { Plus, Pencil, ToggleLeft, ToggleRight, Save, X, Upload, Trash2, AlertTriangle, FileDown, FileUp, CheckCircle2 } from "lucide-react";
+import { Plus, Pencil, ToggleLeft, ToggleRight, Save, X, Upload, Trash2, AlertTriangle, FileDown, FileUp, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
 import { formatSoles } from "../../lib/money";
 
 interface Category { id: string; name: string; }
@@ -169,6 +169,29 @@ export default function ProductosAdmin() {
   const [pickerError, setPickerError] = useState<string | null>(null);
   // Stock per product, computed from product_variants (sum of variants.stock).
   const [stockByProduct, setStockByProduct] = useState<Record<string, number>>({});
+  // Variants pre-loaded with size/color denormalised so the table can
+  // expand each product row inline without an extra round-trip.
+  interface ListVariant {
+    id: string;
+    product_id: string;
+    size_id: string;
+    color_id: string;
+    stock: number;
+    cost: number | null;
+    price_override: number | null;
+    active: boolean;
+    size:  { name: string; sort_order: number } | null;
+    color: { name: string; hex_code: string | null } | null;
+  }
+  const [variantsByProduct, setVariantsByProduct] = useState<Record<string, ListVariant[]>>({});
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  function toggleExpand(id: string) {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   async function load() {
     setError(null);
@@ -178,20 +201,33 @@ export default function ProductosAdmin() {
         supabase.from("categories").select("id,name").order("name"),
         supabase.from("product_sizes").select("id,name,sort_order,active").order("sort_order"),
         supabase.from("product_colors").select("id,name,hex_code,active").order("name"),
-        supabase.from("product_variants").select("product_id,stock,active"),
+        supabase
+          .from("product_variants")
+          .select(
+            "id, product_id, size_id, color_id, stock, cost, price_override, active, size:product_sizes(name, sort_order), color:product_colors(name, hex_code)",
+          ),
       ]);
       if (prodRes.error) throw new Error(prodRes.error.message);
       setProducts(prodRes.data ?? []);
       if (catRes.data   && catRes.data.length   > 0) setCategories(catRes.data);
       if (sizeRes.data)  setSizes(sizeRes.data as SizeOption[]);
       if (colorRes.data) setColors(colorRes.data as ColorOption[]);
-      // Roll up per-product stock from variants for the table column.
+      // Roll up per-product stock + group variants for the expandable rows.
       const stockMap: Record<string, number> = {};
-      for (const v of (variantRes.data ?? []) as { product_id: string; stock: number; active: boolean }[]) {
-        if (!v.active) continue;
-        stockMap[v.product_id] = (stockMap[v.product_id] ?? 0) + v.stock;
+      const groupMap: Record<string, ListVariant[]> = {};
+      for (const v of (variantRes.data ?? []) as unknown as ListVariant[]) {
+        if (v.active) stockMap[v.product_id] = (stockMap[v.product_id] ?? 0) + v.stock;
+        (groupMap[v.product_id] ??= []).push(v);
       }
+      // Sort each product's variants: size sort_order, then color name.
+      Object.values(groupMap).forEach(list =>
+        list.sort((a, b) =>
+          (a.size?.sort_order ?? 0) - (b.size?.sort_order ?? 0)
+          || (a.color?.name ?? "").localeCompare(b.color?.name ?? ""),
+        ),
+      );
       setStockByProduct(stockMap);
+      setVariantsByProduct(groupMap);
     } catch (e: any) {
       console.error("[admin/productos] load failed:", e);
       setError(e?.message ?? "Error al cargar productos");
@@ -201,6 +237,17 @@ export default function ProductosAdmin() {
   }
 
   useEffect(() => { load(); }, []);
+
+  // ESC closes the create/edit modal so the admin doesn't have to reach for
+  // the X button or scroll to Cancelar.
+  useEffect(() => {
+    if (!editing) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setEditing(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [editing]);
 
   /** Opens the modal for an existing product and loads its variants into
    *  draft state so the admin can edit / add / remove without leaving the
@@ -228,6 +275,12 @@ export default function ProductosAdmin() {
       id: string; size_id: string; color_id: string; sku_variant: string;
       stock: number; cost: number | null; price_override: number | null; active: boolean;
     }[];
+    // When the DB has NULL (variant inherits from product base), prefill the
+    // input with the product's base value. This gives the admin a visible
+    // default they can leave alone or edit. On save, equal-to-base inputs
+    // are stored back as NULL so the inheritance stays alive.
+    const baseCost  = p.cost  != null ? String(p.cost)  : "";
+    const basePrice = p.price != null ? String(p.price) : "";
     setVariantDrafts(
       rows.map(r => ({
         id:                 r.id,
@@ -235,8 +288,8 @@ export default function ProductosAdmin() {
         color_id:           r.color_id,
         sku_variant:        r.sku_variant,
         stock:              r.stock,
-        cost_str:           r.cost === null ? "" : String(r.cost),
-        price_override_str: r.price_override === null ? "" : String(r.price_override),
+        cost_str:           r.cost === null ? baseCost  : String(r.cost),
+        price_override_str: r.price_override === null ? basePrice : String(r.price_override),
         active:             r.active,
       }))
     );
@@ -274,14 +327,20 @@ export default function ProductosAdmin() {
       setPickerError("Esa combinación talla/color ya está en la tabla.");
       return;
     }
+    // Default cost + price to the product's base values so the admin doesn't
+    // have to retype the same number on every row. If the row value matches
+    // the base at save time we'll persist NULL (= "inherit"); only real
+    // per-variant overrides become stored numbers.
+    const baseCost  = editing?.cost  != null ? String(editing.cost)  : "";
+    const basePrice = editing?.price != null ? String(editing.price) : "";
     setVariantDrafts(prev => [
       ...prev,
       {
         size_id:            newVariantPicker.size_id,
         color_id:           newVariantPicker.color_id,
         stock,
-        cost_str:           "",
-        price_override_str: "",
+        cost_str:           baseCost,
+        price_override_str: basePrice,
         active:             true,
       },
     ]);
@@ -303,8 +362,11 @@ export default function ProductosAdmin() {
     setSaveError(null);
     try {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { _isNew, ...payload } = editing;
+      const { _isNew, has_offer: _ignoredHasOffer, ...payload } = editing;
       if (_isNew) payload.sku = payload.id;
+      // products.has_offer is derived from offers (Fase 4 DB trigger) — never
+      // write it from the product form. The trigger keeps it in sync.
+      void _ignoredHasOffer;
 
       // Every product must surface at least one active variant or it won't
       // show on the public catalog. Reject the save if the matrix is empty
@@ -378,8 +440,8 @@ export default function ProductosAdmin() {
               color_id:       d.color_id,
               sku_variant:    d.sku_variant ?? recomputeSku(editing.id, d),
               stock:          d.stock,
-              cost:           d.cost_str === "" ? null : Number(d.cost_str),
-              price_override: d.price_override_str === "" ? null : Number(d.price_override_str),
+              cost:           resolveCost(d),
+              price_override: resolvePriceOverride(d),
               active:         d.active,
               updated_at:     new Date().toISOString(),
             })
@@ -440,6 +502,24 @@ export default function ProductosAdmin() {
 
   /** Builds the insert payload for a variant from its draft, deriving the
    *  SKU from the product id + chosen size/color names. */
+  /** A variant-level field is only stored when it actually differs from the
+   *  product base. Equal-to-base or empty input → NULL, so /api/orders and
+   *  the public store inherit from products.cost / products.price. */
+  function resolveCost(d: VariantDraft): number | null {
+    if (d.cost_str === "") return null;
+    const n = Number(d.cost_str);
+    if (!Number.isFinite(n)) return null;
+    if (editing && Number(editing.cost) === n) return null;
+    return n;
+  }
+  function resolvePriceOverride(d: VariantDraft): number | null {
+    if (d.price_override_str === "") return null;
+    const n = Number(d.price_override_str);
+    if (!Number.isFinite(n)) return null;
+    if (editing && Number(editing.price) === n) return null;
+    return n;
+  }
+
   function buildVariantInsertRow(productId: string, d: VariantDraft) {
     return {
       product_id:     productId,
@@ -447,8 +527,8 @@ export default function ProductosAdmin() {
       color_id:       d.color_id,
       sku_variant:    recomputeSku(productId, d),
       stock:          d.stock,
-      cost:           d.cost_str === "" ? null : Number(d.cost_str),
-      price_override: d.price_override_str === "" ? null : Number(d.price_override_str),
+      cost:           resolveCost(d),
+      price_override: resolvePriceOverride(d),
       active:         d.active,
     };
   }
@@ -1110,52 +1190,130 @@ export default function ProductosAdmin() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F5EDD8]">
-              {filtered.map(p => (
-                <tr key={p.id} className="hover:bg-[#FDF8F0] transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      {p.image_url && (
-                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-[#F5EDD8] flex-shrink-0 flex items-center justify-center text-[#C4956A] text-[10px]">
-                          <img
-                            src={p.image_url}
-                            alt={p.name}
-                            className="w-full h-full object-cover"
-                            onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                          />
+              {filtered.map(p => {
+                const variants = variantsByProduct[p.id] ?? [];
+                const isExpanded = expandedIds.has(p.id);
+                return (
+                  <React.Fragment key={p.id}>
+                    <tr className="hover:bg-[#FDF8F0] transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          {variants.length > 0 ? (
+                            <button
+                              onClick={() => toggleExpand(p.id)}
+                              aria-label={isExpanded ? "Ocultar variantes" : "Ver variantes"}
+                              title={isExpanded ? "Ocultar variantes" : `Ver ${variants.length} variantes`}
+                              className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-[#6B3D1E] hover:bg-[#F5EDD8] transition-colors"
+                            >
+                              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                            </button>
+                          ) : (
+                            <span className="flex-shrink-0 w-6 h-6" aria-hidden />
+                          )}
+                          {p.image_url && (
+                            <div className="w-10 h-10 rounded-lg overflow-hidden bg-[#F5EDD8] flex-shrink-0 flex items-center justify-center text-[#C4956A] text-[10px]">
+                              <img
+                                src={p.image_url}
+                                alt={p.name}
+                                className="w-full h-full object-cover"
+                                onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                              />
+                            </div>
+                          )}
+                          <div>
+                            <p className="font-semibold text-[#3D2010]">{p.name}</p>
+                            <p className="text-[#9B6B45] text-xs">{p.id} · {p.category} · {variants.length} {variants.length === 1 ? "variante" : "variantes"}</p>
+                          </div>
                         </div>
-                      )}
-                      <div>
-                        <p className="font-semibold text-[#3D2010]">{p.name}</p>
-                        <p className="text-[#9B6B45] text-xs">{p.id} · {p.category}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-right font-bold text-[#D4A520]">{formatSoles(p.price)}</td>
-                  <td className="px-4 py-3 text-right text-[#9B6B45]">{formatSoles(p.cost ?? 0)}</td>
-                  <td className="px-4 py-3 text-right">
-                    {(() => {
-                      const s = stockByProduct[p.id] ?? 0;
-                      return <span className={`font-bold ${s <= 3 ? "text-orange-500" : "text-[#3D2010]"}`}>{s}</span>;
-                    })()}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <button onClick={() => toggleActive(p)} className={`flex items-center gap-1 mx-auto text-xs font-semibold ${p.active ? "text-green-600" : "text-[#9B6B45]"}`}>
-                      {p.active ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
-                      {p.active ? "Activo" : "Oculto"}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <button onClick={() => openEditProduct(p)} className="p-1.5 text-[#9B6B45] hover:text-[#D4A520] transition-colors">
-                        <Pencil size={15} />
-                      </button>
-                      <button onClick={() => handleDeleteClick(p)} className="p-1.5 text-[#9B6B45] hover:text-red-500 transition-colors">
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                      </td>
+                      <td className="px-4 py-3 text-right font-bold text-[#D4A520]">{formatSoles(p.price)}</td>
+                      <td className="px-4 py-3 text-right text-[#9B6B45]">{formatSoles(p.cost ?? 0)}</td>
+                      <td className="px-4 py-3 text-right">
+                        {(() => {
+                          const s = stockByProduct[p.id] ?? 0;
+                          return <span className={`font-bold ${s <= 3 ? "text-orange-500" : "text-[#3D2010]"}`}>{s}</span>;
+                        })()}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button onClick={() => toggleActive(p)} className={`flex items-center gap-1 mx-auto text-xs font-semibold ${p.active ? "text-green-600" : "text-[#9B6B45]"}`}>
+                          {p.active ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+                          {p.active ? "Activo" : "Oculto"}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <button onClick={() => openEditProduct(p)} className="p-1.5 text-[#9B6B45] hover:text-[#D4A520] transition-colors">
+                            <Pencil size={15} />
+                          </button>
+                          <button onClick={() => handleDeleteClick(p)} className="p-1.5 text-[#9B6B45] hover:text-red-500 transition-colors">
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr className="bg-[#FDF8F0]">
+                        <td colSpan={6} className="px-4 pt-2 pb-5">
+                          <div className="ml-9 rounded-xl border border-[#EDD9B4] overflow-hidden bg-white">
+                            <table className="w-full text-xs">
+                              <thead className="bg-[#F5EDD8] text-[#6B3D1E]">
+                                <tr>
+                                  <th className="px-3 py-2 text-left font-bold">Talla</th>
+                                  <th className="px-3 py-2 text-left font-bold">Color</th>
+                                  <th className="px-3 py-2 text-right font-bold">Precio</th>
+                                  <th className="px-3 py-2 text-right font-bold">Costo</th>
+                                  <th className="px-3 py-2 text-right font-bold">Stock</th>
+                                  <th className="px-3 py-2 text-center font-bold">Estado</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-[#F5EDD8]">
+                                {variants.map(v => {
+                                  const baseCost  = p.cost  ?? 0;
+                                  const basePrice = p.price ?? 0;
+                                  const cost  = v.cost  ?? baseCost;
+                                  const price = v.price_override ?? basePrice;
+                                  const costInherited  = v.cost === null;
+                                  const priceInherited = v.price_override === null;
+                                  return (
+                                    <tr key={v.id} className={v.active ? "" : "opacity-50"}>
+                                      <td className="px-3 py-2 font-semibold text-[#3D2010]">{v.size?.name ?? "—"}</td>
+                                      <td className="px-3 py-2 text-[#6B3D1E]">
+                                        <span className="inline-flex items-center gap-2">
+                                          {v.color?.hex_code && (
+                                            <span
+                                              className="inline-block w-3 h-3 rounded-full border border-[#EDD9B4]"
+                                              style={{ background: v.color.hex_code }}
+                                            />
+                                          )}
+                                          {v.color?.name ?? "—"}
+                                        </span>
+                                      </td>
+                                      <td className="px-3 py-2 text-right font-semibold text-[#D4A520]">
+                                        {formatSoles(price)}
+                                        {priceInherited && <span className="ml-1 text-[9px] uppercase tracking-wider text-[#9B6B45]">base</span>}
+                                      </td>
+                                      <td className="px-3 py-2 text-right text-[#9B6B45]">
+                                        {formatSoles(cost)}
+                                        {costInherited && <span className="ml-1 text-[9px] uppercase tracking-wider">base</span>}
+                                      </td>
+                                      <td className={`px-3 py-2 text-right font-bold ${v.stock <= 3 ? "text-orange-500" : "text-[#3D2010]"}`}>{v.stock}</td>
+                                      <td className="px-3 py-2 text-center">
+                                        {v.active
+                                          ? <span className="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full uppercase tracking-wider">Activa</span>
+                                          : <span className="text-[10px] font-bold text-[#9B6B45] bg-[#F5EDD8] px-2 py-0.5 rounded-full uppercase tracking-wider">Oculta</span>}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -1841,15 +1999,14 @@ export default function ProductosAdmin() {
               )}
             </div>
 
-            {/* Has offer */}
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="hasOffer"
-                checked={editing.has_offer ?? false}
-                onChange={e => setEditing((prev: any) => ({ ...prev, has_offer: e.target.checked }))}
-              />
-              <label htmlFor="hasOffer" className="text-sm font-semibold text-[#6B3D1E]">Tiene oferta 3 × 15% dto</label>
+            {/* Ofertas — ahora se gestionan desde /admin/ofertas. El flag
+                products.has_offer es derivado (trigger DB) y el badge sólo
+                aparece cuando hay una oferta vigente que afecta a este
+                producto, sea por id o por categoría. */}
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900">
+              <strong>Ofertas:</strong> ya no se marcan aquí. Crea o edita ofertas en{" "}
+              <a href="/admin/ofertas" className="underline font-bold">Ofertas</a> — el badge en el
+              catálogo se enciende automáticamente cuando una oferta está vigente.
             </div>
 
             {/* Actions */}

@@ -7,18 +7,21 @@ import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
 import { LionMark } from "./LogoMark";
 import { supabase } from "../lib/supabase";
-import type { Product, ProductVariant } from "../lib/types";
+import type { Product, ProductVariant, Offer } from "../lib/types";
+import { bestOfferFor, effectivePrice } from "../lib/offers";
+import { formatSoles } from "../lib/money";
 
 // ── Categories ────────────────────────────────────────────────────────────
 // Editorial labels for the category strip. The product.category column is the
 // canonical id used both in /admin and in the public filter. Unknown
-// categories fall back to a "Otros" group at the end.
+// categories fall back to a "Otros" group at the end. Offer badges are
+// driven by /admin/ofertas (Fase 4), so there is no hard-coded offer flag
+// here anymore.
 
 interface CategoryDef {
   id: string;
   name: string;
   desc: string;
-  hasOffer: boolean;
 }
 
 const CATEGORIES: CategoryDef[] = [
@@ -26,11 +29,10 @@ const CATEGORIES: CategoryDef[] = [
     id: "conjuntos",
     name: "Conjuntos & Ajuares",
     desc: "Sets completos hechos para el primer abrazo y los días que siguen.",
-    hasOffer: false,
   },
-  { id: "bodies",  name: "Bodies",  desc: "La prenda base del guardarropa — suave, versátil, esencial.", hasOffer: true },
-  { id: "baberos", name: "Baberos", desc: "Los detalles tiernos que cuidan cada comida.",                hasOffer: true },
-  { id: "mantas",  name: "Mantas",  desc: "Abrigos ligeros que envuelven con dulzura.",                  hasOffer: true },
+  { id: "bodies",  name: "Bodies",  desc: "La prenda base del guardarropa — suave, versátil, esencial." },
+  { id: "baberos", name: "Baberos", desc: "Los detalles tiernos que cuidan cada comida." },
+  { id: "mantas",  name: "Mantas",  desc: "Abrigos ligeros que envuelven con dulzura." },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -62,7 +64,7 @@ function distinctColors(p: Product): { id: string; name: string; hex: string | n
 // Kukuli-style flow: pick a size first → only the colours available for that
 // size are enabled → confirm the (size,colour) variant and add to bag.
 
-function SelectionSheet({ product, onClose }: { product: Product; onClose: () => void }) {
+function SelectionSheet({ product, offer, onClose }: { product: Product; offer: Offer | null; onClose: () => void }) {
   const { t } = useLang();
   const { add } = useCart();
 
@@ -118,12 +120,17 @@ function SelectionSheet({ product, onClose }: { product: Product; onClose: () =>
 
   function handleAdd() {
     if (!selectedVariant) return;
-    add(product, { variant: selectedVariant });
+    add(product, {
+      variant: selectedVariant,
+      basePrice,
+      unitPrice: displayPrice,
+    });
     setAdded(true);
     setTimeout(onClose, 1100);
   }
 
-  const displayPrice = selectedVariant?.price_override ?? product.price;
+  const basePrice = selectedVariant?.price_override ?? product.price;
+  const displayPrice = effectivePrice(basePrice, offer);
 
   return (
     <div
@@ -247,10 +254,17 @@ function SelectionSheet({ product, onClose }: { product: Product; onClose: () =>
               <span className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute">
                 {product.material}
               </span>
-              <span className="lc-display text-2xl text-ink">
-                <span className="lc-mono text-xs text-ink-mute mr-1">S/</span>
-                {displayPrice}
-              </span>
+              <div className="flex items-baseline gap-2">
+                {offer && (
+                  <span className="lc-mono text-xs text-ink-mute line-through">
+                    {formatSoles(basePrice)}
+                  </span>
+                )}
+                <span className="lc-display text-2xl text-ink">
+                  <span className="lc-mono text-xs text-ink-mute mr-1">S/</span>
+                  {displayPrice.toFixed(2)}
+                </span>
+              </div>
             </div>
 
             <button
@@ -452,10 +466,12 @@ function WaitlistModal({ product, onClose }: { product: Product; onClose: () => 
 
 function ProductCard({
   product,
+  offer,
   onSelect,
   onWaitlist,
 }: {
   product: Product;
+  offer: Offer | null;
   onSelect: () => void;
   onWaitlist: () => void;
 }) {
@@ -513,9 +529,9 @@ function ProductCard({
           </div>
         )}
 
-        {product.has_offer && !outOfStock && (
+        {offer && !outOfStock && (
           <span className="absolute top-3 left-3 lc-mono uppercase text-[9px] tracking-[0.2em] text-gold-deep bg-bg/90 px-2.5 py-1">
-            3 × 15%
+            −{Math.round(offer.discount_percent)}%
           </span>
         )}
       </div>
@@ -536,10 +552,17 @@ function ProductCard({
               <span key={c.id} className="lc-sw" style={{ background: swatchBg(c.hex) }} title={c.name} />
             ))}
           </div>
-          <span className="lc-display text-base text-ink">
-            <span className="lc-mono text-[10px] text-ink-mute mr-1">S/</span>
-            {product.price}
-          </span>
+          <div className="flex items-baseline gap-1.5">
+            {offer && (
+              <span className="lc-mono text-[10px] text-ink-mute line-through">
+                {product.price}
+              </span>
+            )}
+            <span className="lc-display text-base text-ink">
+              <span className="lc-mono text-[10px] text-ink-mute mr-1">S/</span>
+              {effectivePrice(product.price, offer).toFixed(2)}
+            </span>
+          </div>
         </div>
 
         <span
@@ -560,6 +583,7 @@ export default function Collection() {
   const { t } = useLang();
   const [activeCategory, setActiveCategory] = useState("all");
   const [products, setProducts] = useState<Product[]>([]);
+  const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectProduct, setSelectProduct] = useState<Product | null>(null);
   const [waitlistProduct, setWaitlistProduct] = useState<Product | null>(null);
@@ -570,39 +594,56 @@ export default function Collection() {
       setLoading(true);
       // PostgREST join: pull the variants (and their joined size/color) in the
       // same round trip so the public store never re-queries per row.
-      const { data, error } = await supabase
-        .from("products")
-        .select(
-          `
-          id, sku, name, tagline, description, category, price, cost,
-          gender, material, has_offer, image_url, active, created_at,
-          variants:product_variants(
-            id, product_id, size_id, color_id, sku_variant, stock,
-            cost, price_override, active,
-            size:product_sizes(id, name, sort_order, active),
-            color:product_colors(id, name, hex_code, active)
-          ),
-          images:product_images(
-            id, product_id, url, storage_path, sort_order,
-            is_primary, is_hover, alt_text, image_type, color_id
+      // Offers are fetched in parallel; RLS already filters out paused or
+      // expired offers for anon users.
+      const [productsRes, offersRes] = await Promise.all([
+        supabase
+          .from("products")
+          .select(
+            `
+            id, sku, name, tagline, description, category, price, cost,
+            gender, material, has_offer, image_url, active, created_at,
+            variants:product_variants(
+              id, product_id, size_id, color_id, sku_variant, stock,
+              cost, price_override, active,
+              size:product_sizes(id, name, sort_order, active),
+              color:product_colors(id, name, hex_code, active)
+            ),
+            images:product_images(
+              id, product_id, url, storage_path, sort_order,
+              is_primary, is_hover, alt_text, image_type, color_id
+            )
+            `
           )
-          `
-        )
-        .eq("active", true)
-        .order("created_at", { ascending: true });
+          .eq("active", true)
+          .order("created_at", { ascending: true }),
+        supabase.from("offers").select("*").eq("active", true),
+      ]);
       if (cancelled) return;
-      if (error) {
-        // Fail soft — show empty state, log for diagnostics.
-        // eslint-disable-next-line no-console
-        console.error("[Collection] products fetch failed:", error.message);
+      if (productsRes.error) {
+        console.error("[Collection] products fetch failed:", productsRes.error.message);
         setProducts([]);
       } else {
-        setProducts((data ?? []) as unknown as Product[]);
+        setProducts((productsRes.data ?? []) as unknown as Product[]);
+      }
+      if (offersRes.error) {
+        console.error("[Collection] offers fetch failed:", offersRes.error.message);
+        setOffers([]);
+      } else {
+        setOffers((offersRes.data ?? []) as Offer[]);
       }
       setLoading(false);
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // Per-product offer lookup (most specific live offer wins). Memoised
+  // because both ProductCard and the SelectionSheet need it.
+  const offerFor = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof bestOfferFor>>();
+    products.forEach(p => map.set(p.id, bestOfferFor({ id: p.id, category: p.category }, offers)));
+    return (id: string) => map.get(id) ?? null;
+  }, [products, offers]);
 
   // Group by category and only show categories that have products. Unknown
   // categories surface in an "Otros" bucket so a new category id from the
@@ -614,7 +655,7 @@ export default function Collection() {
     const knownIds = new Set(CATEGORIES.map((c) => c.id));
     const others = filtered.filter((p) => !knownIds.has(p.category));
     if (others.length > 0) {
-      known.push({ id: "_otros", name: "Otros", desc: "", hasOffer: false, items: others });
+      known.push({ id: "_otros", name: "Otros", desc: "", items: others });
     }
     return known.filter((g) => g.items.length > 0);
   }, [products, activeCategory]);
@@ -703,11 +744,17 @@ export default function Collection() {
                 </h3>
                 {group.desc && <p className="text-sm text-ink-soft mt-1 font-light">{group.desc}</p>}
               </div>
-              {group.hasOffer && (
-                <span className="ml-auto shrink-0 lc-pill lc-pill-gold whitespace-nowrap">
-                  {t("Oferta 3 × 15%", "Offer 3 × 15%")}
-                </span>
-              )}
+              {(() => {
+                const live = offers.find(
+                  o => o.scope_type === "category" && o.category === group.id,
+                );
+                if (!live) return null;
+                return (
+                  <span className="ml-auto shrink-0 lc-pill lc-pill-gold whitespace-nowrap">
+                    {t(`Oferta −${Math.round(live.discount_percent)}%`, `Offer −${Math.round(live.discount_percent)}%`)}
+                  </span>
+                );
+              })()}
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-10 sm:gap-x-6 sm:gap-y-12">
@@ -715,6 +762,7 @@ export default function Collection() {
                 <ProductCard
                   key={product.id}
                   product={product}
+                  offer={offerFor(product.id)}
                   onSelect={() => setSelectProduct(product)}
                   onWaitlist={() => setWaitlistProduct(product)}
                 />
@@ -725,7 +773,11 @@ export default function Collection() {
       </div>
 
       {selectProduct && (
-        <SelectionSheet product={selectProduct} onClose={() => setSelectProduct(null)} />
+        <SelectionSheet
+          product={selectProduct}
+          offer={offerFor(selectProduct.id)}
+          onClose={() => setSelectProduct(null)}
+        />
       )}
       {waitlistProduct && (
         <WaitlistModal product={waitlistProduct} onClose={() => setWaitlistProduct(null)} />
