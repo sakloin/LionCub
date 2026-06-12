@@ -1260,9 +1260,9 @@ export default function ProductosAdmin() {
                                 <tr>
                                   <th className="px-3 py-2 text-left font-bold">Talla</th>
                                   <th className="px-3 py-2 text-left font-bold">Color</th>
-                                  <th className="px-3 py-2 text-right font-bold">Stock</th>
-                                  <th className="px-3 py-2 text-right font-bold">Costo</th>
                                   <th className="px-3 py-2 text-right font-bold">Precio</th>
+                                  <th className="px-3 py-2 text-right font-bold">Costo</th>
+                                  <th className="px-3 py-2 text-right font-bold">Stock</th>
                                   <th className="px-3 py-2 text-center font-bold">Estado</th>
                                 </tr>
                               </thead>
@@ -1288,15 +1288,15 @@ export default function ProductosAdmin() {
                                           {v.color?.name ?? "—"}
                                         </span>
                                       </td>
-                                      <td className={`px-3 py-2 text-right font-bold ${v.stock <= 3 ? "text-orange-500" : "text-[#3D2010]"}`}>{v.stock}</td>
-                                      <td className="px-3 py-2 text-right text-[#9B6B45]">
-                                        {formatSoles(cost)}
-                                        {costInherited && <span className="ml-1 text-[9px] uppercase tracking-wider">base</span>}
-                                      </td>
                                       <td className="px-3 py-2 text-right font-semibold text-[#D4A520]">
                                         {formatSoles(price)}
                                         {priceInherited && <span className="ml-1 text-[9px] uppercase tracking-wider text-[#9B6B45]">base</span>}
                                       </td>
+                                      <td className="px-3 py-2 text-right text-[#9B6B45]">
+                                        {formatSoles(cost)}
+                                        {costInherited && <span className="ml-1 text-[9px] uppercase tracking-wider">base</span>}
+                                      </td>
+                                      <td className={`px-3 py-2 text-right font-bold ${v.stock <= 3 ? "text-orange-500" : "text-[#3D2010]"}`}>{v.stock}</td>
                                       <td className="px-3 py-2 text-center">
                                         {v.active
                                           ? <span className="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full uppercase tracking-wider">Activa</span>
