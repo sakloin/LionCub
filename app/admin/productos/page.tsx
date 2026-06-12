@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as XLSX from "@e965/xlsx";
 import { supabase } from "../../lib/supabase";
-import { Product } from "../../lib/types";
+import { Product, ProductImage } from "../../lib/types";
 import { Plus, Pencil, ToggleLeft, ToggleRight, Save, X, Upload, Trash2, AlertTriangle, FileDown, FileUp, CheckCircle2 } from "lucide-react";
 import { formatSoles } from "../../lib/money";
 
@@ -53,17 +53,29 @@ const EMPTY: any = {
 interface SizeOption  { id: string; name: string; sort_order: number; active: boolean; }
 interface ColorOption { id: string; name: string; hex_code: string | null; active: boolean; }
 
-/** Optional starter variant collected when creating a new product. The admin
- *  picks 1 talla + 1 color + initial stock and the save() handler writes a
- *  single product_variants row right after the product insert. Editing an
- *  existing product doesn't touch variants from this UI — that goes in the
- *  Fase 2/3 variant matrix. */
-interface InitialVariant {
-  size_id:  string;
-  color_id: string;
-  stock:    number;
+/** Variant row as the form holds it. id present → existed in DB before the
+ *  modal opened; absent → new in this session. The string-typed cost / price
+ *  fields let an empty input mean "inherit" (null in DB) without coercing
+ *  to 0 by accident. */
+interface VariantDraft {
+  /** Server id when the variant already exists; undefined for fresh rows. */
+  id?: string;
+  size_id:            string;
+  color_id:           string;
+  /** Snapshot of the existing sku so we don't regenerate one on update. */
+  sku_variant?:       string;
+  stock:              number;
+  /** Empty string → inherit products.cost / products.price. */
+  cost_str:           string;
+  price_override_str: string;
+  active:             boolean;
 }
-const EMPTY_INITIAL_VARIANT: InitialVariant = { size_id: "", color_id: "", stock: 0 };
+
+function makeVariantSku(productId: string, sizeName: string, colorName: string): string {
+  const sizeSlug  = sizeName.toUpperCase().replace(/[^A-Z0-9]+/g, "");
+  const colorSlug = colorName.toUpperCase().replace(/[^A-Z0-9]+/g, "");
+  return `${productId}-${sizeSlug}-${colorSlug}`;
+}
 
 /** Returns the next available LC-NNN id given a list of existing products
  *  plus any ids already reserved in the current batch. */
@@ -104,9 +116,24 @@ export default function ProductosAdmin() {
   const [newCatName, setNewCatName] = useState("");
   const [savingCat,  setSavingCat]  = useState(false);
 
-  // Image upload
+  // Inline size / color creation (inside the variant picker)
+  const [addingSize,  setAddingSize]  = useState(false);
+  const [newSizeName, setNewSizeName] = useState("");
+  const [addingColor, setAddingColor] = useState(false);
+  const [newColorName, setNewColorName] = useState("");
+  const [newColorHex,  setNewColorHex]  = useState("#CFC3AE");
+  const [savingAttr,   setSavingAttr]   = useState(false);
+
+  // Image upload (legacy single-image, kept for backwards compat with rows
+  // that have products.image_url set but no product_images yet).
   const [uploading,  setUploading]  = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Gallery (Fase 3) — multiple images per product with star ★ portada and
+  // 👁 hover toggles. Persisted to product_images on save.
+  const [gallery, setGallery] = useState<ProductImage[]>([]);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
+  const galleryRef = useRef<HTMLInputElement>(null);
 
   // Delete
   const [deleteTarget,   setDeleteTarget]   = useState<Product | null>(null);
@@ -129,8 +156,17 @@ export default function ProductosAdmin() {
   // Variant catalogs (loaded from product_sizes / product_colors).
   const [sizes,  setSizes]  = useState<SizeOption[]>([]);
   const [colors, setColors] = useState<ColorOption[]>([]);
-  // Variant starter — only meaningful when creating a new product.
-  const [initialVariant, setInitialVariant] = useState<InitialVariant>(EMPTY_INITIAL_VARIANT);
+  // Live drafts of the variants currently being edited on the open modal.
+  // Empty array when creating a new product (admin must add at least one).
+  // Loaded from product_variants when editing an existing product.
+  const [variantDrafts, setVariantDrafts] = useState<VariantDraft[]>([]);
+  // Snapshot of the variant ids that existed in the DB when the modal opened,
+  // so save() can detect drafts the admin removed (delete-on-save).
+  const [originalVariantIds, setOriginalVariantIds] = useState<Set<string>>(new Set());
+  // Inline picker state for "+ Agregar variante".
+  const [newVariantPicker, setNewVariantPicker] =
+    useState<{ size_id: string; color_id: string; stock: string }>({ size_id: "", color_id: "", stock: "" });
+  const [pickerError, setPickerError] = useState<string | null>(null);
   // Stock per product, computed from product_variants (sum of variants.stock).
   const [stockByProduct, setStockByProduct] = useState<Record<string, number>>({});
 
@@ -166,6 +202,100 @@ export default function ProductosAdmin() {
 
   useEffect(() => { load(); }, []);
 
+  /** Opens the modal for an existing product and loads its variants into
+   *  draft state so the admin can edit / add / remove without leaving the
+   *  page. New-product callers use openNewProduct(). */
+  async function openEditProduct(p: Product) {
+    setSaveError(null);
+    setPickerError(null);
+    setNewVariantPicker({ size_id: "", color_id: "", stock: "" });
+    setEditing({ ...p });
+    setVariantDrafts([]);
+    setOriginalVariantIds(new Set());
+    setGallery([]);
+    void loadGallery(p.id);
+    // Pull current variants; failure is non-fatal — the admin will see an
+    // empty list and can re-create as needed.
+    const { data, error: vErr } = await supabase
+      .from("product_variants")
+      .select("id, size_id, color_id, sku_variant, stock, cost, price_override, active")
+      .eq("product_id", p.id);
+    if (vErr) {
+      console.error("[admin/productos] variants load failed:", vErr);
+      return;
+    }
+    const rows = (data ?? []) as {
+      id: string; size_id: string; color_id: string; sku_variant: string;
+      stock: number; cost: number | null; price_override: number | null; active: boolean;
+    }[];
+    setVariantDrafts(
+      rows.map(r => ({
+        id:                 r.id,
+        size_id:            r.size_id,
+        color_id:           r.color_id,
+        sku_variant:        r.sku_variant,
+        stock:              r.stock,
+        cost_str:           r.cost === null ? "" : String(r.cost),
+        price_override_str: r.price_override === null ? "" : String(r.price_override),
+        active:             r.active,
+      }))
+    );
+    setOriginalVariantIds(new Set(rows.map(r => r.id)));
+  }
+
+  function openNewProduct() {
+    setSaveError(null);
+    setPickerError(null);
+    setNewVariantPicker({ size_id: "", color_id: "", stock: "" });
+    const autoId = nextId(products);
+    setEditing({ ...EMPTY, id: autoId, sku: autoId, _isNew: true });
+    setVariantDrafts([]);
+    setOriginalVariantIds(new Set());
+    setGallery([]);
+  }
+
+  /** Adds the picker selection as a fresh draft, if the (size, color) pair
+   *  isn't already in the matrix. Resets the picker on success. */
+  function addVariantFromPicker() {
+    setPickerError(null);
+    if (!newVariantPicker.size_id || !newVariantPicker.color_id) {
+      setPickerError("Elige talla y color.");
+      return;
+    }
+    const stock = Number(newVariantPicker.stock);
+    if (!Number.isFinite(stock) || stock < 0 || !Number.isInteger(stock)) {
+      setPickerError("Stock debe ser un entero >= 0.");
+      return;
+    }
+    const dup = variantDrafts.find(
+      d => d.size_id === newVariantPicker.size_id && d.color_id === newVariantPicker.color_id
+    );
+    if (dup) {
+      setPickerError("Esa combinación talla/color ya está en la tabla.");
+      return;
+    }
+    setVariantDrafts(prev => [
+      ...prev,
+      {
+        size_id:            newVariantPicker.size_id,
+        color_id:           newVariantPicker.color_id,
+        stock,
+        cost_str:           "",
+        price_override_str: "",
+        active:             true,
+      },
+    ]);
+    setNewVariantPicker({ size_id: "", color_id: "", stock: "" });
+  }
+
+  function patchVariantDraft(idx: number, patch: Partial<VariantDraft>) {
+    setVariantDrafts(prev => prev.map((d, i) => (i === idx ? { ...d, ...patch } : d)));
+  }
+
+  function removeVariantDraft(idx: number) {
+    setVariantDrafts(prev => prev.filter((_, i) => i !== idx));
+  }
+
   // ── Edit / Save ────────────────────────────────────────────────────────────
   async function save() {
     if (!editing) return;
@@ -176,52 +306,157 @@ export default function ProductosAdmin() {
       const { _isNew, ...payload } = editing;
       if (_isNew) payload.sku = payload.id;
 
+      // Every product must surface at least one active variant or it won't
+      // show on the public catalog. Reject the save if the matrix is empty
+      // or every row is inactive.
+      const activeDrafts = variantDrafts.filter(d => d.active);
+      if (activeDrafts.length === 0) {
+        throw new Error("Agrega al menos una variante activa (talla + color + stock).");
+      }
+      // Local duplicate check — same (size, color) twice in the matrix.
+      const pairKeys = new Set<string>();
+      for (const d of variantDrafts) {
+        const k = `${d.size_id}|${d.color_id}`;
+        if (pairKeys.has(k)) throw new Error("Hay variantes duplicadas (misma talla y color).");
+        pairKeys.add(k);
+      }
+      for (const d of variantDrafts) {
+        if (!Number.isInteger(d.stock) || d.stock < 0) {
+          throw new Error("Cada stock debe ser un entero >= 0.");
+        }
+      }
+
+      // Cada producto debe tener galería con una ★ portada. La portada
+      // sincroniza también products.image_url para que el carrito, checkout
+      // y tabla admin (que aún leen products.image_url directo) sigan
+      // funcionando sin tocarlos en esta fase.
+      const primaryImg = gallery.find(g => g.is_primary);
+      if (gallery.length > 0 && !primaryImg) {
+        throw new Error("Marca una imagen como ★ Portada.");
+      }
+      if (gallery.length === 0 && !editing.image_url) {
+        throw new Error("Sube al menos una imagen del producto.");
+      }
+      payload.image_url = primaryImg?.url ?? editing.image_url ?? "";
+
       if (_isNew) {
-        // Validate the initial variant — every new product needs at least one
-        // variant so it shows on the public store.
-        if (!initialVariant.size_id || !initialVariant.color_id) {
-          throw new Error("Selecciona la talla y el color de la variante inicial.");
-        }
-        if (!Number.isFinite(initialVariant.stock) || initialVariant.stock < 0) {
-          throw new Error("El stock inicial debe ser un número >= 0.");
-        }
         const { error: insErr } = await supabase.from("products").insert(payload);
         if (insErr) throw new Error(insErr.message);
-
-        // Compose a readable variant SKU: <product_id>-<size>-<COLOR>.
-        const sizeName  = sizes.find(s  => s.id === initialVariant.size_id)?.name  ?? "";
-        const colorName = colors.find(c => c.id === initialVariant.color_id)?.name ?? "";
-        const variantSku = `${payload.id}-${sizeName}-${colorName.toUpperCase().replace(/[^A-Z0-9]+/g, "")}`;
-
-        const { error: vErr } = await supabase.from("product_variants").insert({
-          product_id:  payload.id,
-          size_id:     initialVariant.size_id,
-          color_id:    initialVariant.color_id,
-          sku_variant: variantSku,
-          stock:       Math.floor(initialVariant.stock),
-          cost:        null,            // si NULL hereda products.cost
-          price_override: null,
-          active:      true,
-        });
+        const variantRows = variantDrafts.map(d => buildVariantInsertRow(payload.id, d));
+        const { error: vErr } = await supabase.from("product_variants").insert(variantRows);
         if (vErr) {
-          // Rollback product to keep the catalog consistent — without a
-          // variant the product wouldn't appear on the store anyway.
+          // Rollback product so we don't leave an orphan in the catalog.
           await supabase.from("products").delete().eq("id", payload.id);
-          throw new Error(`Variante: ${vErr.message}`);
+          throw new Error(`Variantes: ${vErr.message}`);
         }
       } else {
         const { error: updErr } = await supabase.from("products").update(payload).eq("id", editing.id);
         if (updErr) throw new Error(updErr.message);
+
+        // 1) Variants the admin removed from the matrix (originally in DB,
+        //    no longer in drafts) — try delete; if there are FK references
+        //    (orders, etc.) fall back to deactivation.
+        const draftIds = new Set(variantDrafts.filter(d => d.id).map(d => d.id!));
+        const removed  = [...originalVariantIds].filter(id => !draftIds.has(id));
+        for (const id of removed) {
+          const { error: delErr } = await supabase.from("product_variants").delete().eq("id", id);
+          if (delErr) {
+            // Likely a FK conflict (order_items.variant_id references it).
+            // Deactivate so it disappears from the public store but
+            // historical orders keep their reference intact.
+            await supabase.from("product_variants").update({ active: false }).eq("id", id);
+          }
+        }
+
+        // 2) Existing variants — UPDATE only the rows the admin touched.
+        const existingDrafts = variantDrafts.filter(d => d.id);
+        for (const d of existingDrafts) {
+          const { error: uErr } = await supabase
+            .from("product_variants")
+            .update({
+              size_id:        d.size_id,
+              color_id:       d.color_id,
+              sku_variant:    d.sku_variant ?? recomputeSku(editing.id, d),
+              stock:          d.stock,
+              cost:           d.cost_str === "" ? null : Number(d.cost_str),
+              price_override: d.price_override_str === "" ? null : Number(d.price_override_str),
+              active:         d.active,
+              updated_at:     new Date().toISOString(),
+            })
+            .eq("id", d.id!);
+          if (uErr) throw new Error(`Variante ${d.id}: ${uErr.message}`);
+        }
+
+        // 3) New variants added in this session.
+        const fresh = variantDrafts.filter(d => !d.id);
+        if (fresh.length > 0) {
+          const newRows = fresh.map(d => buildVariantInsertRow(editing.id, d));
+          const { error: insErr } = await supabase.from("product_variants").insert(newRows);
+          if (insErr) throw new Error(`Variantes nuevas: ${insErr.message}`);
+        }
       }
+
+      // ─── Persist gallery (Fase 3) ──────────────────────────────────────
+      // DELETE + INSERT pattern: simpler than diffing, and the unique partial
+      // indexes (one is_primary, one is_hover per product) tolerate it because
+      // both ops run within the same statement transaction implied by the
+      // PostgREST round-trip on the second call. Storage objects keep their
+      // existing public URLs.
+      if (gallery.length > 0) {
+        const productId = editing.id as string;
+        const { error: delImgErr } = await supabase
+          .from("product_images")
+          .delete()
+          .eq("product_id", productId);
+        if (delImgErr) throw new Error(`Galería (limpieza): ${delImgErr.message}`);
+
+        const imgRows = gallery.map((g, idx) => ({
+          product_id:   productId,
+          url:          g.url,
+          storage_path: g.storage_path,
+          sort_order:   idx,
+          is_primary:   g.is_primary,
+          is_hover:     g.is_hover,
+          alt_text:     g.alt_text,
+          image_type:   g.image_type,
+          color_id:     g.color_id,
+        }));
+        const { error: insImgErr } = await supabase.from("product_images").insert(imgRows);
+        if (insImgErr) throw new Error(`Galería: ${insImgErr.message}`);
+      }
+
       await load();
       setEditing(null);
-      setInitialVariant(EMPTY_INITIAL_VARIANT);
+      setVariantDrafts([]);
+      setOriginalVariantIds(new Set());
+      setGallery([]);
     } catch (e: any) {
       console.error("[admin/productos] save failed:", e);
       setSaveError(e?.message ?? "Error al guardar producto");
     } finally {
       setSaving(false);
     }
+  }
+
+  /** Builds the insert payload for a variant from its draft, deriving the
+   *  SKU from the product id + chosen size/color names. */
+  function buildVariantInsertRow(productId: string, d: VariantDraft) {
+    return {
+      product_id:     productId,
+      size_id:        d.size_id,
+      color_id:       d.color_id,
+      sku_variant:    recomputeSku(productId, d),
+      stock:          d.stock,
+      cost:           d.cost_str === "" ? null : Number(d.cost_str),
+      price_override: d.price_override_str === "" ? null : Number(d.price_override_str),
+      active:         d.active,
+    };
+  }
+
+  function recomputeSku(productId: string, d: VariantDraft): string {
+    const sizeName  = sizes.find(s  => s.id === d.size_id)?.name  ?? "";
+    const colorName = colors.find(c => c.id === d.color_id)?.name ?? "";
+    return makeVariantSku(productId, sizeName, colorName);
   }
 
   async function toggleActive(p: Product) {
@@ -288,6 +523,122 @@ export default function ProductosAdmin() {
     }
   }
 
+  // ── Gallery (multi-image) helpers ─────────────────────────────────────────
+  //
+  // The gallery lives in local component state while the modal is open. The
+  // user adds files, toggles ★ portada / 👁 hover, or removes thumbnails;
+  // the DELETE+REINSERT happens in save() so all the changes commit together.
+  // Uploads go to storage immediately so the public URL is available to render
+  // the thumbnail — if the modal is cancelled mid-edit, the storage object is
+  // an orphan but that's tolerable for an admin tool.
+
+  /** Fetch the existing gallery for a product. Empty array for new products. */
+  async function loadGallery(productId: string) {
+    const { data, error } = await supabase
+      .from("product_images")
+      .select("*")
+      .eq("product_id", productId)
+      .order("sort_order");
+    if (error) {
+      console.error("[admin/productos] gallery load failed:", error.message);
+      setGallery([]);
+      return;
+    }
+    setGallery((data ?? []) as ProductImage[]);
+  }
+
+  /** Upload one or more files into the product's storage folder, append them
+   *  to the gallery state. The first one uploaded for an empty gallery is
+   *  marked is_primary so a product is never published without a cover. */
+  async function handleGalleryUpload(files: FileList | null) {
+    if (!files || files.length === 0 || !editing) return;
+    const productId = (editing.id as string)?.trim();
+    if (!productId) {
+      setSaveError("ID del producto no disponible — recarga e intenta de nuevo.");
+      return;
+    }
+    setUploadingGallery(true);
+    setSaveError(null);
+    try {
+      const newItems: ProductImage[] = [];
+      for (const file of Array.from(files)) {
+        if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+          console.warn("[admin/productos] skipped non-image file:", file.name);
+          continue;
+        }
+        const ext  = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+        const uuid = crypto.randomUUID();
+        const path = `products/${productId}/${uuid}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("product-images")
+          .upload(path, file, { contentType: file.type });
+        if (upErr) throw new Error(`Storage upload: ${upErr.message}`);
+        const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
+        if (!urlData?.publicUrl) throw new Error("No se pudo obtener la URL pública.");
+        newItems.push({
+          id: uuid,                  // temporary id — replaced when persisted
+          product_id: productId,
+          url: urlData.publicUrl,
+          storage_path: path,
+          sort_order: gallery.length + newItems.length,
+          is_primary: false,
+          is_hover: false,
+          alt_text: null,
+          image_type: null,
+          color_id: null,
+        });
+      }
+      setGallery(prev => {
+        const merged = [...prev, ...newItems];
+        // Ensure at least one ★ portada exists.
+        if (!merged.some(g => g.is_primary) && merged.length > 0) {
+          merged[0] = { ...merged[0], is_primary: true };
+        }
+        return merged;
+      });
+    } catch (e: any) {
+      console.error("[admin/productos] gallery upload failed:", e);
+      setSaveError("Error al subir imagen: " + (e?.message ?? "desconocido"));
+    } finally {
+      setUploadingGallery(false);
+    }
+  }
+
+  /** Mark one item as the single ★ portada (clears the others). */
+  function togglePrimary(itemId: string) {
+    setGallery(prev => prev.map(g => ({ ...g, is_primary: g.id === itemId })));
+  }
+
+  /** Toggle 👁 hover on / off. Only one item can be hover at a time; setting
+   *  it on a new one clears any previous hover. */
+  function toggleHover(itemId: string) {
+    setGallery(prev => prev.map(g => {
+      if (g.id === itemId) return { ...g, is_hover: !g.is_hover };
+      return { ...g, is_hover: false };
+    }));
+  }
+
+  /** Remove an item from the local gallery (no DB write yet — save() handles
+   *  it). The storage object is also removed eagerly to keep the bucket from
+   *  accumulating orphans. */
+  async function removeGalleryItem(itemId: string) {
+    const item = gallery.find(g => g.id === itemId);
+    if (!item) return;
+    // Eager storage cleanup — best-effort, swallowed on failure.
+    const { error: rmErr } = await supabase.storage
+      .from("product-images")
+      .remove([item.storage_path]);
+    if (rmErr) console.warn("[admin/productos] storage cleanup failed:", rmErr.message);
+    setGallery(prev => {
+      const next = prev.filter(g => g.id !== itemId);
+      // If we removed the portada, promote the first remaining item.
+      if (item.is_primary && next.length > 0) {
+        next[0] = { ...next[0], is_primary: true };
+      }
+      return next;
+    });
+  }
+
   // ── Inline category ────────────────────────────────────────────────────────
   async function handleAddCategory() {
     if (!newCatName.trim()) return;
@@ -309,6 +660,68 @@ export default function ProductosAdmin() {
       setSaveError(e?.message ?? "Error al crear categoría");
     } finally {
       setSavingCat(false);
+    }
+  }
+
+  // Create a size inline and preselect it in the variant picker.
+  async function handleAddSize() {
+    const name = newSizeName.trim();
+    if (!name) return;
+    setSavingAttr(true);
+    setPickerError(null);
+    try {
+      const existing = sizes.find(s => s.name.toLowerCase() === name.toLowerCase());
+      if (existing) {
+        setNewVariantPicker(p => ({ ...p, size_id: existing.id }));
+      } else {
+        const sort_order = (sizes.reduce((m, s) => Math.max(m, s.sort_order), 0)) + 1;
+        const { data, error } = await supabase
+          .from("product_sizes")
+          .insert({ name, sort_order, active: true })
+          .select("id,name,sort_order,active")
+          .single();
+        if (error) throw new Error(error.message);
+        setSizes(prev => [...prev, data as SizeOption].sort((a, b) => a.sort_order - b.sort_order));
+        setNewVariantPicker(p => ({ ...p, size_id: (data as SizeOption).id }));
+      }
+      setNewSizeName("");
+      setAddingSize(false);
+    } catch (e: any) {
+      console.error("[admin/productos] add size failed:", e);
+      setPickerError(e?.message ?? "Error al crear talla");
+    } finally {
+      setSavingAttr(false);
+    }
+  }
+
+  // Create a color inline and preselect it in the variant picker.
+  async function handleAddColor() {
+    const name = newColorName.trim();
+    if (!name) return;
+    setSavingAttr(true);
+    setPickerError(null);
+    try {
+      const existing = colors.find(c => c.name.toLowerCase() === name.toLowerCase());
+      if (existing) {
+        setNewVariantPicker(p => ({ ...p, color_id: existing.id }));
+      } else {
+        const { data, error } = await supabase
+          .from("product_colors")
+          .insert({ name, hex_code: newColorHex || null, active: true })
+          .select("id,name,hex_code,active")
+          .single();
+        if (error) throw new Error(error.message);
+        setColors(prev => [...prev, data as ColorOption].sort((a, b) => a.name.localeCompare(b.name)));
+        setNewVariantPicker(p => ({ ...p, color_id: (data as ColorOption).id }));
+      }
+      setNewColorName("");
+      setNewColorHex("#CFC3AE");
+      setAddingColor(false);
+    } catch (e: any) {
+      console.error("[admin/productos] add color failed:", e);
+      setPickerError(e?.message ?? "Error al crear color");
+    } finally {
+      setSavingAttr(false);
     }
   }
 
@@ -644,7 +1057,7 @@ export default function ProductosAdmin() {
               de variantes (talla x color) cambia las columnas necesarias.
               Se rediseñan junto con el variant matrix en una fase próxima. */}
           <button
-            onClick={() => { setSaveError(null); const autoId = nextId(products); setEditing({ ...EMPTY, id: autoId, sku: autoId, _isNew: true }); }}
+            onClick={openNewProduct}
             className="flex items-center gap-2 bg-[#D4A520] text-white font-bold px-4 py-2.5 rounded-xl hover:bg-[#A07D10] transition-colors text-sm"
           >
             <Plus size={16} /> Nuevo producto
@@ -733,7 +1146,7 @@ export default function ProductosAdmin() {
                   </td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center gap-1">
-                      <button onClick={() => { setSaveError(null); setEditing({ ...p }); }} className="p-1.5 text-[#9B6B45] hover:text-[#D4A520] transition-colors">
+                      <button onClick={() => openEditProduct(p)} className="p-1.5 text-[#9B6B45] hover:text-[#D4A520] transition-colors">
                         <Pencil size={15} />
                       </button>
                       <button onClick={() => handleDeleteClick(p)} className="p-1.5 text-[#9B6B45] hover:text-red-500 transition-colors">
@@ -1050,98 +1463,338 @@ export default function ProductosAdmin() {
               </div>
             ))}
 
-            {/* Image upload */}
+            {/* Gallery (Fase 3) — varias imágenes por producto con toggles
+                ★ Portada (la miniatura del catálogo) y 👁 Hover (la que cambia
+                al pasar el mouse en la card). */}
             <div>
-              <label className="block text-xs font-bold text-[#6B3D1E] mb-1">Imagen del producto</label>
-              {editing.image_url && (
-                <div className="mb-2">
-                  <div className="w-28 h-28 rounded-xl overflow-hidden border border-[#F5EDD8] bg-[#F5EDD8] flex items-center justify-center">
-                    <img
-                      src={editing.image_url}
-                      alt="preview"
-                      className="w-full h-full object-cover"
-                      onError={e => {
-                        (e.currentTarget as HTMLImageElement).style.display = "none";
-                        const parent = e.currentTarget.parentElement;
-                        if (parent && !parent.querySelector(".img-err")) {
-                          const msg = document.createElement("p");
-                          msg.className = "img-err text-[10px] text-red-500 text-center px-2";
-                          msg.textContent = "Imagen no cargó — verifica que el bucket sea público";
-                          parent.appendChild(msg);
-                        }
-                      }}
-                    />
+              <label className="block text-xs font-bold text-[#6B3D1E] mb-1">Galería de imágenes</label>
+              <p className="text-[10px] text-[#9B6B45] mb-3">
+                Sube varias. Marca <strong>★ Portada</strong> en la principal y <strong>👁 Hover</strong> en la del detalle (la que aparece al pasar el mouse).
+              </p>
+
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                {gallery.map((img) => (
+                  <div key={img.id} className="relative border border-[#F5EDD8] rounded-xl p-2 bg-white">
+                    <div className="w-full aspect-square rounded-lg overflow-hidden bg-[#F5EDD8] mb-2">
+                      <img
+                        src={img.url}
+                        alt={img.alt_text ?? ""}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <button
+                        type="button"
+                        onClick={() => togglePrimary(img.id)}
+                        className={`text-[10px] font-bold py-1 px-2 rounded transition-colors ${
+                          img.is_primary
+                            ? "bg-[#D4A520] text-white"
+                            : "bg-white border border-[#F5EDD8] text-[#9B6B45] hover:border-[#D4A520]"
+                        }`}
+                      >
+                        {img.is_primary ? "★ Portada" : "☆ Portada"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleHover(img.id)}
+                        className={`text-[10px] font-bold py-1 px-2 rounded transition-colors ${
+                          img.is_hover
+                            ? "bg-[#6B3D1E] text-white"
+                            : "bg-white border border-[#F5EDD8] text-[#9B6B45] hover:border-[#6B3D1E]"
+                        }`}
+                      >
+                        👁 Hover
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeGalleryItem(img.id)}
+                      title="Eliminar"
+                      className="absolute top-1 right-1 bg-white rounded-full p-1 shadow border border-[#F5EDD8] text-[#9B6B45] hover:text-red-500"
+                    >
+                      <X size={12} />
+                    </button>
                   </div>
-                  <p className="text-[10px] text-[#9B6B45] mt-1 break-all max-w-xs">{editing.image_url}</p>
+                ))}
+
+                {/* Add tile */}
+                <label
+                  className={`border-2 border-dashed border-[#F5EDD8] rounded-xl flex flex-col items-center justify-center aspect-square cursor-pointer hover:bg-[#FDF8F0] transition-colors ${
+                    uploadingGallery ? "opacity-50 cursor-wait" : ""
+                  }`}
+                >
+                  <input
+                    ref={galleryRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    className="hidden"
+                    disabled={uploadingGallery}
+                    onChange={e => { void handleGalleryUpload(e.target.files); e.target.value = ""; }}
+                  />
+                  {uploadingGallery ? (
+                    <>
+                      <Upload size={20} className="text-[#9B6B45] animate-pulse" />
+                      <span className="text-[10px] text-[#9B6B45] mt-1">Subiendo…</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus size={22} className="text-[#9B6B45]" />
+                      <span className="text-[10px] text-[#9B6B45] mt-1 text-center px-1">+ Subir<br/>imágenes</span>
+                    </>
+                  )}
+                </label>
+              </div>
+
+              {/* Legacy: si el producto tiene products.image_url pero la galería
+                  todavía no se cargó (productos viejos), muestro la portada
+                  histórica con una nota. Reemplazar = sube nuevas en la
+                  galería y guarda; la primary se sincroniza con image_url. */}
+              {gallery.length === 0 && editing.image_url && (
+                <div className="mt-3 flex items-center gap-3 border border-[#F5EDD8] bg-[#FDF8F0] rounded-xl p-2">
+                  <img
+                    src={editing.image_url}
+                    alt="legacy"
+                    className="w-14 h-14 object-cover rounded-lg border border-[#F5EDD8]"
+                  />
+                  <p className="text-[10px] text-[#9B6B45]">
+                    Portada actual (Fase 1/2). Sube imágenes nuevas arriba para reemplazar y aprovechar el hover.
+                  </p>
                 </div>
               )}
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                className="flex items-center gap-2 px-4 py-2 border border-[#D4A520] text-[#D4A520] text-xs font-bold rounded-xl hover:bg-[#FDF8F0] transition-colors disabled:opacity-50"
-              >
-                <Upload size={14} />
-                {uploading ? "Subiendo..." : editing.image_url ? "Cambiar imagen" : "Subir imagen"}
-              </button>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="hidden"
-                onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = ""; }}
-              />
-              <p className="text-[10px] text-[#9B6B45] mt-1">jpg · png · webp — bucket &quot;product-images&quot; debe ser público en Supabase Storage</p>
+
+              <p className="text-[10px] text-[#9B6B45] mt-2">jpg · png · webp — bucket <code>product-images</code> debe ser público.</p>
             </div>
 
-            {/* Variante inicial — solo para producto nuevo (Fase 1).
-                Para editar variantes existentes habrá una pantalla aparte. */}
-            {editing._isNew && (
-              <div className="border border-[#F5EDD8] bg-[#FDF8F0] rounded-2xl p-4 flex flex-col gap-3">
-                <p className="text-xs font-bold text-[#6B3D1E]">Variante inicial — talla, color y stock</p>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-[10px] font-bold text-[#9B6B45] mb-1">Talla</label>
-                    <select
-                      value={initialVariant.size_id}
-                      onChange={e => setInitialVariant(prev => ({ ...prev, size_id: e.target.value }))}
-                      className="w-full border border-[#F5EDD8] rounded-xl px-2 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#D4A520]"
-                    >
-                      <option value="">— elegir —</option>
-                      {sizes.filter(s => s.active).map(s => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-[#9B6B45] mb-1">Color</label>
-                    <select
-                      value={initialVariant.color_id}
-                      onChange={e => setInitialVariant(prev => ({ ...prev, color_id: e.target.value }))}
-                      className="w-full border border-[#F5EDD8] rounded-xl px-2 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#D4A520]"
-                    >
-                      <option value="">— elegir —</option>
-                      {colors.filter(c => c.active).map(c => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-[#9B6B45] mb-1">Stock inicial</label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={initialVariant.stock}
-                      onChange={e => setInitialVariant(prev => ({ ...prev, stock: Number(e.target.value) || 0 }))}
-                      className="w-full border border-[#F5EDD8] rounded-xl px-2 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#D4A520]"
-                    />
-                  </div>
-                </div>
+            {/* Variantes — matriz editable de talla × color con stock por
+                combinación. Para producto nuevo arranca vacía; para editar
+                viene poblada desde product_variants. */}
+            <div className="border border-[#F5EDD8] bg-[#FDF8F0] rounded-2xl p-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold text-[#6B3D1E]">
+                  Variantes ({variantDrafts.length})
+                </p>
                 <p className="text-[10px] text-[#9B6B45]">
-                  Más adelante podrás agregar más variantes (tallas / colores) al producto.
+                  Stock total: {variantDrafts.filter(d => d.active).reduce((s, d) => s + (Number.isFinite(d.stock) ? d.stock : 0), 0)}
                 </p>
               </div>
-            )}
+
+              {variantDrafts.length === 0 ? (
+                <p className="text-[11px] text-[#9B6B45] italic">
+                  Aún no hay variantes. Agrega al menos una talla / color con stock para guardar.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-[#F5EDD8] text-[#6B3D1E]">
+                        <th className="px-2 py-1.5 text-left  font-bold border border-[#EDD9B4]">Talla</th>
+                        <th className="px-2 py-1.5 text-left  font-bold border border-[#EDD9B4]">Color</th>
+                        <th className="px-2 py-1.5 text-right font-bold border border-[#EDD9B4]">Stock</th>
+                        <th className="px-2 py-1.5 text-right font-bold border border-[#EDD9B4]">Costo</th>
+                        <th className="px-2 py-1.5 text-right font-bold border border-[#EDD9B4]">Precio</th>
+                        <th className="px-2 py-1.5 text-center font-bold border border-[#EDD9B4]">Activo</th>
+                        <th className="px-2 py-1.5 text-center font-bold border border-[#EDD9B4]"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {variantDrafts.map((d, idx) => {
+                        const sizeName  = sizes.find(s  => s.id === d.size_id)?.name  ?? "—";
+                        const colorObj  = colors.find(c => c.id === d.color_id);
+                        const colorName = colorObj?.name ?? "—";
+                        const isNewDraft = !d.id;
+                        return (
+                          <tr key={d.id ?? `new-${idx}`} className={d.active ? "bg-white" : "bg-[#FDF8F0] opacity-60"}>
+                            <td className="px-2 py-1.5 border border-[#EDD9B4]">
+                              <select
+                                value={d.size_id}
+                                onChange={e => patchVariantDraft(idx, { size_id: e.target.value })}
+                                className="w-full bg-transparent text-xs"
+                              >
+                                {sizes.filter(s => s.active || s.id === d.size_id).map(s => (
+                                  <option key={s.id} value={s.id}>{s.name}</option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="px-2 py-1.5 border border-[#EDD9B4]">
+                              <div className="flex items-center gap-1.5">
+                                {colorObj?.hex_code && (
+                                  <span className="inline-block w-3 h-3 rounded-full border border-[#EDD9B4]" style={{ background: colorObj.hex_code }} />
+                                )}
+                                <select
+                                  value={d.color_id}
+                                  onChange={e => patchVariantDraft(idx, { color_id: e.target.value })}
+                                  className="flex-1 bg-transparent text-xs"
+                                >
+                                  {colors.filter(c => c.active || c.id === d.color_id).map(c => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </td>
+                            <td className="px-2 py-1.5 border border-[#EDD9B4] text-right">
+                              <input
+                                type="number"
+                                min={0}
+                                value={d.stock}
+                                onChange={e => patchVariantDraft(idx, { stock: Number(e.target.value) || 0 })}
+                                className="w-16 bg-transparent text-right text-xs"
+                              />
+                            </td>
+                            <td className="px-2 py-1.5 border border-[#EDD9B4] text-right">
+                              <input
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                placeholder="—"
+                                value={d.cost_str}
+                                onChange={e => patchVariantDraft(idx, { cost_str: e.target.value })}
+                                className="w-16 bg-transparent text-right text-xs"
+                                title="Vacío = hereda costo base del producto"
+                              />
+                            </td>
+                            <td className="px-2 py-1.5 border border-[#EDD9B4] text-right">
+                              <input
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                placeholder="—"
+                                value={d.price_override_str}
+                                onChange={e => patchVariantDraft(idx, { price_override_str: e.target.value })}
+                                className="w-16 bg-transparent text-right text-xs"
+                                title="Vacío = hereda precio base del producto"
+                              />
+                            </td>
+                            <td className="px-2 py-1.5 border border-[#EDD9B4] text-center">
+                              <input
+                                type="checkbox"
+                                checked={d.active}
+                                onChange={e => patchVariantDraft(idx, { active: e.target.checked })}
+                              />
+                            </td>
+                            <td className="px-2 py-1.5 border border-[#EDD9B4] text-center">
+                              <button
+                                type="button"
+                                onClick={() => removeVariantDraft(idx)}
+                                className="text-red-500 hover:text-red-700"
+                                title={isNewDraft ? "Quitar de la tabla" : "Eliminar (se desactiva si tiene ventas)"}
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Inline picker — add a new (size, color, stock) row */}
+              <div className="border-t border-[#EDD9B4] pt-3 flex flex-col gap-2">
+                <p className="text-[10px] font-bold text-[#9B6B45]">+ Agregar variante</p>
+                <div className="grid grid-cols-12 gap-2">
+                  <select
+                    value={newVariantPicker.size_id}
+                    onChange={e => {
+                      if (e.target.value === "__new__") { setAddingSize(true); }
+                      else { setNewVariantPicker(p => ({ ...p, size_id: e.target.value })); }
+                    }}
+                    className="col-span-4 border border-[#F5EDD8] rounded-lg px-2 py-1.5 text-xs bg-white"
+                  >
+                    <option value="">talla</option>
+                    {sizes.filter(s => s.active).map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                    <option value="__new__">+ Nueva talla</option>
+                  </select>
+                  <select
+                    value={newVariantPicker.color_id}
+                    onChange={e => {
+                      if (e.target.value === "__new__") { setAddingColor(true); }
+                      else { setNewVariantPicker(p => ({ ...p, color_id: e.target.value })); }
+                    }}
+                    className="col-span-4 border border-[#F5EDD8] rounded-lg px-2 py-1.5 text-xs bg-white"
+                  >
+                    <option value="">color</option>
+                    {colors.filter(c => c.active).map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                    <option value="__new__">+ Nuevo color</option>
+                  </select>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="stock"
+                    value={newVariantPicker.stock}
+                    onChange={e => setNewVariantPicker(p => ({ ...p, stock: e.target.value }))}
+                    className="col-span-2 border border-[#F5EDD8] rounded-lg px-2 py-1.5 text-xs bg-white text-right"
+                  />
+                  <button
+                    type="button"
+                    onClick={addVariantFromPicker}
+                    className="col-span-2 bg-[#D4A520] text-white text-xs font-bold rounded-lg px-2 py-1.5 hover:bg-[#A07D10]"
+                  >
+                    + Agregar
+                  </button>
+                </div>
+
+                {/* Inline: create new size */}
+                {addingSize && (
+                  <div className="flex gap-2 items-center bg-white border border-[#D4A520] rounded-lg p-2">
+                    <input
+                      autoFocus
+                      placeholder="Nueva talla (ej. 3M, 6M)"
+                      value={newSizeName}
+                      onChange={e => setNewSizeName(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === "Enter") { e.preventDefault(); handleAddSize(); }
+                        if (e.key === "Escape") { setAddingSize(false); setNewSizeName(""); }
+                      }}
+                      className="flex-1 border border-[#F5EDD8] rounded-lg px-2 py-1.5 text-xs"
+                    />
+                    <button type="button" onClick={handleAddSize} disabled={savingAttr || !newSizeName.trim()}
+                      className="bg-[#D4A520] text-white text-xs font-bold rounded-lg px-3 py-1.5 hover:bg-[#A07D10] disabled:opacity-50 whitespace-nowrap">
+                      {savingAttr ? "..." : "Crear"}
+                    </button>
+                    <button type="button" onClick={() => { setAddingSize(false); setNewSizeName(""); }}
+                      className="border border-[#F5EDD8] text-[#9B6B45] rounded-lg px-2 py-1.5"><X size={14} /></button>
+                  </div>
+                )}
+
+                {/* Inline: create new color */}
+                {addingColor && (
+                  <div className="flex gap-2 items-center bg-white border border-[#D4A520] rounded-lg p-2">
+                    <input
+                      type="color"
+                      value={newColorHex}
+                      onChange={e => setNewColorHex(e.target.value)}
+                      className="w-9 h-9 rounded-lg border border-[#F5EDD8] shrink-0 cursor-pointer"
+                      title="Color de muestra"
+                    />
+                    <input
+                      autoFocus
+                      placeholder="Nuevo color (ej. Coral)"
+                      value={newColorName}
+                      onChange={e => setNewColorName(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === "Enter") { e.preventDefault(); handleAddColor(); }
+                        if (e.key === "Escape") { setAddingColor(false); setNewColorName(""); }
+                      }}
+                      className="flex-1 border border-[#F5EDD8] rounded-lg px-2 py-1.5 text-xs"
+                    />
+                    <button type="button" onClick={handleAddColor} disabled={savingAttr || !newColorName.trim()}
+                      className="bg-[#D4A520] text-white text-xs font-bold rounded-lg px-3 py-1.5 hover:bg-[#A07D10] disabled:opacity-50 whitespace-nowrap">
+                      {savingAttr ? "..." : "Crear"}
+                    </button>
+                    <button type="button" onClick={() => { setAddingColor(false); setNewColorName(""); }}
+                      className="border border-[#F5EDD8] text-[#9B6B45] rounded-lg px-2 py-1.5"><X size={14} /></button>
+                  </div>
+                )}
+
+                {pickerError && <p className="text-[11px] text-red-600">{pickerError}</p>}
+              </div>
+            </div>
 
             {/* Category */}
             <div>

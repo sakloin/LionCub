@@ -14,6 +14,19 @@ export interface ProductColor {
   active: boolean;
 }
 
+export interface ProductImage {
+  id: string;
+  product_id: string;
+  url: string;
+  storage_path: string;
+  sort_order: number;
+  is_primary: boolean;
+  is_hover: boolean;
+  alt_text: string | null;
+  image_type: string | null;
+  color_id: string | null;
+}
+
 export interface ProductVariant {
   id: string;
   product_id: string;
@@ -46,6 +59,9 @@ export interface Product {
   created_at: string;
   // Loaded via PostgREST join. Empty array if the product has no variants yet.
   variants?: ProductVariant[];
+  // Loaded via PostgREST join for the public catalog so we can render the
+  // primary thumb + hover swap without a second round-trip.
+  images?: ProductImage[];
 }
 
 export interface Order {
