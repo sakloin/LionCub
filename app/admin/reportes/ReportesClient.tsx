@@ -17,9 +17,13 @@ interface ProductRow {
   id: string;
   name: string;
   category: string;
+  price: number;
+  cost: number;
   variants?: Array<{
     id: string;
     stock: number;
+    cost: number | null;
+    price_override: number | null;
     active: boolean;
     size:  { name: string; sort_order: number } | null;
     color: { name: string; hex_code: string | null } | null;
@@ -39,7 +43,100 @@ interface Props {
 }
 
 export default function ReportesClient({ data }: Props) {
-  const { orders, items, purchases, products, colors } = data;
+  const { orders: realOrders, items: realItems, purchases: realPurchases, products, colors } = data;
+
+  const [demoMode, setDemoMode] = useState(false);
+
+  // Synthetic data — uses real products / variants / colors so charts look
+  // like the real thing. Generated once with a stable seed so the numbers
+  // don't jump on every render.
+  const demoData = useMemo(() => {
+    if (products.length === 0) return { orders: [], items: [], purchases: [] };
+    // Tiny seeded RNG so the demo doesn't flicker between renders.
+    let seed = 42;
+    const rand = () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
+
+    const now = new Date();
+    const orders: any[] = [];
+    const items: any[] = [];
+    const purchases: any[] = [];
+
+    const activeProductsWithVariants = products.filter(p =>
+      (p.variants ?? []).some(v => v.active),
+    );
+
+    // 40 fake paid orders spread over the last 28 days.
+    for (let i = 0; i < 40; i++) {
+      if (activeProductsWithVariants.length === 0) break;
+      const orderId = `demo-order-${i}`;
+      const dayOffset = Math.floor(rand() * 28);
+      const date = new Date(now);
+      date.setDate(date.getDate() - dayOffset);
+      date.setHours(Math.floor(rand() * 24), Math.floor(rand() * 60), 0, 0);
+
+      // Each order has 1-3 items.
+      const itemCount = 1 + Math.floor(rand() * 3);
+      let orderSubtotal = 0;
+      const shipping = 10 + Math.floor(rand() * 6);
+
+      for (let j = 0; j < itemCount; j++) {
+        const p = activeProductsWithVariants[Math.floor(rand() * activeProductsWithVariants.length)];
+        const activeVariants = (p.variants ?? []).filter(v => v.active);
+        if (activeVariants.length === 0) continue;
+        const v = activeVariants[Math.floor(rand() * activeVariants.length)];
+        const qty = 1 + Math.floor(rand() * 2);
+        const unit_price = v.price_override ?? p.price ?? 50;
+        const unit_cost  = v.cost ?? p.cost ?? unit_price * 0.4;
+        const subtotal = qty * unit_price;
+        orderSubtotal += subtotal;
+
+        items.push({
+          order_id:        orderId,
+          product_id:      p.id,
+          product_name:    p.name,
+          selected_size:   v.size?.name  ?? "—",
+          selected_color:  v.color?.name ?? "—",
+          quantity:        qty,
+          unit_price,
+          unit_cost,
+          subtotal,
+        });
+      }
+
+      orders.push({
+        id:             orderId,
+        created_at:     date.toISOString(),
+        payment_status: "pagado",
+        total:          orderSubtotal + shipping,
+        subtotal:       orderSubtotal,
+        shipping_cost:  shipping,
+      });
+    }
+
+    // 12 fake purchases in the current month for stock-cost balance.
+    for (let i = 0; i < 12; i++) {
+      const p = activeProductsWithVariants[Math.floor(rand() * Math.max(1, activeProductsWithVariants.length))];
+      const dayOffset = Math.floor(rand() * 20);
+      const date = new Date(now);
+      date.setDate(date.getDate() - dayOffset);
+      const qty = 5 + Math.floor(rand() * 15);
+      const cost = (p?.cost ?? 30) + rand() * 10;
+      purchases.push({
+        purchased_at: date.toISOString().slice(0, 10),
+        total_cost:   qty * cost,
+      });
+    }
+
+    return { orders, items, purchases };
+  }, [products]);
+
+  // Pick the data source based on the toggle.
+  const orders    = demoMode ? demoData.orders    : realOrders;
+  const items     = demoMode ? demoData.items     : realItems;
+  const purchases = demoMode ? demoData.purchases : realPurchases;
 
   const productMap = useMemo(() => {
     const m = new Map<string, ProductRow>();
@@ -179,18 +276,39 @@ export default function ReportesClient({ data }: Props) {
           <h1 className="text-2xl font-extrabold text-[#3D2010]">Reportes</h1>
           <p className="text-[#9B6B45] text-sm">Balance, ventas y rendimiento por variante</p>
         </div>
-        <select
-          value={selectedMonth}
-          onChange={e => setSelectedMonth(e.target.value)}
-          className="border border-[#F5EDD8] rounded-xl px-3 py-2 text-sm font-bold text-[#3D2010] focus:outline-none focus:ring-2 focus:ring-[#D4A520]"
-        >
-          {months.map(m => (
-            <option key={m} value={m}>
-              {new Date(m+"-01").toLocaleDateString("es-PE", { month:"long", year:"numeric" })}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setDemoMode(d => !d)}
+            className={`text-xs font-bold px-3 py-2 rounded-xl border transition-colors ${
+              demoMode
+                ? "bg-[#D4A520] text-white border-[#D4A520]"
+                : "bg-white text-[#6B3D1E] border-[#F5EDD8] hover:border-[#D4A520]"
+            }`}
+            title="Genera ventas falsas con tus productos reales para ver cómo se ven los gráficos"
+          >
+            {demoMode ? "✓ Modo demo" : "Activar demo"}
+          </button>
+          <select
+            value={selectedMonth}
+            onChange={e => setSelectedMonth(e.target.value)}
+            className="border border-[#F5EDD8] rounded-xl px-3 py-2 text-sm font-bold text-[#3D2010] focus:outline-none focus:ring-2 focus:ring-[#D4A520]"
+          >
+            {months.map(m => (
+              <option key={m} value={m}>
+                {new Date(m+"-01").toLocaleDateString("es-PE", { month:"long", year:"numeric" })}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
+
+      {demoMode && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-xs text-amber-900">
+          <strong>Modo demo activo.</strong> Los números que ves no son reales — se generaron con tus
+          productos, tallas y colores para mostrarte cómo se verán los reportes cuando empieces a vender.
+          Apaga el modo demo para volver a tus datos reales.
+        </div>
+      )}
 
       {/* Financial balance */}
       <div className="bg-[#3D2010] text-white rounded-2xl p-6">

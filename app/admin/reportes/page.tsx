@@ -14,7 +14,7 @@ async function getData() {
       // stock turnover per variant.
       supabase
         .from("products")
-        .select("id, name, category, variants:product_variants(id, size_id, color_id, stock, active, size:product_sizes(name, sort_order), color:product_colors(name, hex_code))"),
+        .select("id, name, category, price, cost, variants:product_variants(id, size_id, color_id, stock, cost, price_override, active, size:product_sizes(name, sort_order), color:product_colors(name, hex_code))"),
       supabase.from("product_colors").select("name, hex_code"),
     ]);
     return {
