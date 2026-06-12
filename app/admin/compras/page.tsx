@@ -3,8 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { Purchase } from "../../lib/types";
-import { Plus, Save, X, AlertTriangle, Package } from "lucide-react";
+import { Plus, Save, X, AlertTriangle, Package, Trash2 } from "lucide-react";
 import { formatSoles } from "../../lib/money";
+
+interface SizeOption  { id: string; name: string; sort_order: number; active: boolean }
+interface ColorOption { id: string; name: string; hex_code: string | null; active: boolean }
 
 // Shape we use on the page; not a public type because it carries denormalised
 // joins we only need for the stock table.
@@ -47,17 +50,25 @@ const EMPTY_FORM: PurchaseForm = {
 export default function ComprasAdmin() {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [variants, setVariants] = useState<VariantRow[]>([]);
+  const [sizes,  setSizes]  = useState<SizeOption[]>([]);
+  const [colors, setColors] = useState<ColorOption[]>([]);
   const [form, setForm] = useState<PurchaseForm>(EMPTY_FORM);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // New-variant inline panel.
+  const [creatingVariant, setCreatingVariant] = useState(false);
+  const [newVariantSize,  setNewVariantSize]  = useState("");
+  const [newVariantColor, setNewVariantColor] = useState("");
+  const [variantError,    setVariantError]    = useState<string | null>(null);
+  const [creatingVariantBusy, setCreatingVariantBusy] = useState(false);
 
   async function load() {
     setError(null);
     try {
-      const [pRes, vRes] = await Promise.all([
+      const [pRes, vRes, sRes, cRes] = await Promise.all([
         supabase
           .from("purchases")
           .select("*")
@@ -72,9 +83,15 @@ export default function ComprasAdmin() {
             color:product_colors(name, hex_code)
           `)
           .eq("active", true),
+        supabase.from("product_sizes").select("id, name, sort_order, active").eq("active", true).order("sort_order"),
+        supabase.from("product_colors").select("id, name, hex_code, active").eq("active", true).order("name"),
       ]);
       if (pRes.error) throw new Error(pRes.error.message);
       if (vRes.error) throw new Error(vRes.error.message);
+      if (sRes.error) throw new Error(sRes.error.message);
+      if (cRes.error) throw new Error(cRes.error.message);
+      setSizes((sRes.data ?? []) as SizeOption[]);
+      setColors((cRes.data ?? []) as ColorOption[]);
 
       setPurchases((pRes.data ?? []) as Purchase[]);
 
@@ -167,6 +184,89 @@ export default function ComprasAdmin() {
     }));
   }
 
+  // Create a fresh variant for the currently selected product. Stock = 0
+  // (the purchase the admin is about to register will bump it). Existing
+  // (talla, color) pairs are rejected so we don't violate the unique index.
+  async function createVariantInline() {
+    setVariantError(null);
+    if (!form.product_id) { setVariantError("Selecciona el producto primero"); return; }
+    if (!newVariantSize || !newVariantColor) {
+      setVariantError("Elige talla y color");
+      return;
+    }
+    const existsForProduct = (variantsByProduct.get(form.product_id) ?? []).find(
+      v => v.size_id === newVariantSize && v.color_id === newVariantColor,
+    );
+    if (existsForProduct) {
+      setVariantError("Esta variante ya existe para este producto");
+      return;
+    }
+    setCreatingVariantBusy(true);
+    try {
+      const size  = sizes.find(s => s.id === newVariantSize);
+      const color = colors.find(c => c.id === newVariantColor);
+      const productId = form.product_id;
+      const product = variants.find(v => v.product_id === productId);
+      const sku = `${productId}-${size?.name ?? ""}-${(color?.name ?? "").replace(/\s+/g, "")}`.toUpperCase();
+      const { data, error: insErr } = await supabase
+        .from("product_variants")
+        .insert({
+          product_id: productId,
+          size_id: newVariantSize,
+          color_id: newVariantColor,
+          sku_variant: sku,
+          stock: 0,
+          cost: null,
+          price_override: null,
+          active: true,
+        })
+        .select("id")
+        .single();
+      if (insErr) throw new Error(insErr.message);
+
+      const newRow: VariantRow = {
+        id: data!.id,
+        product_id: productId,
+        product_name: product?.product_name ?? "—",
+        product_image: product?.product_image ?? null,
+        size_id: newVariantSize,
+        size_name: size?.name ?? "—",
+        size_sort: size?.sort_order ?? 0,
+        color_id: newVariantColor,
+        color_name: color?.name ?? "—",
+        color_hex: color?.hex_code ?? null,
+        stock: 0,
+        cost: null,
+        active: true,
+      };
+      setVariants(prev => [newRow, ...prev]);
+      setForm(f => ({ ...f, variant_id: newRow.id, unit_cost: 0 }));
+      setCreatingVariant(false);
+      setNewVariantSize("");
+      setNewVariantColor("");
+    } catch (e: any) {
+      console.error("[admin/compras] create variant failed:", e);
+      setVariantError(e?.message ?? "Error al crear la variante");
+    } finally {
+      setCreatingVariantBusy(false);
+    }
+  }
+
+  // Deletes a purchase iff its qty can still be reversed from variant stock.
+  // The server-side RPC is the authoritative gate (it re-checks against the
+  // current DB stock); this client-side disable is just for UX.
+  async function deletePurchase(p: Purchase) {
+    if (!confirm(`¿Eliminar esta compra de ${p.quantity} × ${formatSoles(Number(p.unit_cost))}?\nLa cantidad se restará del stock de la variante.`)) return;
+    try {
+      const { error: rpcErr } = await supabase.rpc("delete_purchase", { p_purchase_id: p.id });
+      if (rpcErr) throw new Error(rpcErr.message);
+      await load();
+    } catch (e: any) {
+      console.error("[admin/compras] delete purchase failed:", e);
+      alert(`No se pudo eliminar: ${e?.message ?? "Error desconocido"}`);
+    }
+  }
+
   async function save() {
     setSaveError(null);
     if (!form.product_id) { setSaveError("Selecciona un producto"); return; }
@@ -198,6 +298,16 @@ export default function ComprasAdmin() {
     } finally {
       setSaving(false);
     }
+  }
+
+  /** Client-side preview of whether the delete RPC will accept this purchase.
+   *  Historical rows (variant_id = NULL) are always safe; otherwise the
+   *  current variant stock must cover the qty we'd revert. */
+  function canRevertPurchase(p: Purchase): boolean {
+    if (!p.variant_id) return true;
+    const v = variants.find(x => x.id === p.variant_id);
+    if (!v) return true; // variant gone — RPC will set FK null path; let the server decide
+    return v.stock >= p.quantity;
   }
 
   const totalInvested = purchases.reduce((s, p) => s + Number(p.total_cost), 0);
@@ -275,11 +385,22 @@ export default function ComprasAdmin() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-[#6B3D1E] mb-1">Variante (talla × color)</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-[#6B3D1E]">Variante (talla × color)</label>
+                {form.product_id && !creatingVariant && (
+                  <button
+                    type="button"
+                    onClick={() => { setCreatingVariant(true); setVariantError(null); }}
+                    className="text-[10px] font-bold text-[#D4A520] hover:underline"
+                  >
+                    + Nueva variante
+                  </button>
+                )}
+              </div>
               <select
                 value={form.variant_id}
                 onChange={e => selectVariant(e.target.value)}
-                disabled={!form.product_id}
+                disabled={!form.product_id || creatingVariant}
                 className="w-full border border-[#F5EDD8] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A520] disabled:opacity-50"
               >
                 <option value="">Seleccionar...</option>
@@ -289,10 +410,55 @@ export default function ComprasAdmin() {
                   </option>
                 ))}
               </select>
-              {formVariant && (
+              {formVariant && !creatingVariant && (
                 <p className="text-[10px] text-[#9B6B45] mt-1">
                   Stock actual: <strong>{formVariant.stock}</strong> · Después de esta compra: <strong className="text-[#D4A520]">{formVariant.stock + (Number.isFinite(form.quantity) ? form.quantity : 0)}</strong>
                 </p>
+              )}
+              {creatingVariant && (
+                <div className="mt-2 p-3 bg-[#FDF8F0] border border-[#EDD9B4] rounded-xl flex flex-col gap-2">
+                  <p className="text-[11px] text-[#6B3D1E] font-bold">Crear nueva variante para este producto</p>
+                  {variantError && <p className="text-[11px] font-mono text-red-600">{variantError}</p>}
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      value={newVariantSize}
+                      onChange={e => setNewVariantSize(e.target.value)}
+                      className="border border-[#F5EDD8] rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#D4A520]"
+                    >
+                      <option value="">Talla…</option>
+                      {sizes.map(s => <option key={s.id} value={s.id}>T{s.name}</option>)}
+                    </select>
+                    <select
+                      value={newVariantColor}
+                      onChange={e => setNewVariantColor(e.target.value)}
+                      className="border border-[#F5EDD8] rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#D4A520]"
+                    >
+                      <option value="">Color…</option>
+                      {colors.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <p className="text-[10px] text-[#9B6B45]">
+                    ¿Falta una talla o color en las opciones? Créalo en{" "}
+                    <a href="/admin/configuracion" className="underline font-bold">Configuración</a>.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={createVariantInline}
+                      disabled={creatingVariantBusy}
+                      className="flex items-center gap-1 bg-[#D4A520] text-white font-bold text-xs px-3 py-1.5 rounded-lg hover:bg-[#A07D10] transition-colors disabled:opacity-60"
+                    >
+                      <Save size={12} /> {creatingVariantBusy ? "Creando…" : "Crear variante"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setCreatingVariant(false); setNewVariantSize(""); setNewVariantColor(""); setVariantError(null); }}
+                      className="text-[#6B3D1E] font-bold text-xs px-3 py-1.5 rounded-lg hover:bg-[#F5EDD8] transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
             <div>
@@ -439,30 +605,46 @@ export default function ComprasAdmin() {
                   <th className="px-4 py-2 text-right font-bold">C/U</th>
                   <th className="px-4 py-2 text-right font-bold">Total</th>
                   <th className="px-4 py-2 text-left font-bold">Proveedor</th>
+                  <th className="px-4 py-2 text-center font-bold">Acción</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#F5EDD8]">
-                {purchases.map(p => (
-                  <tr key={p.id} className="hover:bg-[#FDF8F0]">
-                    <td className="px-4 py-2.5 text-[#9B6B45] whitespace-nowrap">
-                      {new Date(p.purchased_at + "T00:00:00").toLocaleDateString("es-PE")}
-                    </td>
-                    <td className="px-4 py-2.5 font-medium text-[#3D2010]">{p.product_name}</td>
-                    <td className="px-4 py-2.5 text-[#6B3D1E]">
-                      {p.selected_size || p.selected_color ? (
-                        <>
-                          {p.selected_size && <span className="font-semibold">T{p.selected_size}</span>}
-                          {p.selected_size && p.selected_color && " · "}
-                          {p.selected_color}
-                        </>
-                      ) : <span className="text-[#9B6B45] italic text-xs">sin variante (histórico)</span>}
-                    </td>
-                    <td className="px-4 py-2.5 text-right">{p.quantity}</td>
-                    <td className="px-4 py-2.5 text-right text-[#9B6B45]">{formatSoles(Number(p.unit_cost))}</td>
-                    <td className="px-4 py-2.5 text-right font-bold text-[#D4A520]">{formatSoles(Number(p.total_cost))}</td>
-                    <td className="px-4 py-2.5 text-[#9B6B45]">{p.supplier ?? "-"}</td>
-                  </tr>
-                ))}
+                {purchases.map(p => {
+                  const safe = canRevertPurchase(p);
+                  return (
+                    <tr key={p.id} className="hover:bg-[#FDF8F0]">
+                      <td className="px-4 py-2.5 text-[#9B6B45] whitespace-nowrap">
+                        {new Date(p.purchased_at + "T00:00:00").toLocaleDateString("es-PE")}
+                      </td>
+                      <td className="px-4 py-2.5 font-medium text-[#3D2010]">{p.product_name}</td>
+                      <td className="px-4 py-2.5 text-[#6B3D1E]">
+                        {p.selected_size || p.selected_color ? (
+                          <>
+                            {p.selected_size && <span className="font-semibold">T{p.selected_size}</span>}
+                            {p.selected_size && p.selected_color && " · "}
+                            {p.selected_color}
+                          </>
+                        ) : <span className="text-[#9B6B45] italic text-xs">sin variante (histórico)</span>}
+                      </td>
+                      <td className="px-4 py-2.5 text-right">{p.quantity}</td>
+                      <td className="px-4 py-2.5 text-right text-[#9B6B45]">{formatSoles(Number(p.unit_cost))}</td>
+                      <td className="px-4 py-2.5 text-right font-bold text-[#D4A520]">{formatSoles(Number(p.total_cost))}</td>
+                      <td className="px-4 py-2.5 text-[#9B6B45]">{p.supplier ?? "-"}</td>
+                      <td className="px-4 py-2.5 text-center">
+                        <button
+                          onClick={() => deletePurchase(p)}
+                          disabled={!safe}
+                          title={safe
+                            ? "Eliminar esta compra (descuenta su cantidad del stock)"
+                            : "No se puede eliminar: parte ya se vendió"}
+                          className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
