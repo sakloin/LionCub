@@ -482,8 +482,8 @@ function ProductCard({
               alt={product.name}
               fill
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-              className={`object-cover transition-opacity duration-300 ${
-                hoverUrl ? "md:group-hover:opacity-0" : ""
+              className={`object-cover transition-[opacity,transform] duration-[600ms] ease-in-out ${
+                hoverUrl ? "md:group-hover:opacity-0 md:group-hover:scale-[1.02]" : ""
               } ${outOfStock ? "opacity-70" : ""}`}
               onError={() => setImgError(true)}
             />
@@ -493,8 +493,8 @@ function ProductCard({
                 alt=""
                 fill
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                className={`object-cover opacity-0 transition-opacity duration-300 hidden md:block md:group-hover:opacity-100 ${
-                  outOfStock ? "opacity-70" : ""
+                className={`object-cover opacity-0 transition-[opacity,transform] duration-[600ms] ease-in-out hidden md:block md:group-hover:opacity-100 md:group-hover:scale-[1.02] ${
+                  outOfStock ? "md:group-hover:opacity-70" : ""
                 }`}
               />
             )}
