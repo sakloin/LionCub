@@ -11,13 +11,24 @@ async function getStats(): Promise<any> {
   const [ordersRes, itemsRes, productsRes, purchasesRes] = await Promise.all([
     supabase.from("orders").select("id,total,subtotal,shipping_cost,payment_status,order_status,created_at").gte("created_at", startOfMonth),
     supabase.from("order_items").select("product_id,product_name,quantity,unit_price,unit_cost,subtotal").gte("created_at", startOfMonth),
-    supabase.from("products").select("id,name,stock,price,cost,category,active"),
+    // products.stock se eliminó en Fase 1; el stock real vive en
+    // product_variants. Lo embebemos via PostgREST y lo sumamos abajo.
+    supabase.from("products").select("id,name,price,cost,category,active,variants:product_variants(stock,active)"),
     supabase.from("purchases").select("total_cost,purchased_at").gte("purchased_at", startOfMonth.slice(0,10)),
   ]);
 
   const orders = ordersRes.data ?? [];
   const items = itemsRes.data ?? [];
-  const products = productsRes.data ?? [];
+  // Aplana stock total por producto desde sus variantes activas.
+  const rawProducts = (productsRes.data ?? []) as Array<{
+    id: string; name: string; price: number; cost: number | null;
+    category: string; active: boolean;
+    variants?: { stock: number; active: boolean }[];
+  }>;
+  const products = rawProducts.map(p => ({
+    ...p,
+    stock: (p.variants ?? []).filter(v => v.active).reduce((s, v) => s + v.stock, 0),
+  }));
   const purchases = purchasesRes.data ?? [];
 
   const paidOrders = orders.filter(o => o.payment_status === "pagado");

@@ -28,12 +28,22 @@ export default function ComprasAdmin() {
     try {
       const [p, pr] = await Promise.all([
         supabase.from("purchases").select("*").order("purchased_at", { ascending: false }),
-        supabase.from("products").select("id,name,stock,cost").order("id"),
+        // Stock se computa desde product_variants (sum de variantes activas).
+        // products.stock fue eliminado en Fase 1.
+        supabase.from("products").select("id,name,cost,variants:product_variants(stock,active)").order("id"),
       ]);
       if (p.error) throw new Error(p.error.message);
       if (pr.error) throw new Error(pr.error.message);
+      const rows = (pr.data ?? []) as Array<{
+        id: string; name: string; cost: number | null;
+        variants?: { stock: number; active: boolean }[];
+      }>;
+      const flattened = rows.map(r => ({
+        ...r,
+        stock: (r.variants ?? []).filter(v => v.active).reduce((s, v) => s + v.stock, 0),
+      }));
       setPurchases(p.data ?? []);
-      setProducts(pr.data ?? []);
+      setProducts(flattened);
     } catch (e: any) {
       console.error("[admin/compras] load failed:", e);
       setError(e?.message ?? "Error al cargar datos");
@@ -99,12 +109,16 @@ export default function ComprasAdmin() {
           <h1 className="text-2xl font-extrabold text-[#3D2010]">Compras & Stock</h1>
           <p className="text-[#9B6B45] text-sm">Total invertido: <strong className="text-[#D4A520]">{formatSoles(totalInvested)}</strong></p>
         </div>
-        <button
-          onClick={() => { setSaveError(null); setShowForm(s => !s); }}
-          className="flex items-center gap-2 bg-[#D4A520] text-white font-bold px-4 py-2.5 rounded-xl hover:bg-[#A07D10] transition-colors text-sm"
-        >
-          <Plus size={16} /> Registrar compra
-        </button>
+        {/* "Registrar compra" se deshabilita en producción hasta refactor
+            Fase 4 — el flujo viejo escribe en products.stock que ya no
+            existe. Por ahora el admin actualiza stock desde /admin/productos
+            editando las variantes. */}
+      </div>
+
+      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-xs text-amber-800">
+        <strong>Modo lectura.</strong> El registro de compras se reactivará en una próxima iteración con
+        soporte para variantes (talla × color). Mientras tanto, ajusta stock desde el modal de cada
+        producto en <a href="/admin/productos" className="underline font-bold">Productos</a>.
       </div>
 
       {/* Stock summary */}
