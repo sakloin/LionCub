@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import * as XLSX from "@e965/xlsx";
 import { supabase } from "../../lib/supabase";
 import { Product, ProductImage } from "../../lib/types";
-import { Plus, Pencil, ToggleLeft, ToggleRight, Save, X, Upload, Trash2, AlertTriangle, FileDown, FileUp, CheckCircle2 } from "lucide-react";
+import { Plus, Pencil, ToggleLeft, ToggleRight, Save, X, Upload, Trash2, AlertTriangle, FileDown, FileUp, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
 import { formatSoles } from "../../lib/money";
 
 interface Category { id: string; name: string; }
@@ -169,6 +169,29 @@ export default function ProductosAdmin() {
   const [pickerError, setPickerError] = useState<string | null>(null);
   // Stock per product, computed from product_variants (sum of variants.stock).
   const [stockByProduct, setStockByProduct] = useState<Record<string, number>>({});
+  // Variants pre-loaded with size/color denormalised so the table can
+  // expand each product row inline without an extra round-trip.
+  interface ListVariant {
+    id: string;
+    product_id: string;
+    size_id: string;
+    color_id: string;
+    stock: number;
+    cost: number | null;
+    price_override: number | null;
+    active: boolean;
+    size:  { name: string; sort_order: number } | null;
+    color: { name: string; hex_code: string | null } | null;
+  }
+  const [variantsByProduct, setVariantsByProduct] = useState<Record<string, ListVariant[]>>({});
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  function toggleExpand(id: string) {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   async function load() {
     setError(null);
@@ -178,20 +201,33 @@ export default function ProductosAdmin() {
         supabase.from("categories").select("id,name").order("name"),
         supabase.from("product_sizes").select("id,name,sort_order,active").order("sort_order"),
         supabase.from("product_colors").select("id,name,hex_code,active").order("name"),
-        supabase.from("product_variants").select("product_id,stock,active"),
+        supabase
+          .from("product_variants")
+          .select(
+            "id, product_id, size_id, color_id, stock, cost, price_override, active, size:product_sizes(name, sort_order), color:product_colors(name, hex_code)",
+          ),
       ]);
       if (prodRes.error) throw new Error(prodRes.error.message);
       setProducts(prodRes.data ?? []);
       if (catRes.data   && catRes.data.length   > 0) setCategories(catRes.data);
       if (sizeRes.data)  setSizes(sizeRes.data as SizeOption[]);
       if (colorRes.data) setColors(colorRes.data as ColorOption[]);
-      // Roll up per-product stock from variants for the table column.
+      // Roll up per-product stock + group variants for the expandable rows.
       const stockMap: Record<string, number> = {};
-      for (const v of (variantRes.data ?? []) as { product_id: string; stock: number; active: boolean }[]) {
-        if (!v.active) continue;
-        stockMap[v.product_id] = (stockMap[v.product_id] ?? 0) + v.stock;
+      const groupMap: Record<string, ListVariant[]> = {};
+      for (const v of (variantRes.data ?? []) as unknown as ListVariant[]) {
+        if (v.active) stockMap[v.product_id] = (stockMap[v.product_id] ?? 0) + v.stock;
+        (groupMap[v.product_id] ??= []).push(v);
       }
+      // Sort each product's variants: size sort_order, then color name.
+      Object.values(groupMap).forEach(list =>
+        list.sort((a, b) =>
+          (a.size?.sort_order ?? 0) - (b.size?.sort_order ?? 0)
+          || (a.color?.name ?? "").localeCompare(b.color?.name ?? ""),
+        ),
+      );
       setStockByProduct(stockMap);
+      setVariantsByProduct(groupMap);
     } catch (e: any) {
       console.error("[admin/productos] load failed:", e);
       setError(e?.message ?? "Error al cargar productos");
@@ -1154,52 +1190,130 @@ export default function ProductosAdmin() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F5EDD8]">
-              {filtered.map(p => (
-                <tr key={p.id} className="hover:bg-[#FDF8F0] transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      {p.image_url && (
-                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-[#F5EDD8] flex-shrink-0 flex items-center justify-center text-[#C4956A] text-[10px]">
-                          <img
-                            src={p.image_url}
-                            alt={p.name}
-                            className="w-full h-full object-cover"
-                            onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                          />
+              {filtered.map(p => {
+                const variants = variantsByProduct[p.id] ?? [];
+                const isExpanded = expandedIds.has(p.id);
+                return (
+                  <React.Fragment key={p.id}>
+                    <tr className="hover:bg-[#FDF8F0] transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          {variants.length > 0 ? (
+                            <button
+                              onClick={() => toggleExpand(p.id)}
+                              aria-label={isExpanded ? "Ocultar variantes" : "Ver variantes"}
+                              title={isExpanded ? "Ocultar variantes" : `Ver ${variants.length} variantes`}
+                              className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-[#6B3D1E] hover:bg-[#F5EDD8] transition-colors"
+                            >
+                              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                            </button>
+                          ) : (
+                            <span className="flex-shrink-0 w-6 h-6" aria-hidden />
+                          )}
+                          {p.image_url && (
+                            <div className="w-10 h-10 rounded-lg overflow-hidden bg-[#F5EDD8] flex-shrink-0 flex items-center justify-center text-[#C4956A] text-[10px]">
+                              <img
+                                src={p.image_url}
+                                alt={p.name}
+                                className="w-full h-full object-cover"
+                                onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                              />
+                            </div>
+                          )}
+                          <div>
+                            <p className="font-semibold text-[#3D2010]">{p.name}</p>
+                            <p className="text-[#9B6B45] text-xs">{p.id} · {p.category} · {variants.length} {variants.length === 1 ? "variante" : "variantes"}</p>
+                          </div>
                         </div>
-                      )}
-                      <div>
-                        <p className="font-semibold text-[#3D2010]">{p.name}</p>
-                        <p className="text-[#9B6B45] text-xs">{p.id} · {p.category}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-right font-bold text-[#D4A520]">{formatSoles(p.price)}</td>
-                  <td className="px-4 py-3 text-right text-[#9B6B45]">{formatSoles(p.cost ?? 0)}</td>
-                  <td className="px-4 py-3 text-right">
-                    {(() => {
-                      const s = stockByProduct[p.id] ?? 0;
-                      return <span className={`font-bold ${s <= 3 ? "text-orange-500" : "text-[#3D2010]"}`}>{s}</span>;
-                    })()}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <button onClick={() => toggleActive(p)} className={`flex items-center gap-1 mx-auto text-xs font-semibold ${p.active ? "text-green-600" : "text-[#9B6B45]"}`}>
-                      {p.active ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
-                      {p.active ? "Activo" : "Oculto"}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <button onClick={() => openEditProduct(p)} className="p-1.5 text-[#9B6B45] hover:text-[#D4A520] transition-colors">
-                        <Pencil size={15} />
-                      </button>
-                      <button onClick={() => handleDeleteClick(p)} className="p-1.5 text-[#9B6B45] hover:text-red-500 transition-colors">
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                      </td>
+                      <td className="px-4 py-3 text-right font-bold text-[#D4A520]">{formatSoles(p.price)}</td>
+                      <td className="px-4 py-3 text-right text-[#9B6B45]">{formatSoles(p.cost ?? 0)}</td>
+                      <td className="px-4 py-3 text-right">
+                        {(() => {
+                          const s = stockByProduct[p.id] ?? 0;
+                          return <span className={`font-bold ${s <= 3 ? "text-orange-500" : "text-[#3D2010]"}`}>{s}</span>;
+                        })()}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button onClick={() => toggleActive(p)} className={`flex items-center gap-1 mx-auto text-xs font-semibold ${p.active ? "text-green-600" : "text-[#9B6B45]"}`}>
+                          {p.active ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+                          {p.active ? "Activo" : "Oculto"}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <button onClick={() => openEditProduct(p)} className="p-1.5 text-[#9B6B45] hover:text-[#D4A520] transition-colors">
+                            <Pencil size={15} />
+                          </button>
+                          <button onClick={() => handleDeleteClick(p)} className="p-1.5 text-[#9B6B45] hover:text-red-500 transition-colors">
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr className="bg-[#FDF8F0]">
+                        <td colSpan={6} className="px-4 pt-2 pb-5">
+                          <div className="ml-9 rounded-xl border border-[#EDD9B4] overflow-hidden bg-white">
+                            <table className="w-full text-xs">
+                              <thead className="bg-[#F5EDD8] text-[#6B3D1E]">
+                                <tr>
+                                  <th className="px-3 py-2 text-left font-bold">Talla</th>
+                                  <th className="px-3 py-2 text-left font-bold">Color</th>
+                                  <th className="px-3 py-2 text-right font-bold">Stock</th>
+                                  <th className="px-3 py-2 text-right font-bold">Costo</th>
+                                  <th className="px-3 py-2 text-right font-bold">Precio</th>
+                                  <th className="px-3 py-2 text-center font-bold">Estado</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-[#F5EDD8]">
+                                {variants.map(v => {
+                                  const baseCost  = p.cost  ?? 0;
+                                  const basePrice = p.price ?? 0;
+                                  const cost  = v.cost  ?? baseCost;
+                                  const price = v.price_override ?? basePrice;
+                                  const costInherited  = v.cost === null;
+                                  const priceInherited = v.price_override === null;
+                                  return (
+                                    <tr key={v.id} className={v.active ? "" : "opacity-50"}>
+                                      <td className="px-3 py-2 font-semibold text-[#3D2010]">{v.size?.name ?? "—"}</td>
+                                      <td className="px-3 py-2 text-[#6B3D1E]">
+                                        <span className="inline-flex items-center gap-2">
+                                          {v.color?.hex_code && (
+                                            <span
+                                              className="inline-block w-3 h-3 rounded-full border border-[#EDD9B4]"
+                                              style={{ background: v.color.hex_code }}
+                                            />
+                                          )}
+                                          {v.color?.name ?? "—"}
+                                        </span>
+                                      </td>
+                                      <td className={`px-3 py-2 text-right font-bold ${v.stock <= 3 ? "text-orange-500" : "text-[#3D2010]"}`}>{v.stock}</td>
+                                      <td className="px-3 py-2 text-right text-[#9B6B45]">
+                                        {formatSoles(cost)}
+                                        {costInherited && <span className="ml-1 text-[9px] uppercase tracking-wider">base</span>}
+                                      </td>
+                                      <td className="px-3 py-2 text-right font-semibold text-[#D4A520]">
+                                        {formatSoles(price)}
+                                        {priceInherited && <span className="ml-1 text-[9px] uppercase tracking-wider text-[#9B6B45]">base</span>}
+                                      </td>
+                                      <td className="px-3 py-2 text-center">
+                                        {v.active
+                                          ? <span className="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full uppercase tracking-wider">Activa</span>
+                                          : <span className="text-[10px] font-bold text-[#9B6B45] bg-[#F5EDD8] px-2 py-0.5 rounded-full uppercase tracking-wider">Oculta</span>}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
