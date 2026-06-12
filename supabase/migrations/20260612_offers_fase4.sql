@@ -21,13 +21,15 @@
 
 
 -- ─── 1) Tabla offers ────────────────────────────────────────────────────
+-- Nota: products.id es TEXT en este esquema (códigos tipo "LC-001"),
+-- por eso product_id aquí también es text y no uuid.
 create table if not exists public.offers (
   id                uuid primary key default gen_random_uuid(),
   name              text not null,
   description       text,
   discount_percent  numeric(5,2) not null check (discount_percent > 0 and discount_percent <= 90),
   scope_type        text not null check (scope_type in ('product','category')),
-  product_id        uuid references public.products(id) on delete cascade,
+  product_id        text references public.products(id) on delete cascade,
   category          text,
   starts_at         timestamptz,
   ends_at           timestamptz,
@@ -69,7 +71,11 @@ create trigger trg_offers_touch before update on public.offers
 -- Sólo se considera "live" una oferta que esté activa Y dentro de su
 -- ventana (starts_at <= now() <= ends_at, nulls = abiertos).
 
-create or replace function public.refresh_product_has_offer(p_ids uuid[])
+-- Si una versión anterior de esta migración creó la función con uuid[],
+-- bórrala explícitamente — Postgres trata distinta firma como otra función.
+drop function if exists public.refresh_product_has_offer(uuid[]);
+
+create or replace function public.refresh_product_has_offer(p_ids text[])
 returns void language plpgsql as $$
 begin
   if p_ids is null or array_length(p_ids, 1) is null then
@@ -93,7 +99,7 @@ $$;
 create or replace function public.offers_sync_has_offer() returns trigger
 language plpgsql as $$
 declare
-  affected uuid[];
+  affected text[];
 begin
   if (tg_op = 'DELETE') then
     if old.scope_type = 'product' then
