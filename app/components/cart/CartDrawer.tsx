@@ -128,9 +128,23 @@ export default function CartDrawer({ open, onClose }: Props) {
                         </button>
                       </div>
 
-                      <span className="lc-display text-base text-ink whitespace-nowrap">
-                        {formatSoles(item.product.price * item.quantity)}
-                      </span>
+                      {(() => {
+                        const unit = item.variant.unit_price_at_pick ?? item.product.price;
+                        const base = item.variant.base_unit_price_at_pick ?? item.product.price;
+                        const discounted = unit < base;
+                        return (
+                          <div className="flex items-baseline gap-2 whitespace-nowrap">
+                            {discounted && (
+                              <span className="lc-mono text-[11px] text-ink-mute line-through">
+                                {formatSoles(base * item.quantity)}
+                              </span>
+                            )}
+                            <span className="lc-display text-base text-ink">
+                              {formatSoles(unit * item.quantity)}
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <button

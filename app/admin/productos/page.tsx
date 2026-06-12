@@ -303,8 +303,11 @@ export default function ProductosAdmin() {
     setSaveError(null);
     try {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { _isNew, ...payload } = editing;
+      const { _isNew, has_offer: _ignoredHasOffer, ...payload } = editing;
       if (_isNew) payload.sku = payload.id;
+      // products.has_offer is derived from offers (Fase 4 DB trigger) — never
+      // write it from the product form. The trigger keeps it in sync.
+      void _ignoredHasOffer;
 
       // Every product must surface at least one active variant or it won't
       // show on the public catalog. Reject the save if the matrix is empty
@@ -1841,15 +1844,14 @@ export default function ProductosAdmin() {
               )}
             </div>
 
-            {/* Has offer */}
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="hasOffer"
-                checked={editing.has_offer ?? false}
-                onChange={e => setEditing((prev: any) => ({ ...prev, has_offer: e.target.checked }))}
-              />
-              <label htmlFor="hasOffer" className="text-sm font-semibold text-[#6B3D1E]">Tiene oferta 3 × 15% dto</label>
+            {/* Ofertas — ahora se gestionan desde /admin/ofertas. El flag
+                products.has_offer es derivado (trigger DB) y el badge sólo
+                aparece cuando hay una oferta vigente que afecta a este
+                producto, sea por id o por categoría. */}
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900">
+              <strong>Ofertas:</strong> ya no se marcan aquí. Crea o edita ofertas en{" "}
+              <a href="/admin/ofertas" className="underline font-bold">Ofertas</a> — el badge en el
+              catálogo se enciende automáticamente cuando una oferta está vigente.
             </div>
 
             {/* Actions */}
