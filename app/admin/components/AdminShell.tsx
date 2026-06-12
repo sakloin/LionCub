@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Package, ShoppingCart, TrendingUp, BarChart2, Bell, LogOut, Menu } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, TrendingUp, BarChart2, Bell, FileText, LogOut, Menu } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 
 const NAV = [
   { href: "/admin",          label: "Dashboard",       icon: LayoutDashboard },
   { href: "/admin/productos", label: "Productos",       icon: Package },
+  { href: "/admin/catalogo",  label: "Catálogo PDF",    icon: FileText },
   { href: "/admin/pedidos",   label: "Pedidos",         icon: ShoppingCart },
   { href: "/admin/compras",   label: "Compras & Stock", icon: TrendingUp },
   { href: "/admin/reportes",  label: "Reportes",        icon: BarChart2 },
