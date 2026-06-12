@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "../../lib/supabase-admin";
-import { CartItem } from "../../lib/types";
+import { CartItem, Offer } from "../../lib/types";
 import { toCents, fromCents } from "../../lib/money";
+import { applyOfferCents, bestOfferFor } from "../../lib/offers";
 
 // Server-side authoritative shipping costs (in cents). Mirrors the values the
 // public checkout uses, but the server owns the truth — never trust the
@@ -22,6 +23,7 @@ interface VariantRow {
 interface ProductRow {
   id: string;
   name: string;
+  category: string;
   price: number;
   cost: number | null;
   active: boolean;
@@ -90,13 +92,38 @@ export async function POST(req: NextRequest) {
   const productIds = Array.from(new Set((variantsRaw ?? []).map((v) => (v as VariantRow).product_id)));
   const { data: productsRaw, error: pErr } = await supabaseAdmin
     .from("products")
-    .select("id, name, price, cost, active")
+    .select("id, name, category, price, cost, active")
     .in("id", productIds);
   if (pErr) {
     return NextResponse.json({ error: "Error al validar productos" }, { status: 500 });
   }
   const productMap = new Map<string, ProductRow>();
   for (const p of (productsRaw ?? []) as ProductRow[]) productMap.set(p.id, p);
+
+  // ─── Fetch active offers (server-authoritative discount math) ──────────
+  // Cualquier oferta que el cliente "vio" se ignora — recomputamos contra DB.
+  // Una sola query con OR para los productos del carrito y sus categorías.
+  const categories = Array.from(new Set(
+    (productsRaw ?? []).map(p => (p as ProductRow).category).filter(Boolean),
+  ));
+  let offers: Offer[] = [];
+  if (productIds.length || categories.length) {
+    const orParts: string[] = [];
+    if (productIds.length) orParts.push(`product_id.in.(${productIds.join(",")})`);
+    if (categories.length) {
+      const quoted = categories.map(c => `"${c}"`).join(",");
+      orParts.push(`category.in.(${quoted})`);
+    }
+    const { data: offersRaw, error: oErr } = await supabaseAdmin
+      .from("offers")
+      .select("*")
+      .eq("active", true)
+      .or(orParts.join(","));
+    if (oErr) {
+      return NextResponse.json({ error: "Error al validar ofertas" }, { status: 500 });
+    }
+    offers = (offersRaw ?? []) as Offer[];
+  }
 
   // ─── Validate each item against the DB ───────────────────────────────
   for (const item of items) {
@@ -123,13 +150,19 @@ export async function POST(req: NextRequest) {
   }
 
   // ─── Recompute prices, subtotal, shipping, total in cents ────────────
+  // Per item: base = variant.price_override ?? product.price, then apply the
+  // best matching live offer (product-specific beats category). All math in
+  // cents to avoid float drift; `unit_price` snapshot saved on order_items
+  // is the POST-discount price (what the customer actually pays per unit).
   let subtotalCents = 0;
   const orderItemRows = items.map((item) => {
     const v = variantMap.get(item.variant.id)!;
     const p = productMap.get(v.product_id)!;
-    const unitPrice = v.price_override ?? p.price;
+    const baseUnitPrice = v.price_override ?? p.price;
+    const offer = bestOfferFor({ id: p.id, category: p.category }, offers);
+    const baseCents = toCents(baseUnitPrice);
+    const unitPriceCents = applyOfferCents(baseCents, offer);
     const unitCost  = v.cost ?? p.cost ?? 0;
-    const unitPriceCents = toCents(unitPrice);
     const itemSubtotalCents = unitPriceCents * item.quantity;
     subtotalCents += itemSubtotalCents;
     return {
@@ -140,7 +173,7 @@ export async function POST(req: NextRequest) {
       selected_size:  item.selectedSize ?? item.variant.size_name ?? null,
       selected_color: item.selectedColor ?? item.variant.color_name ?? null,
       quantity:       item.quantity,
-      unit_price:     unitPrice,
+      unit_price:     fromCents(unitPriceCents),
       unit_cost:      unitCost,
       subtotal:       fromCents(itemSubtotalCents),
     };

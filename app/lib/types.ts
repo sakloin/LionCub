@@ -105,6 +105,21 @@ export interface OrderItem {
   subtotal: number;
 }
 
+export interface Offer {
+  id: string;
+  name: string;
+  description: string | null;
+  discount_percent: number;
+  scope_type: "product" | "category";
+  product_id: string | null;
+  category: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Purchase {
   id: string;
   product_id: string;
@@ -128,6 +143,13 @@ export interface CartItem {
     size_name: string;
     color_name: string;
     stock_at_pick: number;
+    /** Post-discount unit price at the time the item was added. The cart UI
+     *  uses this so the customer sees the same total they expect to pay.
+     *  /api/orders ignores it and recomputes authoritatively from DB. */
+    unit_price_at_pick?: number;
+    /** Original (pre-discount) unit price — shown crossed-out in the cart
+     *  when an offer applied. */
+    base_unit_price_at_pick?: number;
   };
   quantity: number;
   /** Legacy mirrors retained because the cart-drawer + checkout UI still read
