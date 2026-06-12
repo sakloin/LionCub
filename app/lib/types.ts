@@ -124,6 +124,11 @@ export interface Purchase {
   id: string;
   product_id: string;
   product_name: string;
+  /** Fase 5: filled in for every new purchase; NULL on historical rows
+   *  registered before the per-variant model. */
+  variant_id: string | null;
+  selected_size: string | null;
+  selected_color: string | null;
   quantity: number;
   unit_cost: number;
   total_cost: number;
