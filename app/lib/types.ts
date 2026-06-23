@@ -1,4 +1,4 @@
-export type Category = "conjuntos" | "bodies" | "baberos" | "mantas";
+export type Category = "conjuntos" | "bodies" | "baberos" | "mantas" | "pantalones";
 
 export interface ProductSize {
   id: string;
