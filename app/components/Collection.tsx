@@ -33,6 +33,7 @@ const CATEGORIES: CategoryDef[] = [
   { id: "bodies",  name: "Bodies",  desc: "La prenda base del guardarropa — suave, versátil, esencial." },
   { id: "baberos", name: "Baberos", desc: "Los detalles tiernos que cuidan cada comida." },
   { id: "mantas",  name: "Mantas",  desc: "Abrigos ligeros que envuelven con dulzura." },
+  { id: "pantalones", name: "Pantalones", desc: "Comodidad y estilo para los primeros días de exploración." },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────
