@@ -1,0 +1,325 @@
+import Anthropic from "@anthropic-ai/sdk";
+import { supabaseAdmin } from "./supabase-admin";
+import { bestOfferFor, applyOfferCents } from "./offers";
+import { randomUUID } from "crypto";
+import type { Offer } from "./types";
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+const MODEL = "claude-haiku-4-5-20251001";
+
+const SYSTEM_PROMPT = `Eres el asistente de ventas de Lion Cub Baby Clothing 🦁, tienda peruana de ropa para bebés hecha con 100% Algodón Pima peruano — la fibra más suave, respirable e hipoalergénica del mundo.
+
+Tu misión: ayudar a los clientes a elegir y comprar por WhatsApp de forma cálida y sencilla.
+
+REGLAS:
+- Responde en español peruano, cálido y natural. Máximo 2 emojis por mensaje.
+- Precios en Soles (S/). Nunca inventes stock, precios ni variantes — usa las herramientas.
+- Envíos: domicilio Lima S/10 | Shalom provincias S/15
+- Pago: Yape/Plin al 920201943 (Lion Cub) · transferencia bancaria · contraentrega solo Lima
+- Tallas: RN = recién nacido (0-1 mes), luego 0-3m, 3-6m, 6-9m, 9-12m
+- Flujo de venta: producto → talla/color → dirección → método de envío → confirmar → crear pedido
+- Crea el pedido SOLO cuando tengas: nombre, teléfono, dirección, método de envío, y todo confirmado por el cliente
+- Después de crear el pedido exitoso, da el número de pedido y los datos de pago claramente
+- Si el cliente pide Yape/transferencia, recuérdale enviar foto del comprobante al mismo WhatsApp`;
+
+type Message = Anthropic.MessageParam;
+
+// ── Tool handlers ─────────────────────────────────────────────────────────────
+
+async function fetchActiveOffers(): Promise<Offer[]> {
+  const { data } = await supabaseAdmin.from("offers").select("*").eq("active", true);
+  return (data ?? []) as Offer[];
+}
+
+async function handleBuscarProductos(categoria?: string) {
+  let query = supabaseAdmin
+    .from("products")
+    .select(`
+      id, name, category, price, description,
+      product_variants(
+        id, stock, price_override, active,
+        product_sizes(name),
+        product_colors(name)
+      )
+    `)
+    .eq("active", true)
+    .order("category");
+
+  if (categoria) query = (query as any).eq("category", categoria);
+
+  const { data, error } = await query;
+  if (error) return { error: "No se pudieron cargar los productos" };
+
+  const offers = await fetchActiveOffers();
+
+  const products = (data ?? [])
+    .map((p: any) => {
+      const variants = (p.product_variants ?? [])
+        .filter((v: any) => v.active && (v.stock ?? 0) > 0)
+        .map((v: any) => {
+          const baseCents = Math.round((v.price_override ?? p.price) * 100);
+          const offer = bestOfferFor({ id: p.id, category: p.category }, offers);
+          const priceCents = applyOfferCents(baseCents, offer);
+          return {
+            variant_id: v.id,
+            size: v.product_sizes?.name ?? "Único",
+            color: v.product_colors?.name ?? "Único",
+            stock: v.stock,
+            price: priceCents / 100,
+          };
+        });
+      return { id: p.id, name: p.name, category: p.category, base_price: p.price, description: p.description ?? "", variants };
+    })
+    .filter((p: any) => p.variants.length > 0);
+
+  return { products };
+}
+
+async function handleCrearPedido(input: {
+  customer_name: string;
+  customer_phone: string;
+  address?: string;
+  district?: string;
+  city?: string;
+  shipping_method: "domicilio" | "shalom";
+  shalom_agency?: string;
+  items: Array<{ variant_id: string; quantity: number }>;
+  payment_method: "transferencia" | "contraentrega";
+  notes?: string;
+}) {
+  const SHIPPING_CENTS: Record<string, number> = { domicilio: 1000, shalom: 1500 };
+  const variantIds = input.items.map(i => i.variant_id);
+
+  const { data: variantsRaw, error: vErr } = await supabaseAdmin
+    .from("product_variants")
+    .select(`
+      id, product_id, stock, cost, price_override, active,
+      product_sizes(name), product_colors(name)
+    `)
+    .in("id", variantIds);
+
+  if (vErr) return { error: "Error al verificar variantes" };
+
+  const variantMap = new Map((variantsRaw ?? []).map((v: any) => [v.id, v]));
+  const productIds = [...new Set((variantsRaw ?? []).map((v: any) => v.product_id as string))];
+
+  const { data: productsRaw, error: pErr } = await supabaseAdmin
+    .from("products")
+    .select("id, name, category, price, cost, active")
+    .in("id", productIds);
+
+  if (pErr) return { error: "Error al verificar productos" };
+  const productMap = new Map((productsRaw ?? []).map((p: any) => [p.id, p]));
+
+  // Validate stock
+  for (const item of input.items) {
+    const v = variantMap.get(item.variant_id) as any;
+    if (!v?.active) return { error: "Una variante no está disponible" };
+    const p = productMap.get(v.product_id) as any;
+    if (!p?.active) return { error: `Producto ${p?.name ?? item.variant_id} no disponible` };
+    if ((v.stock ?? 0) < item.quantity) return { error: `Sin stock suficiente para ${p.name}` };
+  }
+
+  // Price calculation with offers
+  const offers = await fetchActiveOffers();
+  let subtotalCents = 0;
+  const orderItemRows = input.items.map(item => {
+    const v = variantMap.get(item.variant_id) as any;
+    const p = productMap.get(v.product_id) as any;
+    const baseCents = Math.round((v.price_override ?? p.price) * 100);
+    const offer = bestOfferFor({ id: p.id, category: p.category }, offers);
+    const unitPriceCents = applyOfferCents(baseCents, offer);
+    subtotalCents += unitPriceCents * item.quantity;
+    return {
+      product_id: p.id,
+      variant_id: v.id,
+      product_name: p.name,
+      product_sku: p.id,
+      selected_size: (v.product_sizes as any)?.name ?? null,
+      selected_color: (v.product_colors as any)?.name ?? null,
+      quantity: item.quantity,
+      unit_price: unitPriceCents / 100,
+      unit_cost: v.cost ?? p.cost ?? 0,
+      subtotal: (unitPriceCents * item.quantity) / 100,
+    };
+  });
+
+  const shippingCents = SHIPPING_CENTS[input.shipping_method] ?? 1000;
+  const totalCents = subtotalCents + shippingCents;
+
+  // Atomic stock reservation
+  const reserved: { id: string; qty: number }[] = [];
+  for (const item of input.items) {
+    const { data: newStock, error: rpcErr } = await supabaseAdmin.rpc("adjust_variant_stock", {
+      p_variant_id: item.variant_id,
+      p_qty_change: -item.quantity,
+    });
+    if (rpcErr || newStock === null || newStock < 0) {
+      for (const r of reserved) {
+        await supabaseAdmin.rpc("adjust_variant_stock", { p_variant_id: r.id, p_qty_change: r.qty });
+      }
+      return { error: "Sin stock al momento de reservar, intenta de nuevo" };
+    }
+    reserved.push({ id: item.variant_id, qty: item.quantity });
+  }
+
+  // Insert order
+  const orderId = randomUUID();
+  const { error: orderError } = await supabaseAdmin.from("orders").insert({
+    id: orderId,
+    customer_name: input.customer_name,
+    customer_phone: input.customer_phone,
+    customer_email: "",
+    address: input.address ?? "",
+    district: input.district ?? "",
+    city: input.city ?? "Lima",
+    shipping_method: input.shipping_method,
+    shalom_agency: input.shalom_agency ?? null,
+    shipping_cost: shippingCents / 100,
+    subtotal: subtotalCents / 100,
+    total: totalCents / 100,
+    payment_method: input.payment_method,
+    payment_status: "pendiente",
+    order_status: "nuevo",
+    notes: `${input.notes ?? ""} [WhatsApp bot]`.trim(),
+  });
+
+  if (orderError) {
+    for (const r of reserved) {
+      await supabaseAdmin.rpc("adjust_variant_stock", { p_variant_id: r.id, p_qty_change: r.qty });
+    }
+    return { error: orderError.message };
+  }
+
+  await supabaseAdmin.from("order_items").insert(
+    orderItemRows.map(r => ({ ...r, order_id: orderId }))
+  );
+
+  return {
+    success: true,
+    order_id: orderId.slice(0, 8).toUpperCase(),
+    subtotal: subtotalCents / 100,
+    shipping_cost: shippingCents / 100,
+    total: totalCents / 100,
+    payment_method: input.payment_method,
+  };
+}
+
+// ── Tool definitions ──────────────────────────────────────────────────────────
+
+const TOOLS: Anthropic.Tool[] = [
+  {
+    name: "buscar_productos",
+    description:
+      "Lista los productos disponibles con stock real, tallas, colores y precios (ya con descuentos aplicados). " +
+      "Cada variante devuelve su variant_id exacto. Úsalo cuando el cliente quiera ver opciones o preguntar disponibilidad.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        categoria: {
+          type: "string",
+          enum: ["conjuntos", "bodies", "baberos", "mantas", "pantalones"],
+          description: "Filtrar por categoría. Omitir para ver todo el catálogo.",
+        },
+      },
+    },
+  },
+  {
+    name: "crear_pedido",
+    description:
+      "Crea el pedido en el sistema y reserva el stock. " +
+      "Llama SOLO cuando tengas confirmados: nombre, teléfono, dirección, método de envío y los variant_id elegidos.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        customer_name: { type: "string" },
+        customer_phone: { type: "string" },
+        address: { type: "string", description: "Dirección completa de entrega" },
+        district: { type: "string", description: "Distrito (Lima) o ciudad (provincias)" },
+        city: { type: "string", description: "Ciudad, por defecto Lima" },
+        shipping_method: {
+          type: "string",
+          enum: ["domicilio", "shalom"],
+          description: "domicilio = Lima S/10 | shalom = provincias S/15",
+        },
+        shalom_agency: {
+          type: "string",
+          description: "Agencia Shalom más cercana (solo si shipping_method = shalom)",
+        },
+        items: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              variant_id: { type: "string", description: "ID de variante obtenido de buscar_productos" },
+              quantity: { type: "integer", minimum: 1 },
+            },
+            required: ["variant_id", "quantity"],
+          },
+        },
+        payment_method: {
+          type: "string",
+          enum: ["transferencia", "contraentrega"],
+          description: "transferencia = Yape/Plin/banco | contraentrega = solo Lima",
+        },
+        notes: { type: "string" },
+      },
+      required: ["customer_name", "customer_phone", "items", "shipping_method", "payment_method"],
+    },
+  },
+];
+
+async function executeTool(name: string, input: any) {
+  if (name === "buscar_productos") return handleBuscarProductos(input.categoria);
+  if (name === "crear_pedido") return handleCrearPedido(input);
+  return { error: `Tool desconocida: ${name}` };
+}
+
+// ── Main entry point ──────────────────────────────────────────────────────────
+
+export async function processMessage(
+  history: Message[],
+  userMessage: string,
+): Promise<{ response: string; updatedHistory: Message[] }> {
+  const messages: Message[] = [...history, { role: "user", content: userMessage }];
+
+  let response = await anthropic.messages.create({
+    model: MODEL,
+    max_tokens: 1024,
+    system: SYSTEM_PROMPT,
+    tools: TOOLS,
+    messages,
+  });
+
+  // Tool-use loop
+  while (response.stop_reason === "tool_use") {
+    messages.push({ role: "assistant", content: response.content });
+
+    const toolResults: Anthropic.ToolResultBlockParam[] = [];
+    for (const block of response.content) {
+      if (block.type !== "tool_use") continue;
+      const result = await executeTool(block.name, block.input);
+      toolResults.push({ type: "tool_result", tool_use_id: block.id, content: JSON.stringify(result) });
+    }
+
+    messages.push({ role: "user", content: toolResults });
+    response = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 1024,
+      system: SYSTEM_PROMPT,
+      tools: TOOLS,
+      messages,
+    });
+  }
+
+  messages.push({ role: "assistant", content: response.content });
+
+  const text = response.content
+    .filter((b): b is Anthropic.TextBlock => b.type === "text")
+    .map(b => b.text)
+    .join("\n");
+
+  // Keep last 30 messages to avoid token overflow over long conversations
+  return { response: text, updatedHistory: messages.slice(-30) };
+}
