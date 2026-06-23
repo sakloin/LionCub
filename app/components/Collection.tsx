@@ -646,6 +646,47 @@ export default function Collection() {
     return (id: string) => map.get(id) ?? null;
   }, [products, offers]);
 
+  // JSON-LD structured data for Google. Emits an ItemList of Product
+  // entities once the catalog is loaded so search engines can render rich
+  // results (price, availability, image) for each piece.
+  const jsonLd = useMemo(() => {
+    if (products.length === 0) return null;
+    const siteUrl = (typeof window !== "undefined" ? window.location.origin : "https://lioncub.pe");
+    const itemList = {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      itemListElement: products.map((p, i) => {
+        const stock = (p.variants ?? []).filter(v => v.active).reduce((s, v) => s + v.stock, 0);
+        const primaryImg = p.images?.find(img => img.is_primary)?.url ?? p.image_url ?? `${siteUrl}/products/${p.id}.jpeg`;
+        const o = offerFor(p.id);
+        const effective = effectivePrice(p.price, o);
+        return {
+          "@type": "ListItem",
+          position: i + 1,
+          item: {
+            "@type": "Product",
+            name: p.name,
+            description: p.tagline || p.description || `${p.name} — 100% algodón pima peruano`,
+            image: primaryImg,
+            sku: p.sku || p.id,
+            category: p.category,
+            brand: { "@type": "Brand", name: "Lion Cub" },
+            offers: {
+              "@type": "Offer",
+              priceCurrency: "PEN",
+              price: effective.toFixed(2),
+              availability: stock > 0
+                ? "https://schema.org/InStock"
+                : "https://schema.org/OutOfStock",
+              url: `${siteUrl}/#coleccion`,
+            },
+          },
+        };
+      }),
+    };
+    return JSON.stringify(itemList);
+  }, [products, offerFor]);
+
   // Group by category and only show categories that have products. Unknown
   // categories surface in an "Otros" bucket so a new category id from the
   // admin doesn't disappear from the storefront.
@@ -663,6 +704,13 @@ export default function Collection() {
 
   return (
     <section id="coleccion" className="bg-bg py-16 sm:py-24">
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{ __html: jsonLd }}
+        />
+      )}
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         {/* Header */}
         <div className="text-center max-w-xl mx-auto mb-12">
