@@ -281,13 +281,18 @@ async function executeTool(name: string, input: any) {
 export async function processMessage(
   history: Message[],
   userMessage: string,
+  customerName?: string,
 ): Promise<{ response: string; updatedHistory: Message[] }> {
+  const systemPrompt = customerName
+    ? `${SYSTEM_PROMPT}\n\nNombre del cliente en WhatsApp: ${customerName}. Úsalo para saludarlo en el primer mensaje de cada conversación.`
+    : SYSTEM_PROMPT;
+
   const messages: Message[] = [...history, { role: "user", content: userMessage }];
 
   let response = await anthropic.messages.create({
     model: MODEL,
     max_tokens: 1024,
-    system: SYSTEM_PROMPT,
+    system: systemPrompt,
     tools: TOOLS,
     messages,
   });
@@ -307,7 +312,7 @@ export async function processMessage(
     response = await anthropic.messages.create({
       model: MODEL,
       max_tokens: 1024,
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       tools: TOOLS,
       messages,
     });
