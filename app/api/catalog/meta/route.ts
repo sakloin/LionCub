@@ -157,10 +157,11 @@ export async function POST(req: NextRequest) {
 
   for (let i = 0; i < items.length; i += BATCH_SIZE) {
     const batch = items.slice(i, i + BATCH_SIZE);
-    const requests = batch.map(item => ({
+    const requests = batch.map(({ id, ...itemData }) => ({
       method: "UPDATE",
-      retailer_id: item.id,
-      data: item,
+      retailer_id: id,
+      item_type: "PRODUCT_ITEM",
+      data: itemData,
     }));
 
     try {
