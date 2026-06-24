@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { supabaseAdmin } from "./supabase-admin";
 import { bestOfferFor, applyOfferCents } from "./offers";
+import { sendOrderReceived } from "./email";
 import { randomUUID } from "crypto";
 import type { Offer } from "./types";
 
@@ -26,7 +27,8 @@ REGLAS DE NEGOCIO:
 - Envíos: domicilio Lima s/10 | Shalom provincias s/15
 - Pago: Yape/Plin al 920201943 (Lion Cub) · transferencia bancaria · contraentrega solo Lima
 - Tallas: RN = recién nacido (0-1 mes), luego 0-3m, 3-6m, 6-9m, 9-12m
-- Flujo de venta: producto → talla/color → dirección → método de envío → confirmar → crear pedido
+- Flujo de venta: producto → talla/color → dirección → método de envío → correo → confirmar → crear pedido
+- Pide el correo antes de crear el pedido: "oye, ¿me das tu correo pa mandarte la confirmación?" — si no quiere darlo, igual crea el pedido sin correo
 - Crea el pedido SOLO cuando tengas: nombre, teléfono, dirección, método de envío, y todo confirmado x el cliente
 - Después de crear el pedido exitoso, da el número de pedido y los datos de pago claramente
 - Si el cliente pide Yape/transferencia, recuérdale mandar foto del comprobante x este mismo wsp`;
@@ -87,6 +89,7 @@ async function handleBuscarProductos(categoria?: string) {
 async function handleCrearPedido(input: {
   customer_name: string;
   customer_phone: string;
+  customer_email?: string;
   address?: string;
   district?: string;
   city?: string;
@@ -178,7 +181,7 @@ async function handleCrearPedido(input: {
     id: orderId,
     customer_name: input.customer_name,
     customer_phone: input.customer_phone,
-    customer_email: "",
+    customer_email: input.customer_email ?? "",
     address: input.address ?? "",
     district: input.district ?? "",
     city: input.city ?? "Lima",
@@ -203,6 +206,50 @@ async function handleCrearPedido(input: {
   await supabaseAdmin.from("order_items").insert(
     orderItemRows.map(r => ({ ...r, order_id: orderId }))
   );
+
+  // Send order confirmation email (best-effort)
+  sendOrderReceived(
+    {
+      id: orderId,
+      customer_name: input.customer_name,
+      customer_email: input.customer_email ?? null,
+      customer_phone: input.customer_phone,
+      address: input.address ?? null,
+      district: input.district ?? null,
+      city: input.city ?? "Lima",
+      shipping_method: input.shipping_method,
+      shalom_agency: input.shalom_agency ?? null,
+      shipping_cost: shippingCents / 100,
+      subtotal: subtotalCents / 100,
+      total: totalCents / 100,
+      payment_method: input.payment_method,
+      payment_status: "pendiente",
+      notes: input.notes ?? null,
+      delivery_date: null,
+      delivery_time_slot: null,
+      created_at: new Date().toISOString(),
+    },
+    orderItemRows.map(r => ({
+      product_name: r.product_name,
+      selected_size: r.selected_size,
+      selected_color: r.selected_color,
+      quantity: r.quantity,
+      unit_price: r.unit_price,
+      subtotal: r.subtotal,
+    }))
+  ).catch(e => console.error("[chatbot] email error:", e));
+
+  // Create Supabase auth account (best-effort) — lets customer access order history
+  if (input.customer_email) {
+    const phone = input.customer_phone.replace(/\D/g, "");
+    const e164 = phone.startsWith("51") ? `+${phone}` : `+51${phone}`;
+    supabaseAdmin.auth.admin.createUser({
+      email: input.customer_email,
+      phone: e164,
+      email_confirm: true,
+      user_metadata: { full_name: input.customer_name },
+    }).catch(e => console.error("[chatbot] auth user error:", e));
+  }
 
   return {
     success: true,
@@ -243,6 +290,7 @@ const TOOLS: Anthropic.Tool[] = [
       properties: {
         customer_name: { type: "string" },
         customer_phone: { type: "string" },
+        customer_email: { type: "string", description: "Correo del cliente para enviar confirmación y acceso a su cuenta. Opcional pero pedirlo siempre." },
         address: { type: "string", description: "Dirección completa de entrega" },
         district: { type: "string", description: "Distrito (Lima) o ciudad (provincias)" },
         city: { type: "string", description: "Ciudad, por defecto Lima" },
