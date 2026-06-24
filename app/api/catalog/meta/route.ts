@@ -87,6 +87,13 @@ async function buildCatalogItems(): Promise<CatalogItem[]> {
       priceCents = applyOfferCents(baseCents, offer);
     }
 
+    const rawImg = p.image_url ?? "";
+    const imageLink = rawImg.startsWith("http")
+      ? rawImg
+      : rawImg.startsWith("/")
+        ? `${PUBLIC_SITE}${rawImg}`
+        : `${PUBLIC_SITE}/og-image.jpg`;
+
     items.push({
       id: p.id,
       name: p.name,
@@ -95,8 +102,8 @@ async function buildCatalogItems(): Promise<CatalogItem[]> {
       condition: "new",
       price: priceCents,
       currency: "PEN",
-      link: PUBLIC_SITE,
-      image_link: p.image_url ?? `${PUBLIC_SITE}/og-image.jpg`,
+      link: `${PUBLIC_SITE}/productos/${p.id}`,
+      image_link: imageLink,
       brand: "Lion Cub",
       google_product_category: "Apparel & Accessories > Clothing > Baby & Toddler Clothing",
     });
