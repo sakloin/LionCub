@@ -219,7 +219,7 @@ function paymentInstructionsBlock(order: EmailOrder): string {
 }
 
 // ─── Customer emails ────────────────────────────────────────────────────
-function customerOrderReceivedHTML(order: EmailOrder, items: EmailOrderItem[]): string {
+function customerOrderReceivedHTML(order: EmailOrder, items: EmailOrderItem[], magicLink?: string): string {
   const body = `
     <p style="margin:0;font-size:22px;color:${COLORS.ink};font-weight:700;">¡Gracias por tu pedido, ${escape(order.customer_name.split(" ")[0])}!</p>
     <p style="margin:8px 0 0;font-size:14px;color:${COLORS.inkMid};line-height:1.55;">
@@ -232,12 +232,18 @@ function customerOrderReceivedHTML(order: EmailOrder, items: EmailOrderItem[]): 
     ${shippingBlock(order)}
     ${deliveryBlock(order)}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px;">
-      <tr><td align="center">
+      <tr><td align="center" style="padding-bottom:${magicLink ? "10px" : "0"};">
         <a href="https://wa.me/51920201943"
            style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:24px;">
           Confirmar pago por WhatsApp
         </a>
       </td></tr>
+      ${magicLink ? `<tr><td align="center">
+        <a href="${escape(magicLink)}"
+           style="display:inline-block;background:${COLORS.gold};color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:24px;">
+          Ver mis pedidos →
+        </a>
+      </td></tr>` : ""}
     </table>
   `;
   return shell("Recibimos tu pedido", body);
@@ -313,10 +319,10 @@ async function send(to: string | string[], subject: string, html: string, tag: s
  * (when applicable) and ping the admin so they don't have to refresh
  * /admin/pedidos to know a new order arrived.
  */
-export async function sendOrderReceived(order: EmailOrder, items: EmailOrderItem[]): Promise<void> {
+export async function sendOrderReceived(order: EmailOrder, items: EmailOrderItem[], magicLink?: string): Promise<void> {
   const subject = `Recibimos tu pedido #${order.id.slice(0, 8)} · Lion Cub`;
   if (order.customer_email) {
-    await send(order.customer_email, subject, customerOrderReceivedHTML(order, items), "customer/order-received");
+    await send(order.customer_email, subject, customerOrderReceivedHTML(order, items, magicLink), "customer/order-received");
   }
   if (ADMIN_EMAIL) {
     await send(

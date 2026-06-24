@@ -1,0 +1,175 @@
+{
+  "name": "Lion Cub — Sync catálogo a Meta WhatsApp",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "Cada 6 horas",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.LIONCUB_URL }}/api/catalog/meta",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-sync-secret",
+              "value": "={{ $vars.CATALOG_SYNC_SECRET }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "http-sync",
+      "name": "Sincronizar catálogo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-errors",
+              "leftValue": "={{ $json.errors }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-errors",
+      "name": "¿Hay errores?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.first().json;\nconsole.log(`[catalog-sync] OK: ${result.synced}/${result.total} productos sincronizados`);\nreturn [{ json: { status: 'ok', ...result } }];"
+      },
+      "id": "log-ok",
+      "name": "Log OK",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 220]
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.first().json;\nconsole.error('[catalog-sync] ERRORS:', JSON.stringify(result.errors));\n// Lanza error para que n8n lo registre en el historial de ejecuciones\nthrow new Error(`Catalog sync parcial: ${result.synced}/${result.total}. Errores: ${result.errors.join(' | ')}`);"
+      },
+      "id": "log-error",
+      "name": "Log Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 380]
+    }
+  ],
+  "connections": {
+    "Cada 6 horas": {
+      "main": [
+        [
+          {
+            "node": "Sincronizar catálogo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sincronizar catálogo": {
+      "main": [
+        [
+          {
+            "node": "¿Hay errores?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Hay errores?": {
+      "main": [
+        [
+          {
+            "node": "Log OK",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "lioncub"
+  },
+  "tags": [],
+  "__readme": {
+    "setup": [
+      "1. En n8n → Settings → Variables, crea dos variables:",
+      "   - LIONCUB_URL = https://lioncub.pe (o tu URL de Vercel)",
+      "   - CATALOG_SYNC_SECRET = el valor del env var CATALOG_SYNC_SECRET en Vercel",
+      "",
+      "2. En Vercel, agrega estos env vars:",
+      "   - META_CATALOG_ID = ID numérico de tu catálogo en Meta Business Manager",
+      "   - CATALOG_SYNC_SECRET = un string secreto cualquiera (ej: openssl rand -hex 16)",
+      "   (WHATSAPP_TOKEN ya debe estar configurado)",
+      "",
+      "3. Para obtener META_CATALOG_ID:",
+      "   - Ve a business.facebook.com → Commerce Manager",
+      "   - Crea un catálogo o usa uno existente → Settings → Catalog ID",
+      "",
+      "4. Asegúrate que WHATSAPP_TOKEN sea un System User Token con permiso 'catalog_management'",
+      "   (el token de ManyChat NO sirve — necesitas uno de Meta Business Manager)",
+      "",
+      "5. Importa este archivo en n8n: Workflows → Import from file",
+      "6. Activa el workflow",
+      "",
+      "Para forzar una sincronización manual:",
+      "  POST https://lioncub.pe/api/catalog/meta",
+      "  Header: x-sync-secret: <tu CATALOG_SYNC_SECRET>",
+      "",
+      "Para inspeccionar qué se enviará a Meta sin hacer la sync:",
+      "  GET https://lioncub.pe/api/catalog/meta  (público, solo lectura)"
+    ]
+  }
+}

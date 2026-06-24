@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { supabaseAdmin } from "./supabase-admin";
 import { bestOfferFor, applyOfferCents } from "./offers";
+import { sendOrderReceived } from "./email";
 import { randomUUID } from "crypto";
 import type { Offer } from "./types";
 
@@ -12,16 +13,26 @@ const SYSTEM_PROMPT = `Eres el asistente de ventas de Lion Cub Baby Clothing �
 
 Tu misión: ayudar a los clientes a elegir y comprar por WhatsApp de forma cálida y sencilla.
 
-REGLAS:
-- Responde en español peruano, cálido y natural. Máximo 2 emojis por mensaje.
-- Precios en Soles (S/). Nunca inventes stock, precios ni variantes — usa las herramientas.
-- Envíos: domicilio Lima S/10 | Shalom provincias S/15
+ESTILO DE ESCRITURA (muy importante):
+- Escribe como un peruano joven en WhatsApp: informal, directo, sin ser grosero
+- Abrevia como en chats reales: "q" en vez de "que", "tb" en vez de "también", "xq" en vez de "porque", "pq" en vez de "para que", "tmb", "d" en vez de "de" a veces, "pa" en vez de "para", "wsp" en vez de "WhatsApp", "x" en vez de "por", "s/" en vez de "soles"
+- Sin signos de puntuación innecesarios. Sin comas formales. Sin puntos al final de frase corta
+- Mensajes cortos y directos — máximo 3-4 líneas x mensaje, nunca párrafos largos
+- Máximo 2 emojis x mensaje, solo cuando suman naturalidad
+- NUNCA uses lenguaje corporativo ni frases como "con gusto", "por supuesto", "claro que sí", "¡Hola!" con exclamación
+- Ejemplos de tono correcto: "hola q tal 👋", "claro, déjame revisar", "eso te sale en s/45", "te lo mando x Shalom si estás en provincia"
+
+REGLAS DE NEGOCIO:
+- Precios en Soles (S/). Nunca inventes stock, precios ni variantes — usa las herramientas
+- Envíos: domicilio Lima s/10 | Shalom provincias s/15
 - Pago: Yape/Plin al 920201943 (Lion Cub) · transferencia bancaria · contraentrega solo Lima
 - Tallas: RN = recién nacido (0-1 mes), luego 0-3m, 3-6m, 6-9m, 9-12m
-- Flujo de venta: producto → talla/color → dirección → método de envío → confirmar → crear pedido
-- Crea el pedido SOLO cuando tengas: nombre, teléfono, dirección, método de envío, y todo confirmado por el cliente
+- Catálogo online: si el cliente quiere ver todos los productos o fotos, mándale el link → lioncub.pe
+- Flujo de venta: producto → talla/color → dirección → método de envío → correo → confirmar → crear pedido
+- Pide el correo antes de crear el pedido: "oye, ¿me das tu correo pa mandarte la confirmación?" — si no quiere darlo, igual crea el pedido sin correo
+- Crea el pedido SOLO cuando tengas: nombre, teléfono, dirección, método de envío, y todo confirmado x el cliente
 - Después de crear el pedido exitoso, da el número de pedido y los datos de pago claramente
-- Si el cliente pide Yape/transferencia, recuérdale enviar foto del comprobante al mismo WhatsApp`;
+- Si el cliente pide Yape/transferencia, recuérdale mandar foto del comprobante x este mismo wsp`;
 
 type Message = Anthropic.MessageParam;
 
@@ -79,6 +90,7 @@ async function handleBuscarProductos(categoria?: string) {
 async function handleCrearPedido(input: {
   customer_name: string;
   customer_phone: string;
+  customer_email?: string;
   address?: string;
   district?: string;
   city?: string;
@@ -170,7 +182,7 @@ async function handleCrearPedido(input: {
     id: orderId,
     customer_name: input.customer_name,
     customer_phone: input.customer_phone,
-    customer_email: "",
+    customer_email: input.customer_email ?? "",
     address: input.address ?? "",
     district: input.district ?? "",
     city: input.city ?? "Lima",
@@ -195,6 +207,59 @@ async function handleCrearPedido(input: {
   await supabaseAdmin.from("order_items").insert(
     orderItemRows.map(r => ({ ...r, order_id: orderId }))
   );
+
+  // Create Supabase auth account + magic link (best-effort)
+  let magicLink: string | undefined;
+  if (input.customer_email) {
+    const phone = input.customer_phone.replace(/\D/g, "");
+    const e164 = phone.startsWith("51") ? `+${phone}` : `+51${phone}`;
+    await supabaseAdmin.auth.admin.createUser({
+      email: input.customer_email,
+      phone: e164,
+      email_confirm: true,
+      user_metadata: { full_name: input.customer_name },
+    }).catch(e => console.error("[chatbot] auth user error:", e));
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://lioncub.pe";
+    const { data: linkData } = await supabaseAdmin.auth.admin.generateLink({
+      type: "magiclink",
+      email: input.customer_email,
+      options: { redirectTo: `${siteUrl}/mi-cuenta/pedidos` },
+    }).catch(e => { console.error("[chatbot] magic link error:", e); return { data: null }; });
+    magicLink = (linkData as any)?.properties?.action_link ?? undefined;
+  }
+
+  // Send order confirmation email (best-effort)
+  sendOrderReceived(
+    {
+      id: orderId,
+      customer_name: input.customer_name,
+      customer_email: input.customer_email ?? null,
+      customer_phone: input.customer_phone,
+      address: input.address ?? null,
+      district: input.district ?? null,
+      city: input.city ?? "Lima",
+      shipping_method: input.shipping_method,
+      shalom_agency: input.shalom_agency ?? null,
+      shipping_cost: shippingCents / 100,
+      subtotal: subtotalCents / 100,
+      total: totalCents / 100,
+      payment_method: input.payment_method,
+      payment_status: "pendiente",
+      notes: input.notes ?? null,
+      delivery_date: null,
+      delivery_time_slot: null,
+      created_at: new Date().toISOString(),
+    },
+    orderItemRows.map(r => ({
+      product_name: r.product_name,
+      selected_size: r.selected_size,
+      selected_color: r.selected_color,
+      quantity: r.quantity,
+      unit_price: r.unit_price,
+      subtotal: r.subtotal,
+    })),
+    magicLink,
+  ).catch(e => console.error("[chatbot] email error:", e));
 
   return {
     success: true,
@@ -235,6 +300,7 @@ const TOOLS: Anthropic.Tool[] = [
       properties: {
         customer_name: { type: "string" },
         customer_phone: { type: "string" },
+        customer_email: { type: "string", description: "Correo del cliente para enviar confirmación y acceso a su cuenta. Opcional pero pedirlo siempre." },
         address: { type: "string", description: "Dirección completa de entrega" },
         district: { type: "string", description: "Distrito (Lima) o ciudad (provincias)" },
         city: { type: "string", description: "Ciudad, por defecto Lima" },
@@ -281,13 +347,18 @@ async function executeTool(name: string, input: any) {
 export async function processMessage(
   history: Message[],
   userMessage: string,
+  customerName?: string,
 ): Promise<{ response: string; updatedHistory: Message[] }> {
+  const systemPrompt = customerName
+    ? `${SYSTEM_PROMPT}\n\nNombre del cliente en WhatsApp: ${customerName}. Úsalo para saludarlo en el primer mensaje de cada conversación.`
+    : SYSTEM_PROMPT;
+
   const messages: Message[] = [...history, { role: "user", content: userMessage }];
 
   let response = await anthropic.messages.create({
     model: MODEL,
     max_tokens: 1024,
-    system: SYSTEM_PROMPT,
+    system: systemPrompt,
     tools: TOOLS,
     messages,
   });
@@ -307,7 +378,7 @@ export async function processMessage(
     response = await anthropic.messages.create({
       model: MODEL,
       max_tokens: 1024,
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       tools: TOOLS,
       messages,
     });

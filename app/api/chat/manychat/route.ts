@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
 
   const phone: string = body.phone ?? body.subscriber_phone ?? "";
   const text: string = body.message ?? body.last_input_text ?? "";
+  const name: string = body.name ?? "";
 
   if (!phone || !text.trim()) {
     return NextResponse.json({ response: "Datos incompletos." });
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
   let updatedHistory: MessageParam[];
 
   try {
-    const result = await processMessage(history, text);
+    const result = await processMessage(history, text, name || undefined);
     reply = result.response;
     updatedHistory = result.updatedHistory;
   } catch (err) {

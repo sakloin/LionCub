@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { Order } from "../../lib/types";
 import { formatSoles } from "../../lib/money";
-import { ChevronDown, ChevronUp, Package2, MessageCircle, FileText, Check, XCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, Package2, MessageCircle, FileText, Check, XCircle, Truck } from "lucide-react";
 
 interface OrderItemDetail {
   id: string;
@@ -173,6 +173,36 @@ export default function PedidosAdmin() {
       });
     } catch (e: any) {
       console.error("[admin/pedidos] notify-paid failed:", e?.message ?? e);
+    }
+  }
+
+  async function fireNotifyShippedWhatsApp(orderId: string): Promise<boolean> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return false;
+      const res = await fetch("/api/admin/orders/notify-shipped", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ order_id: orderId }),
+      });
+      return res.ok;
+    } catch (e: any) {
+      console.error("[admin/pedidos] notify-shipped failed:", e?.message ?? e);
+      return false;
+    }
+  }
+
+  async function handleMarkShipped(orderId: string) {
+    try {
+      const { error: dbErr } = await supabase.from("orders").update({ order_status: "enviado" }).eq("id", orderId);
+      if (dbErr) throw dbErr;
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, order_status: "enviado" } : o));
+      showToast("Pedido marcado como enviado ✓");
+      const ok = await fireNotifyShippedWhatsApp(orderId);
+      if (!ok) showToast("Estado actualizado — WhatsApp no enviado", false);
+    } catch (e: any) {
+      showToast(e?.message ?? "Error al marcar como enviado", false);
     }
   }
 
@@ -390,7 +420,7 @@ export default function PedidosAdmin() {
                   </div>
 
                   {/* Order status row */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs text-[#9B6B45]">Estado:</span>
                     <select
                       value={order.order_status}
@@ -399,6 +429,17 @@ export default function PedidosAdmin() {
                     >
                       {["nuevo","procesando","enviado","entregado","cancelado"].map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
+
+                    {/* Quick action: mark shipped + WhatsApp notify */}
+                    {!["enviado","entregado","cancelado"].includes(order.order_status) && (
+                      <button
+                        onClick={() => handleMarkShipped(order.id)}
+                        className="flex items-center gap-1 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 px-2.5 py-1 rounded-lg transition-colors"
+                        title="Marcar como enviado y notificar al cliente por WhatsApp"
+                      >
+                        <Truck size={12} /> Marcar enviado
+                      </button>
+                    )}
                   </div>
 
                   {order.notes && <p className="text-xs text-[#9B6B45] italic">"{order.notes}"</p>}
