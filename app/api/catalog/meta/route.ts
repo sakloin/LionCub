@@ -21,6 +21,16 @@ import type { Offer } from "@/app/lib/types";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, x-sync-secret, Authorization",
+};
+
+export async function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS });
+}
+
 const META_CATALOG_ID    = process.env.META_CATALOG_ID ?? "";
 const META_ACCESS_TOKEN  = process.env.WHATSAPP_TOKEN ?? "";
 const CATALOG_SYNC_SECRET = process.env.CATALOG_SYNC_SECRET ?? "";
@@ -97,7 +107,7 @@ async function buildCatalogItems(): Promise<CatalogItem[]> {
 
 export async function GET() {
   const items = await buildCatalogItems();
-  return NextResponse.json({ count: items.length, items });
+  return NextResponse.json({ count: items.length, items }, { headers: CORS });
 }
 
 export async function POST(req: NextRequest) {
@@ -116,23 +126,23 @@ export async function POST(req: NextRequest) {
       const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
         .split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
       if (authErr || !adminEmails.includes((userData?.user?.email ?? "").toLowerCase())) {
-        return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+        return NextResponse.json({ error: "No autorizado" }, { status: 403, headers: CORS });
       }
     } else {
-      return NextResponse.json({ error: "Falta autenticación" }, { status: 401 });
+      return NextResponse.json({ error: "Falta autenticación" }, { status: 401, headers: CORS });
     }
   }
 
   if (!META_CATALOG_ID) {
-    return NextResponse.json({ error: "META_CATALOG_ID no configurado" }, { status: 500 });
+    return NextResponse.json({ error: "META_CATALOG_ID no configurado" }, { status: 500, headers: CORS });
   }
   if (!META_ACCESS_TOKEN) {
-    return NextResponse.json({ error: "WHATSAPP_TOKEN no configurado" }, { status: 500 });
+    return NextResponse.json({ error: "WHATSAPP_TOKEN no configurado" }, { status: 500, headers: CORS });
   }
 
   const items = await buildCatalogItems();
   if (items.length === 0) {
-    return NextResponse.json({ synced: 0, message: "Sin productos activos" });
+    return NextResponse.json({ synced: 0, message: "Sin productos activos" }, { headers: CORS });
   }
 
   let totalSynced = 0;
@@ -171,5 +181,5 @@ export async function POST(req: NextRequest) {
     synced: totalSynced,
     total: items.length,
     ...(errors.length > 0 ? { errors } : {}),
-  });
+  }, { headers: CORS });
 }
