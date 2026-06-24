@@ -1,0 +1,96 @@
+import { NextRequest, NextResponse } from "next/server";
+import { supabaseAdmin } from "../../../lib/supabase-admin";
+import { processMessage } from "../../../lib/chatbot";
+import { sendWhatsApp } from "../../../lib/whatsapp";
+import type { MessageParam } from "@anthropic-ai/sdk/resources";
+
+// Allow up to 55s for Claude + Supabase processing
+export const maxDuration = 55;
+
+// ── GET: Meta webhook verification ───────────────────────────────────────────
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const mode = searchParams.get("hub.mode");
+  const token = searchParams.get("hub.verify_token");
+  const challenge = searchParams.get("hub.challenge");
+
+  if (mode === "subscribe" && token === process.env.WHATSAPP_VERIFY_TOKEN) {
+    return new NextResponse(challenge, { status: 200 });
+  }
+  return NextResponse.json({ error: "Verification failed" }, { status: 403 });
+}
+
+// ── POST: Incoming messages ───────────────────────────────────────────────────
+export async function POST(req: NextRequest) {
+  let body: any;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ ok: true });
+  }
+
+  // Extract text message from Meta's payload structure
+  const message = body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+
+  // Ignore status updates (delivered, read) and non-text messages
+  if (!message || message.type !== "text") {
+    return NextResponse.json({ ok: true });
+  }
+
+  const phone: string = message.from;       // e.g. "51920201943"
+  const messageId: string = message.id;
+  const text: string = message.text?.body ?? "";
+
+  if (!text.trim()) return NextResponse.json({ ok: true });
+
+  await processAndReply(phone, messageId, text);
+  return NextResponse.json({ ok: true });
+}
+
+// ── Core processing ───────────────────────────────────────────────────────────
+async function processAndReply(phone: string, messageId: string, text: string) {
+  // Load existing session
+  const { data: session } = await supabaseAdmin
+    .from("chat_sessions")
+    .select("messages, last_message_id, updated_at")
+    .eq("phone", phone)
+    .single();
+
+  // Deduplication: Meta can resend the same webhook on timeout
+  if (session?.last_message_id === messageId) return;
+
+  // Reset history if session is older than 24h
+  let history: MessageParam[] = [];
+  if (session) {
+    const ageMs = Date.now() - new Date(session.updated_at as string).getTime();
+    if (ageMs < 24 * 60 * 60 * 1000) {
+      history = (session.messages as MessageParam[]) ?? [];
+    }
+  }
+
+  let reply: string;
+  let updatedHistory: MessageParam[];
+
+  try {
+    const result = await processMessage(history, text);
+    reply = result.response;
+    updatedHistory = result.updatedHistory;
+  } catch (err) {
+    console.error("[chat/whatsapp] error procesando mensaje:", err);
+    reply = "Lo siento, tuve un problema técnico. Por favor intenta de nuevo en un momento 🙏";
+    updatedHistory = history;
+  }
+
+  // Persist session (upsert by phone)
+  await supabaseAdmin.from("chat_sessions").upsert(
+    {
+      phone,
+      messages: updatedHistory,
+      last_message_id: messageId,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "phone" }
+  );
+
+  await sendWhatsApp(phone, reply);
+}
