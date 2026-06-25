@@ -61,7 +61,8 @@ async function handleBuscarProductos(categoria?: string) {
         id, stock, price_override, active,
         product_sizes(name),
         product_colors(name)
-      )
+      ),
+      product_images(url, is_primary, sort_order)
     `)
     .eq("active", true)
     .order("category");
@@ -89,8 +90,15 @@ async function handleBuscarProductos(categoria?: string) {
             price: priceCents / 100,
           };
         });
-      const rawImg = p.image_url ?? "";
-      const imageUrl = rawImg.startsWith("http") ? rawImg : rawImg.startsWith("/") ? `https://lioncub.pe${rawImg}` : "";
+      // Image: prefer product_images (gallery) primary → first gallery → products.image_url → public folder fallback
+      const gallery: any[] = p.product_images ?? [];
+      const galleryPrimary = gallery.find((i: any) => i.is_primary)?.url ?? gallery.sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))[0]?.url ?? "";
+      const rawImg = galleryPrimary || p.image_url || "";
+      const imageUrl = rawImg.startsWith("http")
+        ? rawImg
+        : rawImg.startsWith("/")
+          ? `https://lioncub.pe${rawImg}`
+          : "";
       return { id: p.id, name: p.name, category: p.category, base_price: p.price, description: p.description ?? "", image_url: imageUrl, variants };
     })
     .filter((p: any) => p.variants.length > 0);
