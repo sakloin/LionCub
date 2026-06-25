@@ -430,9 +430,13 @@ export async function processMessage(
     .join("\n");
 
   // Extract image URLs from ===IMAGES===url1,url2===END=== marker
+  // Also filter out product page URLs that the LLM sometimes hallucinates
+  // (e.g. https://lioncub.pe/products/lc-028) — extensionless /products/ paths are page routes, not images
+  const isPageUrl = (u: string) =>
+    /^(https?:\/\/[^/]*)?\/products\/[^/]+\/?$/.test(u) && !/\.(jpe?g|png|webp|gif|avif)$/i.test(u);
   const imageMatch = rawText.match(/===IMAGES===([\s\S]*?)===END===/);
   let images: string[] = imageMatch
-    ? imageMatch[1].split(",").map(u => u.trim()).filter(u => u.startsWith("http"))
+    ? imageMatch[1].split(",").map(u => u.trim()).filter(u => u.startsWith("http") && !isPageUrl(u))
     : [];
   const text = rawText.replace(/===IMAGES===[\s\S]*?===END===/g, "").trim();
 
