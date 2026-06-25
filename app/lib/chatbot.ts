@@ -35,8 +35,8 @@ REGLAS DE NEGOCIO:
 - Envíos: domicilio Lima s/10 | Shalom provincias s/15
 - Pago: Yape/Plin al 920201943 (Lion Cub) · transferencia bancaria · contraentrega solo Lima
 - Tallas: RN = recién nacido (0-1 mes), luego 0-3m, 3-6m, 6-9m, 9-12m
-- Catálogo online: si el cliente quiere ver fotos o todos los productos, mándale https://lioncub.pe
-- Imágenes individuales: cuando el cliente pida ver foto(s) de uno o varios productos específicos, incluye sus image_url al final del mensaje en este formato exacto (sin espacio extra): ===IMAGES===https://url1.jpg,https://url2.jpg===END=== — máximo 3 imágenes
+- Catálogo online: si el cliente quiere VER TODOS los productos o explorar sin producto específico, mándale https://lioncub.pe
+- Imágenes individuales: cuando el cliente pida foto(s) de un producto específico, SIEMPRE usa la herramienta buscar_productos primero, luego OBLIGATORIAMENTE incluye el image_url del producto al final del mensaje en este formato exacto (sin espacio, sin salto de línea): ===IMAGES===https://url1.jpg,https://url2.jpg===END=== — máximo 3 imágenes. Si el image_url está vacío, dile que puede verlo en https://lioncub.pe. NUNCA mandes solo el link del catálogo cuando el cliente pide foto de un producto específico
 - Flujo de venta: producto → talla/color → dirección → método de envío → correo → confirmar → crear pedido
 - Pide el correo antes de crear el pedido: "oye me das tu correo pa mandarte la confirmación" — si no quiere darlo, igual crea el pedido sin correo
 - Crea el pedido SOLO cuando tengas: nombre, teléfono, dirección, método de envío, y todo confirmado x el cliente
@@ -61,7 +61,8 @@ async function handleBuscarProductos(categoria?: string) {
         id, stock, price_override, active,
         product_sizes(name),
         product_colors(name)
-      )
+      ),
+      product_images(url, is_primary, sort_order)
     `)
     .eq("active", true)
     .order("category");
@@ -89,8 +90,15 @@ async function handleBuscarProductos(categoria?: string) {
             price: priceCents / 100,
           };
         });
-      const rawImg = p.image_url ?? "";
-      const imageUrl = rawImg.startsWith("http") ? rawImg : rawImg.startsWith("/") ? `https://lioncub.pe${rawImg}` : "";
+      // Image: prefer product_images (gallery) primary → first gallery → products.image_url → public folder fallback
+      const gallery: any[] = p.product_images ?? [];
+      const galleryPrimary = gallery.find((i: any) => i.is_primary)?.url ?? gallery.sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))[0]?.url ?? "";
+      const rawImg = galleryPrimary || p.image_url || "";
+      const imageUrl = rawImg.startsWith("http")
+        ? rawImg
+        : rawImg.startsWith("/")
+          ? `https://lioncub.pe${rawImg}`
+          : "";
       return { id: p.id, name: p.name, category: p.category, base_price: p.price, description: p.description ?? "", image_url: imageUrl, variants };
     })
     .filter((p: any) => p.variants.length > 0);
@@ -375,7 +383,9 @@ export async function processMessage(
     messages,
   });
 
-  // Tool-use loop
+  // Tool-use loop — collect product image URLs from buscar_productos results
+  const productImagesFromTools: string[] = [];
+
   while (response.stop_reason === "tool_use") {
     messages.push({ role: "assistant", content: response.content });
 
@@ -383,6 +393,18 @@ export async function processMessage(
     for (const block of response.content) {
       if (block.type !== "tool_use") continue;
       const result = await executeTool(block.name, block.input);
+
+      // Capture image URLs from buscar_productos so we can inject them
+      // even if the LLM forgets to include them in its final response.
+      if (block.name === "buscar_productos") {
+        const r = result as any;
+        for (const p of r?.products ?? []) {
+          if (p.image_url && p.image_url.startsWith("http")) {
+            productImagesFromTools.push(p.image_url);
+          }
+        }
+      }
+
       toolResults.push({ type: "tool_result", tool_use_id: block.id, content: JSON.stringify(result) });
     }
 
@@ -405,10 +427,17 @@ export async function processMessage(
 
   // Extract image URLs from ===IMAGES===url1,url2===END=== marker
   const imageMatch = rawText.match(/===IMAGES===([\s\S]*?)===END===/);
-  const images: string[] = imageMatch
+  let images: string[] = imageMatch
     ? imageMatch[1].split(",").map(u => u.trim()).filter(u => u.startsWith("http"))
     : [];
   const text = rawText.replace(/===IMAGES===[\s\S]*?===END===/g, "").trim();
+
+  // Safety net: if the user asked for a photo and the LLM didn't include images
+  // but buscar_productos returned products with images, inject them automatically.
+  const askedForPhoto = /foto|imagen|imagen|photo|pic\b|ver.*product|mostrar/i.test(userMessage);
+  if (images.length === 0 && askedForPhoto && productImagesFromTools.length > 0) {
+    images = productImagesFromTools.slice(0, 3);
+  }
 
   // Keep last 30 messages to avoid token overflow over long conversations
   return { response: text, images, updatedHistory: messages.slice(-30) };
