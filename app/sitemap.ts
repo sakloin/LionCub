@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://lioncub-phi.vercel.app";
+const _s = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+const SITE_URL = (_s && !_s.includes("vercel.app")) ? _s : "https://lioncub.pe";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();

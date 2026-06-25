@@ -24,7 +24,8 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
-const SITE_URL  = process.env.NEXT_PUBLIC_SITE_URL ?? "https://lioncub-phi.vercel.app";
+const _sUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+const SITE_URL  = (_sUrl && !_sUrl.includes("vercel.app")) ? _sUrl : "https://lioncub.pe";
 const SITE_NAME = "Lion Cub Baby Clothing";
 const OG_IMAGE  = `${SITE_URL}/logo-solid.png`;
 
