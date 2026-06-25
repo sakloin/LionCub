@@ -34,7 +34,8 @@ export async function OPTIONS() {
 const META_CATALOG_ID    = process.env.META_CATALOG_ID ?? "";
 const META_ACCESS_TOKEN  = process.env.WHATSAPP_TOKEN ?? "";
 const CATALOG_SYNC_SECRET = process.env.CATALOG_SYNC_SECRET ?? "";
-const PUBLIC_SITE        = process.env.NEXT_PUBLIC_SITE_URL ?? "https://lioncub.pe";
+const _siteEnv = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+const PUBLIC_SITE = (_siteEnv && !_siteEnv.includes("vercel.app")) ? _siteEnv : "https://lioncub.pe";
 const GRAPH_URL          = "https://graph.facebook.com/v20.0";
 const BATCH_SIZE         = 100; // Meta allows up to 1000; 100 is safe
 
