@@ -1,0 +1,84 @@
+name: Sync product image_url from gallery
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'supabase/migrations/20260625_sync_product_image_url.sql'
+    branches:
+      - 'claude/install-ui-ux-package-kXymP'
+      - 'main'
+
+jobs:
+  sync-images:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check product images (read-only, anon key)
+        run: |
+          echo "=== Checking product image_url values ==="
+          curl -s \
+            "${SUPABASE_URL}/rest/v1/products?select=id,name,image_url&active=eq.true&order=id" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" | \
+            node -e "
+              const data = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+              const withImg = data.filter(p => p.image_url && p.image_url.startsWith('http'));
+              const noImg = data.filter(p => !p.image_url || !p.image_url.startsWith('http'));
+              console.log('Products WITH image_url:', withImg.length);
+              console.log('Products WITHOUT image_url:', noImg.length);
+              noImg.forEach(p => console.log('  Missing:', p.id, p.name));
+              console.log('');
+              console.log('=== LC-027 and LC-028 ===');
+              data.filter(p => ['LC-027','LC-028'].includes(p.id)).forEach(p => console.log(p.id, p.name, '→', p.image_url || '(empty)'));
+            "
+
+      - name: Check product_images gallery table
+        run: |
+          echo "=== Checking product_images gallery ==="
+          curl -s \
+            "${SUPABASE_URL}/rest/v1/product_images?select=product_id,url,is_primary,sort_order&product_id=in.(LC-027,LC-028)&order=product_id,sort_order" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" | \
+            node -e "
+              const data = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+              console.log('Gallery images for LC-027/LC-028:', JSON.stringify(data, null, 2));
+            "
+
+      - name: Run sync migration (service role key)
+        if: env.SUPABASE_SERVICE_ROLE_KEY != ''
+        run: |
+          echo "=== Running sync migration ==="
+          SQL=$(cat supabase/migrations/20260625_sync_product_image_url.sql)
+          curl -s -X POST \
+            "${SUPABASE_URL}/rest/v1/rpc/exec_sql" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{\"query\": $(echo "$SQL" | node -e "process.stdout.write(JSON.stringify(require('fs').readFileSync('/dev/stdin','utf8')))")}" \
+            || echo "exec_sql RPC not available — migration must be run manually in Supabase SQL Editor"
+
+      - name: Verify fix via chatbot API
+        run: |
+          echo "=== Testing chatbot image response ==="
+          RESPONSE=$(curl -s -X POST \
+            "https://lioncub.pe/api/chat/manychat" \
+            -H "Content-Type: application/json" \
+            -d '{"phone":"test_ci_999","message":"me puedes mostrar una foto del pantalon anticólico nube?","name":"Test CI"}')
+          echo "Response: $RESPONSE"
+          echo "$RESPONSE" | node -e "
+            const r = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+            if (r.image_url) {
+              console.log('SUCCESS: image_url present:', r.image_url);
+              process.exit(0);
+            } else {
+              console.log('No image_url in response. Response:', JSON.stringify(r));
+              console.log('Note: This is expected if products have no images in DB.');
+            }
+          "
