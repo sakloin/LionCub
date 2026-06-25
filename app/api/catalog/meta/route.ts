@@ -219,6 +219,33 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ configuredCatalogId: META_CATALOG_ID, businesses: result }, { headers: CORS });
   }
 
+  // ?format=feed — Meta-compatible TSV product feed (no API key needed; Meta pulls this URL)
+  if (searchParams.get("format") === "feed") {
+    const items = await buildCatalogItems();
+    const cols = ["id","title","description","availability","condition","price","link","image_link","brand","google_product_category"];
+    const rows = items.map(item => [
+      item.id,
+      item.name,
+      item.description.replace(/\t|\n|\r/g, " "),
+      item.availability,
+      item.condition,
+      // Meta feed price format: "19.00 PEN"
+      `${(item.price / 100).toFixed(2)} ${item.currency}`,
+      item.link,
+      item.image_link,
+      item.brand,
+      item.google_product_category,
+    ].map(v => String(v ?? "")).join("\t"));
+    const tsv = [cols.join("\t"), ...rows].join("\n");
+    return new Response(tsv, {
+      headers: {
+        ...CORS,
+        "Content-Type": "text/tab-separated-values; charset=utf-8",
+        "Cache-Control": "public, max-age=3600",
+      },
+    });
+  }
+
   const items = await buildCatalogItems();
   return NextResponse.json({ count: items.length, items }, { headers: CORS });
 }
