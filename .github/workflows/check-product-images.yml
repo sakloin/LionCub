@@ -38,13 +38,10 @@ jobs:
               console.log('SUMMARY: real=' + real.length + ' page_paths=' + page.length + ' empty=' + empty.length + ' total=' + data.length);
             "
 
-      - name: Wait for Vercel deployment
-        run: sleep 90
-
       - name: Test chatbot API returns real image for LC-027
         run: |
           echo "=== Testing chatbot API: ask for photo of pantalon anticolico nube ==="
-          RESPONSE=$(curl -s --max-time 30 -X POST \
+          RESPONSE=$(curl -sL --max-time 60 -X POST \
             "https://lioncub.pe/api/chat/manychat" \
             -H "Content-Type: application/json" \
             -d '{"phone":"test_ci_img_001","message":"quiero ver una foto del pantalon anticolico nube","name":"Test CI"}')
