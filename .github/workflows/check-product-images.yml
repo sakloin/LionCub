@@ -65,11 +65,11 @@ jobs:
             }
           "
 
-      - name: Check product_images gallery table
+      - name: Check product_images gallery table (focus on LC-101/201/202/301/302)
         run: |
-          echo "=== product_images gallery ==="
+          echo "=== product_images gallery — all rows for LC-1xx/2xx/3xx ==="
           curl -s \
-            "${SUPABASE_URL}/rest/v1/product_images?select=product_id,url,is_primary,sort_order&order=product_id,sort_order" \
+            "${SUPABASE_URL}/rest/v1/product_images?select=product_id,url,is_primary,sort_order&product_id=in.(LC-101,LC-201,LC-202,LC-301,LC-302)&order=product_id,sort_order" \
             -H "apikey: ${SUPABASE_ANON_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" | \
             node -e "
@@ -77,18 +77,25 @@ jobs:
               let data;
               try { data = JSON.parse(raw); } catch(e) { console.log('Cannot read product_images:', raw.slice(0,200)); process.exit(0); }
               if (!Array.isArray(data)) { console.log('Access denied or error:', JSON.stringify(data)); process.exit(0); }
-              if (data.length === 0) { console.log('product_images table is EMPTY — no gallery images for any product'); process.exit(0); }
-              const byProduct = {};
-              for (const row of data) {
-                if (!byProduct[row.product_id]) byProduct[row.product_id] = [];
-                byProduct[row.product_id].push(row);
-              }
-              const ids = Object.keys(byProduct).sort();
-              console.log('Products with gallery images:', ids.length);
-              for (const id of ids) {
-                const imgs = byProduct[id];
-                const primary = imgs.find(i => i.is_primary);
-                const best = primary || imgs[0];
-                console.log(id, imgs.length + ' img(s)', best.url.slice(0,100));
-              }
+              if (data.length === 0) { console.log('No gallery images for these products'); process.exit(0); }
+              const isPagePath = u => u && u.match(/^(https?:\/\/[^/]*)?\/products\/[^/]+\/?$/);
+              data.forEach(r => {
+                const flag = isPagePath(r.url) ? '[PAGE PATH]' : '[real img]';
+                console.log(r.product_id, flag, 'primary=' + r.is_primary, 'sort=' + r.sort_order, r.url.slice(0,120));
+              });
             "
+
+      - name: Test chatbot API for LC-101 (Body Esencial Premium)
+        run: |
+          echo "=== Testing chatbot API: LC-101 ==="
+          RESPONSE=$(curl -sL --max-time 60 -X POST \
+            "https://lioncub.pe/api/chat/manychat" \
+            -H "Content-Type: application/json" \
+            -d '{"phone":"test_ci_lc101","message":"quiero ver una foto del body esencial premium","name":"Test CI"}')
+          echo "Full response: $RESPONSE"
+          echo "$RESPONSE" | node -e "
+            const r = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8').trim());
+            const url = r.image_url || '';
+            const isReal = url.startsWith('http') && !url.match(/\/products\/[^/]+\/?$/);
+            console.log(isReal ? 'SUCCESS image_url: ' + url : url ? 'FAIL page_url: ' + url : 'INFO no image — bot: ' + (r.response||'').slice(0,150));
+          " || true
