@@ -41,10 +41,11 @@ jobs:
       - name: Test chatbot API returns real image for LC-027
         run: |
           echo "=== Testing chatbot API: ask for photo of pantalon anticolico nube ==="
+          PHONE="test_ci_lc027_$(date +%s)"
           RESPONSE=$(curl -sL --max-time 60 -X POST \
             "https://lioncub.pe/api/chat/manychat" \
             -H "Content-Type: application/json" \
-            -d '{"phone":"test_ci_img_001","message":"quiero ver una foto del pantalon anticolico nube","name":"Test CI"}')
+            -d "{\"phone\":\"${PHONE}\",\"message\":\"quiero ver una foto del pantalon anticolico nube\",\"name\":\"Test CI\"}")
           echo "Full response: $RESPONSE"
           echo "$RESPONSE" | node -e "
             const raw = require('fs').readFileSync('/dev/stdin','utf8').trim();
@@ -138,10 +139,11 @@ jobs:
       - name: Test chatbot API for LC-101 (Body Esencial Premium)
         run: |
           echo "=== Testing chatbot API: LC-101 ==="
+          PHONE="test_ci_lc101_$(date +%s)"
           RESPONSE=$(curl -sL --max-time 60 -X POST \
             "https://lioncub.pe/api/chat/manychat" \
             -H "Content-Type: application/json" \
-            -d '{"phone":"test_ci_lc101","message":"quiero ver una foto del body esencial premium","name":"Test CI"}')
+            -d "{\"phone\":\"${PHONE}\",\"message\":\"quiero ver una foto del body esencial premium\",\"name\":\"Test CI\"}")
           echo "Full response: $RESPONSE"
           echo "$RESPONSE" | node -e "
             const r = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8').trim());
