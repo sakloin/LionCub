@@ -19,7 +19,8 @@ import { formatSoles } from "./money";
 const RESEND_API_KEY = process.env.RESEND_API_KEY ?? "";
 const EMAIL_FROM     = process.env.EMAIL_FROM     ?? "Lion Cub <onboarding@resend.dev>";
 const ADMIN_EMAIL    = process.env.ADMIN_EMAIL    ?? "";
-const PUBLIC_SITE    = process.env.NEXT_PUBLIC_SITE_URL ?? "https://lioncub-phi.vercel.app";
+const _siteUrl    = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+const PUBLIC_SITE = (_siteUrl && !_siteUrl.includes("vercel.app")) ? _siteUrl : "https://lioncub.pe";
 
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
