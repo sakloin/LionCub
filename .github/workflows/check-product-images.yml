@@ -25,8 +25,8 @@ jobs:
               let data;
               try { data = JSON.parse(raw); } catch(e) { console.log('ERROR:', raw.slice(0,300)); process.exit(1); }
               if (!Array.isArray(data)) { console.log('Unexpected:', JSON.stringify(data)); process.exit(1); }
-              const isRealImg = u => u && u.startsWith('http') && !u.match(/\/products\/[^/]+\/?$/);
-              const isPagePath = u => u && u.match(/^(https?:\/\/[^/]*)?\/products\/[^/]+\/?$/);
+              const isRealImg = u => u && (u.startsWith('http') || u.startsWith('/')) && !(u.match(/\/products\/[^/]+\/?$/) && !u.match(/\.(jpe?g|png|webp|gif|avif)$/i));
+              const isPagePath = u => u && u.match(/^(https?:\/\/[^/]*)?\/products\/[^/]+\/?$/) && !u.match(/\.(jpe?g|png|webp|gif|avif)$/i);
               data.forEach(p => {
                 const flag = isRealImg(p.image_url) ? '✓ real image' : isPagePath(p.image_url) ? '✗ PAGE PATH' : '✗ empty';
                 console.log(p.id, p.name.slice(0,40), '->', p.image_url || '(empty)', '[' + flag + ']');
@@ -77,8 +77,8 @@ jobs:
               let data;
               try { data = JSON.parse(raw); } catch(e) { console.log('Cannot read products:', raw.slice(0,200)); process.exit(0); }
               if (!Array.isArray(data)) { console.log('Error:', JSON.stringify(data)); process.exit(0); }
-              const isRealImg = u => u && u.startsWith('http') && !u.match(/\/products\/[^/]+\/?$/);
-              const isPagePath = u => u && u.match(/^(https?:\/\/[^/]*)?\/products\/[^/]+\/?$/);
+              const isRealImg = u => u && (u.startsWith('http') || u.startsWith('/')) && !(u.match(/\/products\/[^/]+\/?$/) && !u.match(/\.(jpe?g|png|webp|gif|avif)$/i));
+              const isPagePath = u => u && u.match(/^(https?:\/\/[^/]*)?\/products\/[^/]+\/?$/) && !u.match(/\.(jpe?g|png|webp|gif|avif)$/i);
               data.forEach(p => {
                 const flag = isRealImg(p.image_url) ? '✓ REAL IMAGE' : isPagePath(p.image_url) ? '✗ PAGE PATH' : '✗ EMPTY';
                 console.log(p.id, flag, '->', (p.image_url || '(empty)').slice(0,120));
@@ -96,7 +96,7 @@ jobs:
               try { data = JSON.parse(raw); } catch(e) { console.log('Cannot read product_images:', raw.slice(0,200)); process.exit(0); }
               if (!Array.isArray(data)) { console.log('Access denied or error:', JSON.stringify(data)); process.exit(0); }
               if (data.length === 0) { console.log('No gallery images for these products'); process.exit(0); }
-              const isPagePath = u => u && u.match(/^(https?:\/\/[^/]*)?\/products\/[^/]+\/?$/);
+              const isPagePath = u => u && u.match(/^(https?:\/\/[^/]*)?\/products\/[^/]+\/?$/) && !u.match(/\.(jpe?g|png|webp|gif|avif)$/i);
               data.forEach(r => {
                 const flag = isPagePath(r.url) ? '[PAGE PATH]' : '[real img]';
                 console.log(r.product_id, flag, 'primary=' + r.is_primary, 'sort=' + r.sort_order, r.url.slice(0,120));

@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     const sorted = gallery.sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
     const galleryPrimary = gallery.find((i: any) => i.is_primary)?.url ?? sorted[0]?.url ?? "";
     const rawImg = galleryPrimary || p.image_url || "";
-    const isProductPage = /^(https?:\/\/[^/]*)?\/products\/[^/]+\/?$/.test(rawImg);
+    const isProductPage = /^(https?:\/\/[^/]*)?\/products\/[^/]+\/?$/.test(rawImg) && !/\.(jpe?g|png|webp|gif|avif)$/i.test(rawImg);
     const resolvedUrl = isProductPage
       ? ""
       : rawImg.startsWith("http")

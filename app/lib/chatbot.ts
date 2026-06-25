@@ -94,8 +94,8 @@ async function handleBuscarProductos(categoria?: string) {
       const gallery: any[] = p.product_images ?? [];
       const galleryPrimary = gallery.find((i: any) => i.is_primary)?.url ?? gallery.sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))[0]?.url ?? "";
       const rawImg = galleryPrimary || p.image_url || "";
-      // /products/LC-xxx is a Next.js page route, not an image file
-      const isProductPage = /^(https?:\/\/[^/]*)?\/products\/[^/]+\/?$/.test(rawImg);
+      // /products/LC-xxx is a Next.js page route; /products/LC-xxx.jpeg is a valid static image
+      const isProductPage = /^(https?:\/\/[^/]*)?\/products\/[^/]+\/?$/.test(rawImg) && !/\.(jpe?g|png|webp|gif|avif)$/i.test(rawImg);
       const imageUrl = isProductPage
         ? ""
         : rawImg.startsWith("http")
