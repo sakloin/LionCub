@@ -51,19 +51,28 @@ export async function POST(req: NextRequest) {
   const history = await loadHistory(phone);
 
   let reply: string;
+  let images: string[] = [];
   let updatedHistory: MessageParam[];
 
   try {
     const result = await processMessage(history, text, name || undefined);
     reply = result.response;
+    images = result.images ?? [];
     updatedHistory = result.updatedHistory;
   } catch (err) {
     console.error("[chat/manychat] error:", err);
     return NextResponse.json({
-      response: "Lo siento, tuve un problema técnico. Por favor intenta de nuevo 🙏",
+      response: "Lo siento, tuve un problema técnico. Por favor intenta de nuevo",
     });
   }
 
   await saveHistory(phone, updatedHistory);
-  return NextResponse.json({ response: reply });
+
+  // Return image_url (first image) and image_url_2/3 for ManyChat custom field mapping
+  const imageFields: Record<string, string> = {};
+  images.slice(0, 3).forEach((url, i) => {
+    imageFields[i === 0 ? "image_url" : `image_url_${i + 1}`] = url;
+  });
+
+  return NextResponse.json({ response: reply, ...imageFields });
 }

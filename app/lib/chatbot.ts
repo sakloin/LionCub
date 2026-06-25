@@ -36,6 +36,7 @@ REGLAS DE NEGOCIO:
 - Pago: Yape/Plin al 920201943 (Lion Cub) · transferencia bancaria · contraentrega solo Lima
 - Tallas: RN = recién nacido (0-1 mes), luego 0-3m, 3-6m, 6-9m, 9-12m
 - Catálogo online: si el cliente quiere ver fotos o todos los productos, mándale https://lioncub.pe
+- Imágenes individuales: cuando el cliente pida ver foto(s) de uno o varios productos específicos, incluye sus image_url al final del mensaje en este formato exacto (sin espacio extra): ===IMAGES===https://url1.jpg,https://url2.jpg===END=== — máximo 3 imágenes
 - Flujo de venta: producto → talla/color → dirección → método de envío → correo → confirmar → crear pedido
 - Pide el correo antes de crear el pedido: "oye me das tu correo pa mandarte la confirmación" — si no quiere darlo, igual crea el pedido sin correo
 - Crea el pedido SOLO cuando tengas: nombre, teléfono, dirección, método de envío, y todo confirmado x el cliente
@@ -55,7 +56,7 @@ async function handleBuscarProductos(categoria?: string) {
   let query = supabaseAdmin
     .from("products")
     .select(`
-      id, name, category, price, description,
+      id, name, category, price, description, image_url,
       product_variants(
         id, stock, price_override, active,
         product_sizes(name),
@@ -88,7 +89,9 @@ async function handleBuscarProductos(categoria?: string) {
             price: priceCents / 100,
           };
         });
-      return { id: p.id, name: p.name, category: p.category, base_price: p.price, description: p.description ?? "", variants };
+      const rawImg = p.image_url ?? "";
+      const imageUrl = rawImg.startsWith("http") ? rawImg : rawImg.startsWith("/") ? `https://lioncub.pe${rawImg}` : "";
+      return { id: p.id, name: p.name, category: p.category, base_price: p.price, description: p.description ?? "", image_url: imageUrl, variants };
     })
     .filter((p: any) => p.variants.length > 0);
 
@@ -357,7 +360,7 @@ export async function processMessage(
   history: Message[],
   userMessage: string,
   customerName?: string,
-): Promise<{ response: string; updatedHistory: Message[] }> {
+): Promise<{ response: string; images: string[]; updatedHistory: Message[] }> {
   const systemPrompt = customerName
     ? `${SYSTEM_PROMPT}\n\nNombre del cliente en WhatsApp: ${customerName}. Úsalo para saludarlo en el primer mensaje de cada conversación.`
     : SYSTEM_PROMPT;
@@ -395,11 +398,18 @@ export async function processMessage(
 
   messages.push({ role: "assistant", content: response.content });
 
-  const text = response.content
+  const rawText = response.content
     .filter((b): b is Anthropic.TextBlock => b.type === "text")
     .map(b => b.text)
     .join("\n");
 
+  // Extract image URLs from ===IMAGES===url1,url2===END=== marker
+  const imageMatch = rawText.match(/===IMAGES===([\s\S]*?)===END===/);
+  const images: string[] = imageMatch
+    ? imageMatch[1].split(",").map(u => u.trim()).filter(u => u.startsWith("http"))
+    : [];
+  const text = rawText.replace(/===IMAGES===[\s\S]*?===END===/g, "").trim();
+
   // Keep last 30 messages to avoid token overflow over long conversations
-  return { response: text, updatedHistory: messages.slice(-30) };
+  return { response: text, images, updatedHistory: messages.slice(-30) };
 }
