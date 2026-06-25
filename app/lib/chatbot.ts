@@ -219,7 +219,8 @@ async function handleCrearPedido(input: {
       email_confirm: true,
       user_metadata: { full_name: input.customer_name },
     }).catch(e => console.error("[chatbot] auth user error:", e));
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://lioncub.pe";
+    const _site = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+    const siteUrl = (_site && !_site.includes("vercel.app")) ? _site : "https://lioncub.pe";
     const { data: linkData } = await supabaseAdmin.auth.admin.generateLink({
       type: "magiclink",
       email: input.customer_email,
