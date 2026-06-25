@@ -41,7 +41,8 @@ const BATCH_SIZE         = 100; // Meta allows up to 1000; 100 is safe
 
 // Known catalog IDs from the Leon Real Estate Commerce Manager portfolio.
 // Tried in order when the configured catalog rejects with a permission error.
-const CATALOG_FALLBACKS = ["904062502719225"];
+// 1566001005094549 = "Lion Cub Productos" — owned catalog created 2026-06-25
+const CATALOG_FALLBACKS = ["1566001005094549", "904062502719225"];
 
 interface CatalogItem {
   id: string;
