@@ -113,46 +113,45 @@ async function buildCatalogItems(): Promise<CatalogItem[]> {
   return items;
 }
 
-export async function GET() {
-  const items = await buildCatalogItems();
-  return NextResponse.json({ count: items.length, items }, { headers: CORS });
-}
+/** Try each catalog ID until one accepts a single-item test write. Returns the working ID or null. */
+async function discoverAccessibleCatalog(testRequests: object[]): Promise<string | null> {
+  // Step 1: get businesses the token can see
+  const bizRes = await fetch(
+    `${GRAPH_URL}/me/businesses?fields=id,name&access_token=${META_ACCESS_TOKEN}`
+  );
+  if (!bizRes.ok) return null;
+  const bizData = await bizRes.json();
+  const businesses: { id: string; name: string }[] = bizData.data ?? [];
 
-export async function POST(req: NextRequest) {
-  // Auth: shared secret from n8n, or admin Bearer token
-  const authHeader = req.headers.get("authorization") ?? "";
-  const syncSecret = req.headers.get("x-sync-secret") ?? "";
+  for (const biz of businesses) {
+    // Step 2: list catalogs owned by this business
+    const catRes = await fetch(
+      `${GRAPH_URL}/${biz.id}/owned_product_catalogs?fields=id,name&access_token=${META_ACCESS_TOKEN}`
+    );
+    if (!catRes.ok) continue;
+    const catData = await catRes.json();
+    const catalogs: { id: string; name: string }[] = catData.data ?? [];
 
-  const isValidSecret = CATALOG_SYNC_SECRET && syncSecret === CATALOG_SYNC_SECRET;
-  const isAdminBearer  = authHeader.startsWith("Bearer ") && !!META_ACCESS_TOKEN;
-
-  if (!isValidSecret && !isAdminBearer) {
-    // If neither secret matches, validate as admin user
-    if (authHeader.startsWith("Bearer ")) {
-      const token = authHeader.slice("Bearer ".length).trim();
-      const { data: userData, error: authErr } = await supabaseAdmin.auth.getUser(token);
-      const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
-        .split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
-      if (authErr || !adminEmails.includes((userData?.user?.email ?? "").toLowerCase())) {
-        return NextResponse.json({ error: "No autorizado" }, { status: 403, headers: CORS });
-      }
-    } else {
-      return NextResponse.json({ error: "Falta autenticación" }, { status: 401, headers: CORS });
+    for (const cat of catalogs) {
+      // Step 3: test write permission with first item only
+      const probe = await fetch(`${GRAPH_URL}/${cat.id}/items_batch`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${META_ACCESS_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ item_type: "PRODUCT_ITEM", requests: testRequests.slice(0, 1) }),
+      });
+      if (probe.ok) return cat.id;
     }
   }
+  return null;
+}
 
-  if (!META_CATALOG_ID) {
-    return NextResponse.json({ error: "META_CATALOG_ID no configurado" }, { status: 500, headers: CORS });
-  }
-  if (!META_ACCESS_TOKEN) {
-    return NextResponse.json({ error: "WHATSAPP_TOKEN no configurado" }, { status: 500, headers: CORS });
-  }
-
-  const items = await buildCatalogItems();
-  if (items.length === 0) {
-    return NextResponse.json({ synced: 0, message: "Sin productos activos" }, { headers: CORS });
-  }
-
+async function syncToCatalog(
+  catalogId: string,
+  items: CatalogItem[]
+): Promise<{ synced: number; errors: string[] }> {
   let totalSynced = 0;
   const errors: string[] = [];
 
@@ -165,7 +164,7 @@ export async function POST(req: NextRequest) {
     }));
 
     try {
-      const res = await fetch(`${GRAPH_URL}/${META_CATALOG_ID}/items_batch`, {
+      const res = await fetch(`${GRAPH_URL}/${catalogId}/items_batch`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${META_ACCESS_TOKEN}`,
@@ -184,10 +183,119 @@ export async function POST(req: NextRequest) {
       errors.push(e?.message ?? "Error desconocido");
     }
   }
+  return { synced: totalSynced, errors };
+}
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+
+  // ?action=discover — list catalogs accessible to our token (for diagnostics)
+  if (searchParams.get("action") === "discover") {
+    if (!META_ACCESS_TOKEN) {
+      return NextResponse.json({ error: "WHATSAPP_TOKEN no configurado" }, { status: 500, headers: CORS });
+    }
+    const bizRes = await fetch(
+      `${GRAPH_URL}/me/businesses?fields=id,name&access_token=${META_ACCESS_TOKEN}`
+    );
+    if (!bizRes.ok) {
+      const t = await bizRes.text();
+      return NextResponse.json({ error: t }, { status: 502, headers: CORS });
+    }
+    const bizData = await bizRes.json();
+    const businesses: { id: string; name: string }[] = bizData.data ?? [];
+
+    const result: { business: string; businessId: string; catalogs: { id: string; name: string }[] }[] = [];
+    for (const biz of businesses) {
+      const catRes = await fetch(
+        `${GRAPH_URL}/${biz.id}/owned_product_catalogs?fields=id,name&access_token=${META_ACCESS_TOKEN}`
+      );
+      const catData = catRes.ok ? await catRes.json() : { data: [] };
+      result.push({ business: biz.name, businessId: biz.id, catalogs: catData.data ?? [] });
+    }
+    return NextResponse.json({ configuredCatalogId: META_CATALOG_ID, businesses: result }, { headers: CORS });
+  }
+
+  const items = await buildCatalogItems();
+  return NextResponse.json({ count: items.length, items }, { headers: CORS });
+}
+
+export async function POST(req: NextRequest) {
+  // Auth: shared secret from n8n, or admin Bearer token
+  const authHeader = req.headers.get("authorization") ?? "";
+  const syncSecret = req.headers.get("x-sync-secret") ?? "";
+
+  const isValidSecret = CATALOG_SYNC_SECRET && syncSecret === CATALOG_SYNC_SECRET;
+  const isAdminBearer  = authHeader.startsWith("Bearer ") && !!META_ACCESS_TOKEN;
+
+  if (!isValidSecret && !isAdminBearer) {
+    if (authHeader.startsWith("Bearer ")) {
+      const token = authHeader.slice("Bearer ".length).trim();
+      const { data: userData, error: authErr } = await supabaseAdmin.auth.getUser(token);
+      const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
+        .split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+      if (authErr || !adminEmails.includes((userData?.user?.email ?? "").toLowerCase())) {
+        return NextResponse.json({ error: "No autorizado" }, { status: 403, headers: CORS });
+      }
+    } else {
+      return NextResponse.json({ error: "Falta autenticación" }, { status: 401, headers: CORS });
+    }
+  }
+
+  if (!META_ACCESS_TOKEN) {
+    return NextResponse.json({ error: "WHATSAPP_TOKEN no configurado" }, { status: 500, headers: CORS });
+  }
+
+  const items = await buildCatalogItems();
+  if (items.length === 0) {
+    return NextResponse.json({ synced: 0, message: "Sin productos activos" }, { headers: CORS });
+  }
+
+  // Build test requests once (reused for discovery probe)
+  const allRequests = items.map(({ id, ...itemData }) => ({
+    method: "UPDATE",
+    retailer_id: id,
+    data: itemData,
+  }));
+
+  let catalogId = META_CATALOG_ID;
+
+  // If no catalog configured, or primary fails, auto-discover
+  if (!catalogId) {
+    const discovered = await discoverAccessibleCatalog(allRequests);
+    if (!discovered) {
+      return NextResponse.json(
+        { error: "META_CATALOG_ID no configurado y no se encontró catálogo accesible automáticamente" },
+        { status: 500, headers: CORS }
+      );
+    }
+    catalogId = discovered;
+  }
+
+  let { synced, errors } = await syncToCatalog(catalogId, items);
+
+  // If every batch failed with a permission error, auto-discover a different catalog
+  const allPermissionErrors = errors.length > 0 && errors.every(e =>
+    e.includes("does not exist") || e.includes("missing permissions") || e.includes("#100")
+  );
+
+  let discoveredCatalogId: string | null = null;
+  if (allPermissionErrors) {
+    discoveredCatalogId = await discoverAccessibleCatalog(allRequests);
+    if (discoveredCatalogId && discoveredCatalogId !== catalogId) {
+      const retry = await syncToCatalog(discoveredCatalogId, items);
+      synced = retry.synced;
+      errors = retry.errors;
+      catalogId = discoveredCatalogId;
+    }
+  }
 
   return NextResponse.json({
-    synced: totalSynced,
+    synced,
     total: items.length,
+    catalogUsed: catalogId,
+    ...(discoveredCatalogId && discoveredCatalogId !== META_CATALOG_ID
+      ? { note: `Auto-discovered catalog. Update META_CATALOG_ID to: ${discoveredCatalogId}` }
+      : {}),
     ...(errors.length > 0 ? { errors } : {}),
   }, { headers: CORS });
 }
