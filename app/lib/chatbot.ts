@@ -36,7 +36,7 @@ REGLAS DE NEGOCIO:
 - Pago: Yape/Plin al 920201943 (Lion Cub) · transferencia bancaria · contraentrega solo Lima
 - Tallas: RN = recién nacido (0-1 mes), luego 0-3m, 3-6m, 6-9m, 9-12m
 - Catálogo online: si el cliente quiere VER TODOS los productos o explorar sin producto específico, mándale https://lioncub.pe
-- Imágenes individuales: cuando el cliente pida foto(s) de un producto específico, SIEMPRE usa la herramienta buscar_productos primero, luego OBLIGATORIAMENTE incluye el image_url del producto al final del mensaje en este formato exacto (sin espacio, sin salto de línea): ===IMAGES===https://url1.jpg,https://url2.jpg===END=== — máximo 3 imágenes. Si el image_url está vacío, dile que puede verlo en https://lioncub.pe. NUNCA mandes solo el link del catálogo cuando el cliente pide foto de un producto específico
+- FOTOS POR WHATSAPP: PUEDES y DEBES enviar fotos por este mismo wsp — el sistema las entrega automáticamente. NUNCA digas "no puedo enviar fotos directas", "solo tengo acceso al catálogo online", "no tengo forma de enviar imágenes" ni nada parecido — eso es FALSO y decepciona al cliente. Cuando el cliente pida foto(s) de un producto específico: USA buscar_productos primero, luego OBLIGATORIAMENTE incluye el image_url al final del mensaje en este formato exacto (sin espacio, sin salto de línea): ===IMAGES===https://url1.jpg,https://url2.jpg===END=== — máximo 3 imágenes. Solo si el image_url está vacío para ese producto, dile q puede verlo en https://lioncub.pe
 - Flujo de venta: producto → talla/color → dirección → método de envío → correo → confirmar → crear pedido
 - Pide el correo antes de crear el pedido: "oye me das tu correo pa mandarte la confirmación" — si no quiere darlo, igual crea el pedido sin correo
 - Crea el pedido SOLO cuando tengas: nombre, teléfono, dirección, método de envío, y todo confirmado x el cliente
@@ -438,13 +438,57 @@ export async function processMessage(
   let images: string[] = imageMatch
     ? imageMatch[1].split(",").map(u => u.trim()).filter(u => u.startsWith("http") && !isPageUrl(u))
     : [];
-  const text = rawText.replace(/===IMAGES===[\s\S]*?===END===/g, "").trim();
+  let text = rawText.replace(/===IMAGES===[\s\S]*?===END===/g, "").trim();
 
-  // Safety net: if the user asked for a photo and the LLM didn't include images
-  // but buscar_productos returned products with images, inject them automatically.
-  const askedForPhoto = /foto|imagen|imagen|photo|pic\b|ver.*product|mostrar/i.test(userMessage);
+  const askedForPhoto = /foto|imagen|photo|pic\b|ver.*product|mostrar/i.test(userMessage);
+
+  // Safety net 1: LLM returned valid ===IMAGES=== but they all got filtered → use tool results
   if (images.length === 0 && askedForPhoto && productImagesFromTools.length > 0) {
     images = productImagesFromTools.slice(0, 3);
+  }
+
+  // Safety net 2: LLM refused to send photos ("no puedo enviar fotos directas" etc.) — retry once
+  // with an explicit correction injected into the conversation.
+  const refusedPhotos = /no puedo enviar foto|no tengo.*foto|solo tengo acceso al cat|no es posible.*enviar.*imagen|no puedo.*imagen.*direc/i.test(text);
+  if (images.length === 0 && askedForPhoto && refusedPhotos) {
+    messages.push({
+      role: "user" as const,
+      content: "[SISTEMA: Incorrecto — SÍ puedes enviar fotos por este wsp. USA buscar_productos ahora mismo y luego incluye ===IMAGES===url===END=== al final de tu respuesta. No digas que no puedes.]",
+    });
+    let retryResp = await anthropic.messages.create({
+      model: MODEL, max_tokens: 1024, system: systemPrompt, tools: TOOLS, messages,
+    });
+    while (retryResp.stop_reason === "tool_use") {
+      messages.push({ role: "assistant", content: retryResp.content });
+      const retryToolResults: Anthropic.ToolResultBlockParam[] = [];
+      for (const block of retryResp.content) {
+        if (block.type !== "tool_use") continue;
+        const result = await executeTool(block.name, block.input);
+        if (block.name === "buscar_productos") {
+          for (const p of (result as any)?.products ?? []) {
+            if (p.image_url?.startsWith("http")) productImagesFromTools.push(p.image_url);
+          }
+        }
+        retryToolResults.push({ type: "tool_result", tool_use_id: block.id, content: JSON.stringify(result) });
+      }
+      messages.push({ role: "user", content: retryToolResults });
+      retryResp = await anthropic.messages.create({
+        model: MODEL, max_tokens: 1024, system: systemPrompt, tools: TOOLS, messages,
+      });
+    }
+    messages.push({ role: "assistant", content: retryResp.content });
+    const retryRawText = retryResp.content
+      .filter((b): b is Anthropic.TextBlock => b.type === "text")
+      .map(b => b.text)
+      .join("\n");
+    const retryMatch = retryRawText.match(/===IMAGES===([\s\S]*?)===END===/);
+    const retryImages = retryMatch
+      ? retryMatch[1].split(",").map(u => u.trim()).filter(u => u.startsWith("http") && !isPageUrl(u))
+      : [];
+    if (retryImages.length > 0 || productImagesFromTools.length > 0) {
+      images = retryImages.length > 0 ? retryImages : productImagesFromTools.slice(0, 3);
+      text = retryRawText.replace(/===IMAGES===[\s\S]*?===END===/g, "").trim() || text;
+    }
   }
 
   // Strip tool_use/tool_result blocks before saving — keeps only plain text exchanges.
