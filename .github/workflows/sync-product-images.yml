@@ -13,42 +13,65 @@ jobs:
   sync-images:
     runs-on: ubuntu-latest
     env:
-      SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://cqwvhfcrmboscivtwkog.supabase.co' }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxd3ZoZmNybWJvc2NpdnR3a29nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxNjExNDMsImV4cCI6MjA5NDczNzE0M30.PpXtRgYepIHc-W0Ux4tScV6DObWCcqJ2DzlLD-47_Ag' }}
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Check product images (read-only, anon key)
         run: |
-          echo "=== Checking product image_url values ==="
+          echo "=== Checking ALL active products image_url ==="
           curl -s \
             "${SUPABASE_URL}/rest/v1/products?select=id,name,image_url&active=eq.true&order=id" \
             -H "apikey: ${SUPABASE_ANON_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" | \
             node -e "
-              const data = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+              const raw = require('fs').readFileSync('/dev/stdin','utf8').trim();
+              if (!raw) { console.log('ERROR: Empty response from Supabase - check credentials'); process.exit(1); }
+              let data;
+              try { data = JSON.parse(raw); } catch(e) { console.log('ERROR: Invalid JSON:', raw.slice(0,200)); process.exit(1); }
+              if (data.code || data.error) { console.log('ERROR from Supabase:', JSON.stringify(data)); process.exit(1); }
               const withImg = data.filter(p => p.image_url && p.image_url.startsWith('http'));
-              const noImg = data.filter(p => !p.image_url || !p.image_url.startsWith('http'));
-              console.log('Products WITH image_url:', withImg.length);
-              console.log('Products WITHOUT image_url:', noImg.length);
+              const withRelImg = data.filter(p => p.image_url && p.image_url.startsWith('/') && !p.image_url.match(/^\/products\/[^/]+\/?$/));
+              const pageLink = data.filter(p => p.image_url && p.image_url.match(/^(https?:\/\/[^/]*)?\/products\/[^/]+\/?$/));
+              const noImg = data.filter(p => !p.image_url || p.image_url === '');
+              console.log('Total active products:', data.length);
+              console.log('WITH real image_url (http):', withImg.length);
+              console.log('WITH relative image path:', withRelImg.length);
+              console.log('image_url is a product PAGE link (not image):', pageLink.length);
+              pageLink.forEach(p => console.log('  Page link:', p.id, p.name, '->', p.image_url));
+              console.log('WITHOUT image_url:', noImg.length);
               noImg.forEach(p => console.log('  Missing:', p.id, p.name));
-              console.log('');
-              console.log('=== LC-027 and LC-028 ===');
-              data.filter(p => ['LC-027','LC-028'].includes(p.id)).forEach(p => console.log(p.id, p.name, '→', p.image_url || '(empty)'));
             "
 
-      - name: Check product_images gallery table
+      - name: Check product_images gallery for ALL products missing images
         run: |
           echo "=== Checking product_images gallery ==="
           curl -s \
-            "${SUPABASE_URL}/rest/v1/product_images?select=product_id,url,is_primary,sort_order&product_id=in.(LC-027,LC-028)&order=product_id,sort_order" \
+            "${SUPABASE_URL}/rest/v1/product_images?select=product_id,url,is_primary,sort_order&order=product_id,sort_order" \
             -H "apikey: ${SUPABASE_ANON_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" | \
             node -e "
-              const data = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-              console.log('Gallery images for LC-027/LC-028:', JSON.stringify(data, null, 2));
+              const raw = require('fs').readFileSync('/dev/stdin','utf8').trim();
+              if (!raw) { console.log('No data or access denied'); process.exit(0); }
+              let data;
+              try { data = JSON.parse(raw); } catch(e) { console.log('Invalid JSON:', raw.slice(0,200)); process.exit(0); }
+              if (data.code || data.error) { console.log('Supabase error:', JSON.stringify(data)); process.exit(0); }
+              const byProduct = {};
+              for (const row of data) {
+                if (!byProduct[row.product_id]) byProduct[row.product_id] = [];
+                byProduct[row.product_id].push(row);
+              }
+              const productIds = Object.keys(byProduct).sort();
+              console.log('Products with gallery images:', productIds.length);
+              for (const id of productIds) {
+                const imgs = byProduct[id];
+                const primary = imgs.find(i => i.is_primary);
+                console.log(' ', id, '-', imgs.length, 'image(s)', primary ? '[primary: ' + primary.url.slice(0,80) + ']' : '[no primary, first: ' + imgs[0].url.slice(0,80) + ']');
+              }
+              if (productIds.length === 0) console.log('NO gallery images found in product_images table');
             "
 
       - name: Run sync migration (service role key)
@@ -64,21 +87,27 @@ jobs:
             -d "{\"query\": $(echo "$SQL" | node -e "process.stdout.write(JSON.stringify(require('fs').readFileSync('/dev/stdin','utf8')))")}" \
             || echo "exec_sql RPC not available — migration must be run manually in Supabase SQL Editor"
 
-      - name: Verify fix via chatbot API
+      - name: Verify chatbot API returns image_url
         run: |
           echo "=== Testing chatbot image response ==="
-          RESPONSE=$(curl -s -X POST \
+          RESPONSE=$(curl -s --max-time 15 -X POST \
             "https://lioncub.pe/api/chat/manychat" \
             -H "Content-Type: application/json" \
-            -d '{"phone":"test_ci_999","message":"me puedes mostrar una foto del pantalon anticólico nube?","name":"Test CI"}')
+            -d '{"phone":"test_ci_999","message":"me puedes mostrar una foto del pantalon anticolico nube?","name":"Test CI"}')
           echo "Response: $RESPONSE"
           echo "$RESPONSE" | node -e "
-            const r = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-            if (r.image_url) {
-              console.log('SUCCESS: image_url present:', r.image_url);
+            const raw = require('fs').readFileSync('/dev/stdin','utf8').trim();
+            if (!raw) { console.log('ERROR: Empty API response'); process.exit(1); }
+            let r;
+            try { r = JSON.parse(raw); } catch(e) { console.log('Non-JSON response:', raw.slice(0,300)); process.exit(1); }
+            if (r.image_url && r.image_url.startsWith('http') && !r.image_url.match(/\/products\/[^/]+\/?$/)) {
+              console.log('SUCCESS: image_url is a real image:', r.image_url);
               process.exit(0);
+            } else if (r.image_url) {
+              console.log('FAIL: image_url is a page URL, not an image:', r.image_url);
+              process.exit(1);
             } else {
-              console.log('No image_url in response. Response:', JSON.stringify(r));
-              console.log('Note: This is expected if products have no images in DB.');
+              console.log('No image_url — product has no images in DB. Bot will direct to catalog.');
+              console.log('reply:', (r.response || '').slice(0,200));
             }
           "

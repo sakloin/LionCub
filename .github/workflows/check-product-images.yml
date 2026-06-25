@@ -1,0 +1,67 @@
+name: Check product images in DB
+
+on:
+  push:
+    branches:
+      - 'claude/install-ui-ux-package-kXymP'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: https://cqwvhfcrmboscivtwkog.supabase.co
+      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxd3ZoZmNybWJvc2NpdnR3a29nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxNjExNDMsImV4cCI6MjA5NDczNzE0M30.PpXtRgYepIHc-W0Ux4tScV6DObWCcqJ2DzlLD-47_Ag
+
+    steps:
+      - name: Check products.image_url
+        run: |
+          echo "=== products.image_url for all active products ==="
+          curl -s \
+            "${SUPABASE_URL}/rest/v1/products?select=id,name,image_url&active=eq.true&order=id" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" | \
+            node -e "
+              const raw = require('fs').readFileSync('/dev/stdin','utf8').trim();
+              let data;
+              try { data = JSON.parse(raw); } catch(e) { console.log('ERROR:', raw.slice(0,300)); process.exit(1); }
+              if (!Array.isArray(data)) { console.log('Unexpected:', JSON.stringify(data)); process.exit(1); }
+              const isRealImg = u => u && u.startsWith('http') && !u.match(/\/products\/[^/]+\/?$/);
+              const isPagePath = u => u && u.match(/^(https?:\/\/[^/]*)?\/products\/[^/]+\/?$/);
+              data.forEach(p => {
+                const flag = isRealImg(p.image_url) ? '✓ real image' : isPagePath(p.image_url) ? '✗ PAGE PATH' : '✗ empty';
+                console.log(p.id, p.name.slice(0,40), '->', p.image_url || '(empty)', '[' + flag + ']');
+              });
+              console.log('');
+              const real = data.filter(p => isRealImg(p.image_url));
+              const page = data.filter(p => isPagePath(p.image_url));
+              const empty = data.filter(p => !p.image_url || p.image_url === '');
+              console.log('SUMMARY: real=' + real.length + ' page_paths=' + page.length + ' empty=' + empty.length + ' total=' + data.length);
+            "
+
+      - name: Check product_images gallery table
+        run: |
+          echo "=== product_images gallery ==="
+          curl -s \
+            "${SUPABASE_URL}/rest/v1/product_images?select=product_id,url,is_primary,sort_order&order=product_id,sort_order" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" | \
+            node -e "
+              const raw = require('fs').readFileSync('/dev/stdin','utf8').trim();
+              let data;
+              try { data = JSON.parse(raw); } catch(e) { console.log('Cannot read product_images:', raw.slice(0,200)); process.exit(0); }
+              if (!Array.isArray(data)) { console.log('Access denied or error:', JSON.stringify(data)); process.exit(0); }
+              if (data.length === 0) { console.log('product_images table is EMPTY — no gallery images for any product'); process.exit(0); }
+              const byProduct = {};
+              for (const row of data) {
+                if (!byProduct[row.product_id]) byProduct[row.product_id] = [];
+                byProduct[row.product_id].push(row);
+              }
+              const ids = Object.keys(byProduct).sort();
+              console.log('Products with gallery images:', ids.length);
+              for (const id of ids) {
+                const imgs = byProduct[id];
+                const primary = imgs.find(i => i.is_primary);
+                const best = primary || imgs[0];
+                console.log(id, imgs.length + ' img(s)', best.url.slice(0,100));
+              }
+            "
