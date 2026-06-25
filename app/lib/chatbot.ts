@@ -443,6 +443,21 @@ export async function processMessage(
     images = productImagesFromTools.slice(0, 3);
   }
 
-  // Keep last 30 messages to avoid token overflow over long conversations
-  return { response: text, images, updatedHistory: messages.slice(-30) };
+  // Strip tool_use/tool_result blocks before saving — keeps only plain text exchanges.
+  // Prevents context overflow and invalid history when tool pairs get split by the slice.
+  const cleanHistory = messages
+    .map(m => {
+      if (typeof m.content === "string") return m;
+      if (Array.isArray(m.content)) {
+        const textBlocks = (m.content as Anthropic.ContentBlock[]).filter(
+          (b): b is Anthropic.TextBlock => b.type === "text"
+        );
+        if (textBlocks.length === 0) return null;
+        return { role: m.role, content: textBlocks[0].text } as Message;
+      }
+      return m;
+    })
+    .filter((m): m is Message => m !== null);
+
+  return { response: text, images, updatedHistory: cleanHistory.slice(-20) };
 }
