@@ -160,7 +160,6 @@ export async function POST(req: NextRequest) {
     const requests = batch.map(({ id, ...itemData }) => ({
       method: "UPDATE",
       retailer_id: id,
-      item_type: "PRODUCT_ITEM",
       data: itemData,
     }));
 
@@ -171,7 +170,7 @@ export async function POST(req: NextRequest) {
           Authorization: `Bearer ${META_ACCESS_TOKEN}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ requests }),
+        body: JSON.stringify({ item_type: "PRODUCT_ITEM", requests }),
       });
 
       if (!res.ok) {
