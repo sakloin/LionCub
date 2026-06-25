@@ -41,10 +41,11 @@ jobs:
       - name: Test chatbot API returns real image for LC-027
         run: |
           echo "=== Testing chatbot API: ask for photo of pantalon anticolico nube ==="
+          PHONE="test_ci_lc027_$(date +%s)"
           RESPONSE=$(curl -sL --max-time 60 -X POST \
             "https://lioncub.pe/api/chat/manychat" \
             -H "Content-Type: application/json" \
-            -d '{"phone":"test_ci_img_001","message":"quiero ver una foto del pantalon anticolico nube","name":"Test CI"}')
+            -d "{\"phone\":\"${PHONE}\",\"message\":\"quiero ver una foto del pantalon anticolico nube\",\"name\":\"Test CI\"}")
           echo "Full response: $RESPONSE"
           echo "$RESPONSE" | node -e "
             const raw = require('fs').readFileSync('/dev/stdin','utf8').trim();
@@ -52,7 +53,8 @@ jobs:
             let r;
             try { r = JSON.parse(raw); } catch(e) { console.log('FAIL: non-JSON:', raw.slice(0,300)); process.exit(1); }
             const url = r.image_url || '';
-            const isRealImg = url.startsWith('http') && !url.match(/\/products\/[^/]+\/?$/);
+            const isPageRoute = url.match(/\/products\/[^/]+\/?$/) && !url.match(/\.(jpe?g|png|webp|gif|avif)$/i);
+            const isRealImg = url.startsWith('http') && !isPageRoute;
             if (isRealImg) {
               console.log('SUCCESS: bot returned real image URL:', url);
               process.exit(0);
@@ -137,14 +139,16 @@ jobs:
       - name: Test chatbot API for LC-101 (Body Esencial Premium)
         run: |
           echo "=== Testing chatbot API: LC-101 ==="
+          PHONE="test_ci_lc101_$(date +%s)"
           RESPONSE=$(curl -sL --max-time 60 -X POST \
             "https://lioncub.pe/api/chat/manychat" \
             -H "Content-Type: application/json" \
-            -d '{"phone":"test_ci_lc101","message":"quiero ver una foto del body esencial premium","name":"Test CI"}')
+            -d "{\"phone\":\"${PHONE}\",\"message\":\"quiero ver una foto del body esencial premium\",\"name\":\"Test CI\"}")
           echo "Full response: $RESPONSE"
           echo "$RESPONSE" | node -e "
             const r = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8').trim());
             const url = r.image_url || '';
-            const isReal = url.startsWith('http') && !url.match(/\/products\/[^/]+\/?$/);
+            const isPageRoute = url.match(/\/products\/[^/]+\/?$/) && !url.match(/\.(jpe?g|png|webp|gif|avif)$/i);
+            const isReal = url.startsWith('http') && !isPageRoute;
             console.log(isReal ? 'SUCCESS image_url: ' + url : url ? 'FAIL page_url: ' + url : 'INFO no image — bot: ' + (r.response||'').slice(0,150));
           " || true

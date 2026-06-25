@@ -50,6 +50,13 @@ export async function POST(req: NextRequest) {
 
   const history = await loadHistory(phone);
 
+  // Don't respond to same message twice in a row — feels more human, avoids spam loops
+  const lastUserMsg = [...history].reverse().find(m => m.role === "user");
+  const lastUserText = typeof lastUserMsg?.content === "string" ? lastUserMsg.content : "";
+  if (lastUserText.trim() && lastUserText.trim().toLowerCase() === text.trim().toLowerCase()) {
+    return NextResponse.json({ response: "", image_url: "" });
+  }
+
   let reply: string;
   let images: string[] = [];
   let updatedHistory: MessageParam[];
@@ -61,9 +68,13 @@ export async function POST(req: NextRequest) {
     updatedHistory = result.updatedHistory;
   } catch (err) {
     console.error("[chat/manychat] error:", err);
-    return NextResponse.json({
-      response: "Lo siento, tuve un problema técnico. Por favor intenta de nuevo",
-    });
+    const busyReply = "andamos a full en este momento, dame unos minutitos y te respondo";
+    await saveHistory(phone, [
+      ...history,
+      { role: "user" as const, content: text },
+      { role: "assistant" as const, content: busyReply },
+    ].slice(-30));
+    return NextResponse.json({ response: busyReply });
   }
 
   await saveHistory(phone, updatedHistory);
