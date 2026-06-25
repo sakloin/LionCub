@@ -5,6 +5,33 @@ import type { MessageParam } from "@anthropic-ai/sdk/resources";
 
 export const maxDuration = 55;
 
+async function loadHistory(phone: string): Promise<MessageParam[]> {
+  try {
+    const { data: session, error } = await supabaseAdmin
+      .from("chat_sessions")
+      .select("messages, updated_at")
+      .eq("phone", phone)
+      .single();
+    if (error || !session) return [];
+    const ageMs = Date.now() - new Date(session.updated_at as string).getTime();
+    if (ageMs >= 24 * 60 * 60 * 1000) return [];
+    return (session.messages as MessageParam[]) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+async function saveHistory(phone: string, messages: MessageParam[]) {
+  try {
+    await supabaseAdmin.from("chat_sessions").upsert(
+      { phone, messages, updated_at: new Date().toISOString() },
+      { onConflict: "phone" }
+    );
+  } catch {
+    // Table may not exist yet — bot still works, just no memory
+  }
+}
+
 export async function POST(req: NextRequest) {
   let body: any;
   try {
@@ -21,20 +48,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ response: "Datos incompletos." });
   }
 
-  // Load session
-  const { data: session } = await supabaseAdmin
-    .from("chat_sessions")
-    .select("messages, updated_at")
-    .eq("phone", phone)
-    .single();
-
-  let history: MessageParam[] = [];
-  if (session) {
-    const ageMs = Date.now() - new Date(session.updated_at as string).getTime();
-    if (ageMs < 24 * 60 * 60 * 1000) {
-      history = (session.messages as MessageParam[]) ?? [];
-    }
-  }
+  const history = await loadHistory(phone);
 
   let reply: string;
   let updatedHistory: MessageParam[];
@@ -50,14 +64,6 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  await supabaseAdmin.from("chat_sessions").upsert(
-    {
-      phone,
-      messages: updatedHistory,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "phone" }
-  );
-
+  await saveHistory(phone, updatedHistory);
   return NextResponse.json({ response: reply });
 }

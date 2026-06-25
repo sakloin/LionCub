@@ -49,12 +49,16 @@ export async function POST(req: NextRequest) {
 
 // ── Core processing ───────────────────────────────────────────────────────────
 async function processAndReply(phone: string, messageId: string, text: string) {
-  // Load existing session
-  const { data: session } = await supabaseAdmin
-    .from("chat_sessions")
-    .select("messages, last_message_id, updated_at")
-    .eq("phone", phone)
-    .single();
+  // Load existing session (resilient — bot works even if table doesn't exist)
+  let session: any = null;
+  try {
+    const { data } = await supabaseAdmin
+      .from("chat_sessions")
+      .select("messages, last_message_id, updated_at")
+      .eq("phone", phone)
+      .single();
+    session = data;
+  } catch { /* table may not exist yet */ }
 
   // Deduplication: Meta can resend the same webhook on timeout
   if (session?.last_message_id === messageId) return;
@@ -81,16 +85,18 @@ async function processAndReply(phone: string, messageId: string, text: string) {
     updatedHistory = history;
   }
 
-  // Persist session (upsert by phone)
-  await supabaseAdmin.from("chat_sessions").upsert(
-    {
-      phone,
-      messages: updatedHistory,
-      last_message_id: messageId,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "phone" }
-  );
+  // Persist session (resilient — bot still replies even if upsert fails)
+  try {
+    await supabaseAdmin.from("chat_sessions").upsert(
+      {
+        phone,
+        messages: updatedHistory,
+        last_message_id: messageId,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "phone" }
+    );
+  } catch { /* table may not exist yet */ }
 
   await sendWhatsApp(phone, reply);
 }
