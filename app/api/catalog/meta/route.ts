@@ -39,6 +39,10 @@ const PUBLIC_SITE = (_siteEnv && !_siteEnv.includes("vercel.app")) ? _siteEnv : 
 const GRAPH_URL          = "https://graph.facebook.com/v20.0";
 const BATCH_SIZE         = 100; // Meta allows up to 1000; 100 is safe
 
+// Known catalog IDs from the Leon Real Estate Commerce Manager portfolio.
+// Tried in order when the configured catalog rejects with a permission error.
+const CATALOG_FALLBACKS = ["904062502719225"];
+
 interface CatalogItem {
   id: string;
   name: string;
@@ -273,19 +277,38 @@ export async function POST(req: NextRequest) {
 
   let { synced, errors } = await syncToCatalog(catalogId, items);
 
-  // If every batch failed with a permission error, auto-discover a different catalog
-  const allPermissionErrors = errors.length > 0 && errors.every(e =>
-    e.includes("does not exist") || e.includes("missing permissions") || e.includes("#100")
-  );
+  const isPermissionError = (errs: string[]) =>
+    errs.length > 0 && errs.every(e =>
+      e.includes("does not exist") || e.includes("missing permissions") ||
+      e.includes("#100") || e.includes("error_subcode\":33")
+    );
 
-  let discoveredCatalogId: string | null = null;
-  if (allPermissionErrors) {
-    discoveredCatalogId = await discoverAccessibleCatalog(allRequests);
-    if (discoveredCatalogId && discoveredCatalogId !== catalogId) {
-      const retry = await syncToCatalog(discoveredCatalogId, items);
+  let usedFallback: string | null = null;
+
+  // 1. Try known fallback catalog IDs before the slow generic discovery
+  if (isPermissionError(errors)) {
+    for (const fallbackId of CATALOG_FALLBACKS) {
+      if (fallbackId === catalogId) continue;
+      const result = await syncToCatalog(fallbackId, items);
+      if (result.synced > 0 || result.errors.length === 0) {
+        synced = result.synced;
+        errors = result.errors;
+        usedFallback = fallbackId;
+        catalogId = fallbackId;
+        break;
+      }
+    }
+  }
+
+  // 2. Generic business/catalog discovery if fallbacks also failed
+  if (isPermissionError(errors)) {
+    const discovered = await discoverAccessibleCatalog(allRequests);
+    if (discovered && discovered !== catalogId) {
+      const retry = await syncToCatalog(discovered, items);
       synced = retry.synced;
       errors = retry.errors;
-      catalogId = discoveredCatalogId;
+      usedFallback = discovered;
+      catalogId = discovered;
     }
   }
 
@@ -293,8 +316,8 @@ export async function POST(req: NextRequest) {
     synced,
     total: items.length,
     catalogUsed: catalogId,
-    ...(discoveredCatalogId && discoveredCatalogId !== META_CATALOG_ID
-      ? { note: `Auto-discovered catalog. Update META_CATALOG_ID to: ${discoveredCatalogId}` }
+    ...(usedFallback && usedFallback !== META_CATALOG_ID
+      ? { note: `Catálogo activo encontrado automáticamente. Actualiza META_CATALOG_ID a: ${usedFallback}` }
       : {}),
     ...(errors.length > 0 ? { errors } : {}),
   }, { headers: CORS });
