@@ -383,7 +383,9 @@ export async function processMessage(
     messages,
   });
 
-  // Tool-use loop
+  // Tool-use loop — collect product image URLs from buscar_productos results
+  const productImagesFromTools: string[] = [];
+
   while (response.stop_reason === "tool_use") {
     messages.push({ role: "assistant", content: response.content });
 
@@ -391,6 +393,18 @@ export async function processMessage(
     for (const block of response.content) {
       if (block.type !== "tool_use") continue;
       const result = await executeTool(block.name, block.input);
+
+      // Capture image URLs from buscar_productos so we can inject them
+      // even if the LLM forgets to include them in its final response.
+      if (block.name === "buscar_productos") {
+        const r = result as any;
+        for (const p of r?.products ?? []) {
+          if (p.image_url && p.image_url.startsWith("http")) {
+            productImagesFromTools.push(p.image_url);
+          }
+        }
+      }
+
       toolResults.push({ type: "tool_result", tool_use_id: block.id, content: JSON.stringify(result) });
     }
 
@@ -413,10 +427,17 @@ export async function processMessage(
 
   // Extract image URLs from ===IMAGES===url1,url2===END=== marker
   const imageMatch = rawText.match(/===IMAGES===([\s\S]*?)===END===/);
-  const images: string[] = imageMatch
+  let images: string[] = imageMatch
     ? imageMatch[1].split(",").map(u => u.trim()).filter(u => u.startsWith("http"))
     : [];
   const text = rawText.replace(/===IMAGES===[\s\S]*?===END===/g, "").trim();
+
+  // Safety net: if the user asked for a photo and the LLM didn't include images
+  // but buscar_productos returned products with images, inject them automatically.
+  const askedForPhoto = /foto|imagen|imagen|photo|pic\b|ver.*product|mostrar/i.test(userMessage);
+  if (images.length === 0 && askedForPhoto && productImagesFromTools.length > 0) {
+    images = productImagesFromTools.slice(0, 3);
+  }
 
   // Keep last 30 messages to avoid token overflow over long conversations
   return { response: text, images, updatedHistory: messages.slice(-30) };
