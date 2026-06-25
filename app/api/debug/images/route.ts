@@ -34,11 +34,14 @@ export async function GET(req: NextRequest) {
     const sorted = gallery.sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
     const galleryPrimary = gallery.find((i: any) => i.is_primary)?.url ?? sorted[0]?.url ?? "";
     const rawImg = galleryPrimary || p.image_url || "";
-    const resolvedUrl = rawImg.startsWith("http")
-      ? rawImg
-      : rawImg.startsWith("/")
-        ? `https://lioncub.pe${rawImg}`
-        : "";
+    const isProductPage = /^(https?:\/\/[^/]*)?\/products\/[^/]+\/?$/.test(rawImg);
+    const resolvedUrl = isProductPage
+      ? ""
+      : rawImg.startsWith("http")
+        ? rawImg
+        : rawImg.startsWith("/")
+          ? `https://lioncub.pe${rawImg}`
+          : "";
 
     return {
       id: p.id,
