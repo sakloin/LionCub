@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Package, ShoppingCart, TrendingUp, BarChart2, Bell, FileText, Tag, Settings, LogOut, Menu } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, TrendingUp, BarChart2, BarChart3, Bell, FileText, Tag, Settings, LogOut, Menu } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 
 const NAV = [
@@ -14,6 +14,7 @@ const NAV = [
   { href: "/admin/pedidos",    label: "Pedidos",         icon: ShoppingCart },
   { href: "/admin/compras",    label: "Compras & Stock", icon: TrendingUp },
   { href: "/admin/reportes",   label: "Reportes",        icon: BarChart2 },
+  { href: "/admin/contenido",  label: "Contenido",       icon: BarChart3 },
   { href: "/admin/espera",     label: "Lista de espera", icon: Bell },
   { href: "/admin/configuracion", label: "Configuración", icon: Settings },
 ];
