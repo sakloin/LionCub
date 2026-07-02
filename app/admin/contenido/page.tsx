@@ -22,7 +22,7 @@ interface Row {
   estilo_edicion: string;
   producto: string;
   snapshot: string;
-  fecha?: string;
+  fecha_publicacion?: string;
   engagement_rate: number;
   metrica_primaria_valor: number;
   views: number;
@@ -225,16 +225,16 @@ export default function ContenidoPage() {
 
   // Chart 3: evolución en el tiempo
   const { chartTiempo, redesEnTiempo } = useMemo(() => {
-    const hasFecha = filteredRows.some(r => r.fecha);
+    const hasFecha = filteredRows.some(r => r.fecha_publicacion);
     if (!hasFecha) return { chartTiempo: [], redesEnTiempo: [] };
 
     const redesSet = [...new Set(filteredRows.map(r => r.red))];
-    const byFecha = groupBy(filteredRows, "fecha");
+    const byFecha = groupBy(filteredRows, "fecha_publicacion");
 
     const data = [...byFecha.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([fecha, rs]) => {
-        const point: Record<string, unknown> = { fecha: fecha.slice(0, 10) };
+        const point: Record<string, unknown> = { fecha_publicacion: fecha.slice(0, 10) };
         const byRedLocal = groupBy(rs, "red");
         for (const red of redesSet) {
           point[red] = parseFloat(rowAvg(byRedLocal.get(red) ?? [], metrica).toFixed(2));
@@ -482,7 +482,7 @@ export default function ContenidoPage() {
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={chartTiempo} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F5EDD8" />
-                <XAxis dataKey="fecha" tick={{ fontSize: 11, fill: "#9B6B45" }} />
+                <XAxis dataKey="fecha_publicacion" tick={{ fontSize: 11, fill: "#9B6B45" }} />
                 <YAxis
                   tick={{ fontSize: 11, fill: "#9B6B45" }}
                   tickFormatter={v => fmtVal(v, metrica)}
