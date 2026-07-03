@@ -98,7 +98,7 @@ function escXml(s: string) {
 
 // ---------- Route handler ----------
 export async function POST(req: NextRequest) {
-  // Auth
+  // Auth — acepta JWT de usuario admin O service role key (llamadas servidor-a-servidor)
   const authHeader = req.headers.get("authorization") ?? "";
   const token = authHeader.startsWith("Bearer ")
     ? authHeader.slice("Bearer ".length).trim()
@@ -106,12 +106,15 @@ export async function POST(req: NextRequest) {
   if (!token) {
     return NextResponse.json({ error: "Falta token" }, { status: 401 });
   }
-  const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
-  if (userErr || !userData?.user) {
-    return NextResponse.json({ error: "Sesión inválida" }, { status: 401 });
-  }
-  if (!isAdminEmail(userData.user.email)) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  const isServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY && token === process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!isServiceRole) {
+    const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
+    if (userErr || !userData?.user) {
+      return NextResponse.json({ error: "Sesión inválida" }, { status: 401 });
+    }
+    if (!isAdminEmail(userData.user.email)) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    }
   }
 
   // Parse body
