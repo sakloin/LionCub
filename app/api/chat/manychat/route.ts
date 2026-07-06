@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase-admin";
-import { processMessage, isBotPaused } from "../../../lib/chatbot";
+import { processMessage, isBotPaused, claimDedup, hashText } from "../../../lib/chatbot";
 import { transcribeAudio } from "../../../lib/transcribe";
 import type { MessageParam } from "@anthropic-ai/sdk/resources";
 
@@ -57,6 +57,14 @@ export async function POST(req: NextRequest) {
 
   if (!phone || (!text.trim() && !audioUrl.startsWith("http"))) {
     return NextResponse.json({ response: "Datos incompletos." });
+  }
+
+  // Anti-duplicados atómico: Meta reenvía el mismo mensaje entrante varias veces
+  // mientras el webhook (lento por IA) aún procesa. claim_dedup devuelve true solo
+  // la primera vez dentro de la ventana; los reenvíos reciben respuesta vacía y no
+  // se vuelven a enviar. Sobrevive a llamadas concurrentes (una sola sentencia SQL).
+  if (!(await claimDedup(`mc:${phone}:${hashText(text || audioUrl)}`))) {
+    return NextResponse.json({ response: "" });
   }
 
   // Intervención humana: si un agente escribió en este chat, el bot queda en
