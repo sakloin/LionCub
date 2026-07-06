@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase-admin";
-import { processMessage } from "../../../lib/chatbot";
+import { processMessage, isBotPaused, setBotPaused, REACTIVATION_KEYWORD } from "../../../lib/chatbot";
 import { sendWhatsApp } from "../../../lib/whatsapp";
 import type { MessageParam } from "@anthropic-ai/sdk/resources";
 
@@ -29,8 +29,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
+  const value = body?.entry?.[0]?.changes?.[0]?.value;
+
+  // Echo de mensajes enviados por el dueño/agente desde la app de WhatsApp
+  // (modo coexistencia): cualquier mensaje humano pausa el bot para ese cliente;
+  // solo la palabra clave exacta @LionCub.pe lo reactiva
+  const echo = value?.message_echoes?.[0];
+  if (echo?.to) {
+    const echoText: string = (echo.text?.body ?? "").trim();
+    await setBotPaused(echo.to, echoText !== REACTIVATION_KEYWORD);
+    return NextResponse.json({ ok: true });
+  }
+
   // Extract text message from Meta's payload structure
-  const message = body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+  const message = value?.messages?.[0];
 
   // Ignore status updates (delivered, read) and non-text messages
   if (!message || message.type !== "text") {
@@ -63,6 +75,10 @@ async function processAndReply(phone: string, messageId: string, text: string) {
   // Deduplication: Meta can resend the same webhook on timeout
   if (session?.last_message_id === messageId) return;
 
+  // Intervención humana: si un agente escribió en este chat, el bot queda en
+  // silencio hasta que el agente lo reactive con la palabra clave
+  if (await isBotPaused(phone)) return;
+
   // Reset history if session is older than 24h
   let history: MessageParam[] = [];
   if (session) {
@@ -73,15 +89,17 @@ async function processAndReply(phone: string, messageId: string, text: string) {
   }
 
   let reply: string;
+  let silent = false;
   let updatedHistory: MessageParam[];
 
   try {
     const result = await processMessage(history, text);
     reply = result.response;
+    silent = result.silent;
     updatedHistory = result.updatedHistory;
   } catch (err) {
     console.error("[chat/whatsapp] error procesando mensaje:", err);
-    reply = "Lo siento, tuve un problema técnico. Por favor intenta de nuevo en un momento 🙏";
+    reply = "Lo siento, tuve un problema técnico. Intenta de nuevo en un momentito porfa";
     updatedHistory = history;
   }
 
@@ -97,6 +115,9 @@ async function processAndReply(phone: string, messageId: string, text: string) {
       { onConflict: "phone" }
     );
   } catch { /* table may not exist yet */ }
+
+  // Regla de silencio: chats personales o sin intención comercial no reciben respuesta
+  if (silent || !reply.trim()) return;
 
   await sendWhatsApp(phone, reply);
 }

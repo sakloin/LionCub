@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase-admin";
-import { processMessage } from "../../../lib/chatbot";
+import { processMessage, isBotPaused } from "../../../lib/chatbot";
 import type { MessageParam } from "@anthropic-ai/sdk/resources";
 
 export const maxDuration = 55;
@@ -46,6 +46,12 @@ export async function POST(req: NextRequest) {
 
   if (!phone || !text.trim()) {
     return NextResponse.json({ response: "Datos incompletos." });
+  }
+
+  // Intervención humana: si un agente escribió en este chat, el bot queda en
+  // silencio hasta que lo reactiven con la palabra clave @LionCub.pe
+  if (await isBotPaused(phone)) {
+    return NextResponse.json({ response: "" });
   }
 
   const history = await loadHistory(phone);
