@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase-admin";
 import { processMessage, isBotPaused, setBotPaused, REACTIVATION_KEYWORD } from "../../../lib/chatbot";
-import { sendWhatsApp } from "../../../lib/whatsapp";
+import { sendWhatsApp, sendWhatsAppImage } from "../../../lib/whatsapp";
 import type { MessageParam } from "@anthropic-ai/sdk/resources";
 
 // Allow up to 55s for Claude + Supabase processing
@@ -90,12 +90,14 @@ async function processAndReply(phone: string, messageId: string, text: string) {
 
   let reply: string;
   let silent = false;
+  let images: string[] = [];
   let updatedHistory: MessageParam[];
 
   try {
     const result = await processMessage(history, text);
     reply = result.response;
     silent = result.silent;
+    images = result.images ?? [];
     updatedHistory = result.updatedHistory;
   } catch (err) {
     console.error("[chat/whatsapp] error procesando mensaje:", err);
@@ -120,4 +122,8 @@ async function processAndReply(phone: string, messageId: string, text: string) {
   if (silent || !reply.trim()) return;
 
   await sendWhatsApp(phone, reply);
+
+  for (const img of images.slice(0, 3)) {
+    await sendWhatsAppImage(phone, img);
+  }
 }
