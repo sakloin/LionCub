@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase-admin";
 import { processMessage, isBotPaused } from "../../../lib/chatbot";
+import { transcribeAudio } from "../../../lib/transcribe";
 import type { MessageParam } from "@anthropic-ai/sdk/resources";
 
 export const maxDuration = 55;
@@ -41,10 +42,13 @@ export async function POST(req: NextRequest) {
   }
 
   const phone: string = body.phone ?? body.subscriber_phone ?? "";
-  const text: string = body.message ?? body.last_input_text ?? "";
+  let text: string = body.message ?? body.last_input_text ?? "";
   const name: string = body.name ?? "";
+  // Nota de voz reenviada por ManyChat: en el flow, mapear la URL del attachment
+  // de audio a un campo "audio_url" del body que envía a este webhook.
+  const audioUrl: string = body.audio_url ?? "";
 
-  if (!phone || !text.trim()) {
+  if (!phone || (!text.trim() && !audioUrl.startsWith("http"))) {
     return NextResponse.json({ response: "Datos incompletos." });
   }
 
@@ -52,6 +56,21 @@ export async function POST(req: NextRequest) {
   // silencio hasta que lo reactiven con la palabra clave @LionCub.pe
   if (await isBotPaused(phone)) {
     return NextResponse.json({ response: "" });
+  }
+
+  if (!text.trim() && audioUrl.startsWith("http")) {
+    try {
+      const audioRes = await fetch(audioUrl);
+      if (!audioRes.ok) throw new Error(`audio download ${audioRes.status}`);
+      const mime = audioRes.headers.get("content-type") ?? "audio/ogg";
+      text = await transcribeAudio(new Uint8Array(await audioRes.arrayBuffer()), mime);
+    } catch (err) {
+      console.error("[chat/manychat] error transcribiendo audio:", err);
+      text = "";
+    }
+    if (!text.trim()) {
+      return NextResponse.json({ response: "Ay, no pude escuchar bien tu audio. ¿Me lo escribes porfa?" });
+    }
   }
 
   const history = await loadHistory(phone);
