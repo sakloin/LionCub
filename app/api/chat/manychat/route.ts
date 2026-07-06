@@ -44,10 +44,6 @@ export async function POST(req: NextRequest) {
   const phone: string = body.phone ?? body.subscriber_phone ?? "";
   let text: string = body.message ?? body.last_input_text ?? "";
   const name: string = body.name ?? "";
-  // Nota de voz reenviada por ManyChat: en el flow, mapear la URL del attachment
-  // de audio a un campo "audio_url" del body que envía a este webhook.
-  const audioUrl: string = body.audio_url ?? "";
-
   // Variable de ManyChat sin sustituir (p. ej. el texto literal "{{phone}}"):
   // sin teléfono real no hay sesión válida y los chats de todos se mezclarían.
   if (phone.includes("{{") || phone.includes("}}")) {
@@ -55,7 +51,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ response: "" });
   }
 
-  if (!phone || (!text.trim() && !audioUrl.startsWith("http"))) {
+  // Notas de voz: ManyChat entrega el audio como una URL, ya sea en un campo
+  // audio_url (si se mapeó en el flow) o —lo más común— directamente dentro del
+  // texto del mensaje. En ambos casos la detectamos aquí y la transcribimos más
+  // abajo, en vez de tratar la URL como si fuera lo que escribió el cliente.
+  const AUDIO_URL_RE = /^https?:\/\/\S+\.(ogg|opus|mp3|m4a|aac|amr|wav|webm)(\?|$)/i;
+  let audioUrl = "";
+  if (typeof body.audio_url === "string" && body.audio_url.startsWith("http")) {
+    audioUrl = body.audio_url;
+  } else if (AUDIO_URL_RE.test(text.trim())) {
+    audioUrl = text.trim();
+    text = "";
+  }
+
+  if (!phone || (!text.trim() && !audioUrl)) {
     return NextResponse.json({ response: "Datos incompletos." });
   }
 
