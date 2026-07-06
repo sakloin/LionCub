@@ -406,6 +406,34 @@ async function executeTool(name: string, input: any) {
 
 export const REACTIVATION_KEYWORD = "@LionCub.pe";
 
+// Hash corto y estable de un texto, para armar claves de anti-duplicados acotadas.
+export function hashText(s: string): string {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
+// Reclama un mensaje de forma atómica vía la función SQL claim_dedup.
+// Devuelve true si es la primera vez que se ve la clave dentro de la ventana
+// (procesar), false si es un reenvío reciente (ignorar). Ante cualquier error
+// devuelve true para no perder mensajes legítimos (mejor duplicar que callar).
+export async function claimDedup(key: string, ttlSeconds = 90): Promise<boolean> {
+  try {
+    const { data, error } = await supabaseAdmin.rpc("claim_dedup", {
+      p_key: key,
+      p_ttl_seconds: ttlSeconds,
+    });
+    if (error) {
+      console.error("[chatbot] claim_dedup error:", error.message);
+      return true;
+    }
+    return data !== false;
+  } catch (e) {
+    console.error("[chatbot] claim_dedup exception:", e);
+    return true;
+  }
+}
+
 // El modelo a veces devuelve markdown (**negrita**, viñetas) pese al prompt.
 // WhatsApp no lo renderiza: le llegan asteriscos literales al cliente. Se limpia
 // por código para garantizar texto plano sin importar lo que genere el modelo.
