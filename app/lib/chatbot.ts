@@ -406,6 +406,19 @@ async function executeTool(name: string, input: any) {
 
 export const REACTIVATION_KEYWORD = "@LionCub.pe";
 
+// El modelo a veces devuelve markdown (**negrita**, viñetas) pese al prompt.
+// WhatsApp no lo renderiza: le llegan asteriscos literales al cliente. Se limpia
+// por código para garantizar texto plano sin importar lo que genere el modelo.
+function stripMarkdown(s: string): string {
+  return s
+    .replace(/\*\*([^*]+?)\*\*/g, "$1")   // **negrita** → negrita
+    .replace(/__([^_]+?)__/g, "$1")        // __negrita__ → negrita
+    .replace(/^[ \t]*[-*]\s+/gm, "")       // viñetas "- " / "* " al inicio de línea
+    .replace(/\*([^*\n]+?)\*/g, "$1")      // *texto* suelto → texto
+    .replace(/\n{3,}/g, "\n\n")            // colapsa saltos de línea excesivos
+    .trim();
+}
+
 export async function isBotPaused(phone: string): Promise<boolean> {
   try {
     const { data } = await supabaseAdmin
@@ -577,5 +590,5 @@ export async function processMessage(
     })
     .filter((m): m is Message => m !== null);
 
-  return { response: text, images, silent, updatedHistory: cleanHistory.slice(-20) };
+  return { response: stripMarkdown(text), images, silent, updatedHistory: cleanHistory.slice(-20) };
 }
