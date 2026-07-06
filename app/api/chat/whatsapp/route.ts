@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase-admin";
 import { processMessage, isBotPaused, setBotPaused, REACTIVATION_KEYWORD } from "../../../lib/chatbot";
-import { sendWhatsApp, sendWhatsAppImage } from "../../../lib/whatsapp";
+import { sendWhatsApp, sendWhatsAppImage, fetchWhatsAppMedia } from "../../../lib/whatsapp";
+import { transcribeAudio } from "../../../lib/transcribe";
 import type { MessageParam } from "@anthropic-ai/sdk/resources";
 
 // Allow up to 55s for Claude + Supabase processing
@@ -41,26 +42,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // Extract text message from Meta's payload structure
+  // Extract message from Meta's payload structure
   const message = value?.messages?.[0];
 
-  // Ignore status updates (delivered, read) and non-text messages
-  if (!message || message.type !== "text") {
-    return NextResponse.json({ ok: true });
-  }
+  // Ignore status updates (delivered, read); only text and voice notes are processed
+  if (!message) return NextResponse.json({ ok: true });
 
   const phone: string = message.from;       // e.g. "51920201943"
   const messageId: string = message.id;
-  const text: string = message.text?.body ?? "";
 
-  if (!text.trim()) return NextResponse.json({ ok: true });
+  if (message.type === "text") {
+    const text: string = message.text?.body ?? "";
+    if (!text.trim()) return NextResponse.json({ ok: true });
+    await processAndReply(phone, messageId, text, null);
+  } else if (message.type === "audio" || message.type === "voice") {
+    const audioId: string = message.audio?.id ?? message.voice?.id ?? "";
+    if (!audioId) return NextResponse.json({ ok: true });
+    await processAndReply(phone, messageId, "", audioId);
+  }
 
-  await processAndReply(phone, messageId, text);
   return NextResponse.json({ ok: true });
 }
 
 // ── Core processing ───────────────────────────────────────────────────────────
-async function processAndReply(phone: string, messageId: string, text: string) {
+async function processAndReply(phone: string, messageId: string, text: string, audioId: string | null) {
   // Load existing session (resilient — bot works even if table doesn't exist)
   let session: any = null;
   try {
@@ -78,6 +83,22 @@ async function processAndReply(phone: string, messageId: string, text: string) {
   // Intervención humana: si un agente escribió en este chat, el bot queda en
   // silencio hasta que el agente lo reactive con la palabra clave
   if (await isBotPaused(phone)) return;
+
+  // Nota de voz: descargar de Meta y transcribir con Whisper.
+  // Va después de dedup/pausa para no transcribir en reintentos ni chats pausados.
+  if (!text.trim() && audioId) {
+    try {
+      const media = await fetchWhatsAppMedia(audioId);
+      text = await transcribeAudio(media.data, media.mimeType);
+    } catch (err) {
+      console.error("[chat/whatsapp] error transcribiendo audio:", err);
+      text = "";
+    }
+    if (!text.trim()) {
+      await sendWhatsApp(phone, "Ay, no pude escuchar bien tu audio. ¿Me lo escribes porfa?");
+      return;
+    }
+  }
 
   // Reset history if session is older than 24h
   let history: MessageParam[] = [];
