@@ -48,6 +48,13 @@ export async function POST(req: NextRequest) {
   // de audio a un campo "audio_url" del body que envía a este webhook.
   const audioUrl: string = body.audio_url ?? "";
 
+  // Variable de ManyChat sin sustituir (p. ej. el texto literal "{{phone}}"):
+  // sin teléfono real no hay sesión válida y los chats de todos se mezclarían.
+  if (phone.includes("{{") || phone.includes("}}")) {
+    console.error("[chat/manychat] phone sin sustituir desde ManyChat:", phone);
+    return NextResponse.json({ response: "" });
+  }
+
   if (!phone || (!text.trim() && !audioUrl.startsWith("http"))) {
     return NextResponse.json({ response: "Datos incompletos." });
   }
