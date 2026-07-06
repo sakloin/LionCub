@@ -1,0 +1,345 @@
+{
+  "name": "Lion Cub — Métricas Collector (8h)",
+  "nodes": [
+    {
+      "id": "sticky-info",
+      "name": "INFO — Métricas Collector",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "parameters": {
+        "content": "## 📊 Lion Cub — Métricas Collector\n\nSe ejecuta **cada 8 horas** (00:00 / 08:00 / 16:00 UTC).\n\nPara cada post publicado en `contenido_genoma`:\n1. Llama a la API de la red social correspondiente.\n2. Calcula engagement_rate = (likes + comments + saves + shares) / views.\n3. Inserta una fila en `contenido_metricas` con el snapshot `'7d'` o `'30d'` según la antigüedad.\n\n**Variables requeridas** (mismas que el Content Mill):\n`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,\n`META_PAGE_ACCESS_TOKEN`, `INSTAGRAM_BUSINESS_ACCOUNT_ID`,\n`TIKTOK_ACCESS_TOKEN`\n\n**Nota**: TikTok limita el acceso a métricas de video. Verifica los scopes `video.list` en tu app.",
+        "color": 3,
+        "width": 460,
+        "height": 280
+      }
+    },
+    {
+      "id": "sched-8h",
+      "name": "Schedule — Cada 8h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [520, 280],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 0,8,16 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "get-posts",
+      "name": "Obtener Posts Publicados",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [740, 280],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/contenido_genoma?select=post_id,red,fecha_publicacion&order=fecha_publicacion.desc&limit=200",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "split-posts",
+      "name": "Por Post",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [960, 280],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "calc-snapshot",
+      "name": "Calcular Snapshot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1180, 280],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const post = $input.item.json;\nconst fecha = new Date(post.fecha_publicacion);\nconst now = new Date();\nconst diffDays = Math.floor((now - fecha) / (1000 * 60 * 60 * 24));\n\nlet snapshot;\nif (diffDays <= 1) snapshot = '24h';\nelse if (diffDays <= 7) snapshot = '7d';\nelse snapshot = '30d';\n\nreturn [{ json: { ...post, snapshot, diffDays } }];"
+      }
+    },
+    {
+      "id": "switch-red-met",
+      "name": "¿Qué red?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1400, 280],
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "rules": [
+            {
+              "outputKey": "instagram",
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.red }}",
+                    "rightValue": "instagram",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "tiktok",
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.red }}",
+                    "rightValue": "tiktok",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "facebook",
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.red }}",
+                    "rightValue": "facebook",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "fallbackOutput": "none"
+      }
+    },
+    {
+      "id": "ig-insights",
+      "name": "Instagram — Insights",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1620, 140],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.post_id }}/insights?metric=impressions,reach,likes,comments,saved,shares,video_views&period=lifetime&access_token={{ $env.META_PAGE_ACCESS_TOKEN }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": []
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "parse-ig",
+      "name": "Normalizar IG",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1840, 140],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const postCtx = $node['Calcular Snapshot'].json;\nconst data = $input.item.json?.data ?? [];\n\nconst get = (name) => data.find(d => d.name === name)?.values?.[0]?.value ?? 0;\n\nconst likes = get('likes');\nconst comments = get('comments');\nconst saves = get('saved');\nconst shares = get('shares');\nconst views = get('impressions') || get('reach') || 1;\nconst video_views = get('video_views');\n\nconst engagement_rate = (likes + comments + saves + shares) / views;\n\nreturn [{ json: {\n  post_id: postCtx.post_id,\n  red: 'instagram',\n  snapshot: postCtx.snapshot,\n  engagement_rate: Math.round(engagement_rate * 10000) / 10000,\n  metrica_primaria_valor: views,\n  views: video_views || views,\n  saves,\n  shares,\n  likes,\n  comments,\n  seguidores_ganados: 0\n} }];"
+      }
+    },
+    {
+      "id": "tiktok-metrics",
+      "name": "TikTok — Métricas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1620, 280],
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.tiktokapis.com/v2/video/query/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.TIKTOK_ACCESS_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json; charset=UTF-8" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"filters\": { \"video_ids\": [\"{{ $json.post_id }}\"] },\n  \"fields\": \"id,title,view_count,like_count,comment_count,share_count,play_count,reach_count\"\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "parse-tiktok",
+      "name": "Normalizar TikTok",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1840, 280],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const postCtx = $node['Calcular Snapshot'].json;\nconst video = $input.item.json?.data?.videos?.[0] ?? {};\n\nconst likes = video.like_count ?? 0;\nconst comments = video.comment_count ?? 0;\nconst shares = video.share_count ?? 0;\nconst views = video.view_count || video.play_count || 1;\n\nconst engagement_rate = (likes + comments + shares) / views;\n\nreturn [{ json: {\n  post_id: postCtx.post_id,\n  red: 'tiktok',\n  snapshot: postCtx.snapshot,\n  engagement_rate: Math.round(engagement_rate * 10000) / 10000,\n  metrica_primaria_valor: views,\n  views,\n  saves: 0,\n  shares,\n  likes,\n  comments,\n  seguidores_ganados: 0\n} }];"
+      }
+    },
+    {
+      "id": "fb-insights",
+      "name": "Facebook — Insights",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1620, 420],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.post_id }}/insights?metric=post_impressions,post_reactions_like_total,post_comments,post_shares&period=lifetime&access_token={{ $env.META_PAGE_ACCESS_TOKEN }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": []
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "parse-fb",
+      "name": "Normalizar Facebook",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1840, 420],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const postCtx = $node['Calcular Snapshot'].json;\nconst data = $input.item.json?.data ?? [];\n\nconst get = (name) => data.find(d => d.name === name)?.values?.[0]?.value ?? 0;\n\nconst likes = get('post_reactions_like_total');\nconst comments = get('post_comments');\nconst shares = get('post_shares');\nconst views = get('post_impressions') || 1;\n\nconst engagement_rate = (likes + comments + shares) / views;\n\nreturn [{ json: {\n  post_id: postCtx.post_id,\n  red: 'facebook',\n  snapshot: postCtx.snapshot,\n  engagement_rate: Math.round(engagement_rate * 10000) / 10000,\n  metrica_primaria_valor: views,\n  views,\n  saves: 0,\n  shares,\n  likes,\n  comments,\n  seguidores_ganados: 0\n} }];"
+      }
+    },
+    {
+      "id": "merge-metrics",
+      "name": "Unir Métricas",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [2060, 280],
+      "parameters": {
+        "mode": "passThrough",
+        "output": "first"
+      }
+    },
+    {
+      "id": "insert-metrics",
+      "name": "Guardar en Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2280, 280],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/contenido_metricas",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "continue-loop",
+      "name": "Siguiente Post",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [2500, 280],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "Schedule — Cada 8h": {
+      "main": [
+        [{ "node": "Obtener Posts Publicados", "type": "main", "index": 0 }]
+      ]
+    },
+    "Obtener Posts Publicados": {
+      "main": [
+        [{ "node": "Por Post", "type": "main", "index": 0 }]
+      ]
+    },
+    "Por Post": {
+      "main": [
+        [{ "node": "Calcular Snapshot", "type": "main", "index": 0 }]
+      ]
+    },
+    "Calcular Snapshot": {
+      "main": [
+        [{ "node": "¿Qué red?", "type": "main", "index": 0 }]
+      ]
+    },
+    "¿Qué red?": {
+      "main": [
+        [{ "node": "Instagram — Insights", "type": "main", "index": 0 }],
+        [{ "node": "TikTok — Métricas", "type": "main", "index": 0 }],
+        [{ "node": "Facebook — Insights", "type": "main", "index": 0 }]
+      ]
+    },
+    "Instagram — Insights": {
+      "main": [
+        [{ "node": "Normalizar IG", "type": "main", "index": 0 }]
+      ]
+    },
+    "Normalizar IG": {
+      "main": [
+        [{ "node": "Unir Métricas", "type": "main", "index": 0 }]
+      ]
+    },
+    "TikTok — Métricas": {
+      "main": [
+        [{ "node": "Normalizar TikTok", "type": "main", "index": 0 }]
+      ]
+    },
+    "Normalizar TikTok": {
+      "main": [
+        [{ "node": "Unir Métricas", "type": "main", "index": 1 }]
+      ]
+    },
+    "Facebook — Insights": {
+      "main": [
+        [{ "node": "Normalizar Facebook", "type": "main", "index": 0 }]
+      ]
+    },
+    "Normalizar Facebook": {
+      "main": [
+        [{ "node": "Unir Métricas", "type": "main", "index": 2 }]
+      ]
+    },
+    "Unir Métricas": {
+      "main": [
+        [{ "node": "Guardar en Supabase", "type": "main", "index": 0 }]
+      ]
+    },
+    "Guardar en Supabase": {
+      "main": [
+        [{ "node": "Siguiente Post", "type": "main", "index": 0 }]
+      ]
+    },
+    "Siguiente Post": {
+      "main": [
+        [{ "node": "Por Post", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": false,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "meta": {
+    "instanceId": "",
+    "templateId": "lioncub-metricas-collector-v1"
+  }
+}

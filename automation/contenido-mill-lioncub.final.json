@@ -1,0 +1,543 @@
+{
+  "name": "Lion Cub — Content Mill",
+  "nodes": [
+    {
+      "id": "sticky-setup",
+      "name": "SETUP — Lee esto primero",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "parameters": {
+        "content": "## 🦁 Lion Cub — Content Mill\n\n**Variables de entorno requeridas en n8n** (Settings › Environment Variables):\n\n| Variable | Descripción |\n|----------|-------------|\n| `SUPABASE_URL` | URL del proyecto Supabase |\n| `SUPABASE_SERVICE_ROLE_KEY` | Service-role key (bypasea RLS) |\n| `LIONCUB_APP_URL` | URL de la app en Vercel |\n| `LIONCUB_ADMIN_TOKEN` | Access token del admin (JWT de Supabase) |\n| `ANTHROPIC_API_KEY` | API key de Anthropic |\n| `ANTHROPIC_MODEL` | Modelo (ej. claude-haiku-4-5-20251001) |\n| `META_PAGE_ACCESS_TOKEN` | Long-lived token de Instagram/Facebook |\n| `INSTAGRAM_BUSINESS_ACCOUNT_ID` | ID numérico de IG Business |\n| `TIKTOK_ACCESS_TOKEN` | OAuth access token de TikTok |\n\n**Flujo A** → Generación diaria de ideas (Schedule)\n**Flujo B** → Publicación manual de idea aprobada (Webhook)",
+        "color": 4,
+        "width": 520,
+        "height": 340
+      }
+    },
+    {
+      "id": "sticky-flujo-a",
+      "name": "Flujo A — Ideas",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [560, 0],
+      "parameters": {
+        "content": "## Flujo A — Generación de Ideas\n\nSe ejecuta diariamente a las 9:00 AM (Lima).\n\n1. Obtiene todos los productos activos de Supabase.\n2. Por cada producto, llama a Anthropic para generar 3 ideas.\n3. Inserta las ideas en `contenido_ideas` con `estado = 'nueva'`.\n\n**Aprobación**: ve al panel `/admin/contenido` y cambia el estado a `'aprobada'` para que el Flujo B lo recoja.",
+        "color": 5,
+        "width": 420,
+        "height": 220
+      }
+    },
+    {
+      "id": "sticky-flujo-b",
+      "name": "Flujo B — Publicación",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [560, 680],
+      "parameters": {
+        "content": "## Flujo B — Publicación\n\nDispara desde el panel admin o con un PATCH a Supabase + llamada al webhook.\n\nEnvía: `POST {{ $env.N8N_WEBHOOK_CONTENT_MILL }}` con body `{ \"idea_id\": \"uuid\" }`\n\nEl flujo:\n1. Obtiene la idea de Supabase.\n2. Genera la imagen via `/api/asset/render`.\n3. Publica en la red objetivo.\n4. Guarda el genoma y marca la idea como `'publicada'`.",
+        "color": 2,
+        "width": 420,
+        "height": 200
+      }
+    },
+    {
+      "id": "sched-ideas",
+      "name": "Schedule — 9am Lima",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [1040, 280],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 14 * * 1-6"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "get-products",
+      "name": "Obtener Productos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1260, 280],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/products?select=id,name,description,sku,category&active=eq.true&order=name",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "split-products",
+      "name": "Por Producto",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1480, 280],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "call-anthropic",
+      "name": "Anthropic — Generar Ideas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1700, 280],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{ $env.ANTHROPIC_API_KEY }}" },
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"{{ $env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001' }}\",\n  \"max_tokens\": 1024,\n  \"system\": \"Eres el estratega de contenido de Lion Cub, una marca peruana de ropa infantil. Tu tono es cálido, cercano y visual. NUNCA uses urgencia falsa. Responde SOLO con un array JSON válido, sin markdown, sin texto extra.\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Genera exactamente 3 ideas de contenido para este producto de Lion Cub:\\n\\nProducto: {{ $json.name }}\\nDescripción: {{ $json.description || 'Sin descripción' }}\\nCategoría: {{ $json.category || 'ropa infantil' }}\\n\\nCada idea debe ser un objeto JSON con los campos: red_objetivo, tipo_pieza, formato, hook (máx 12 palabras), idea_adaptacion, paleta, recurso_visual, angulo_marca, estilo_edicion, tipo_hook.\\n\\nRedes válidas: instagram, tiktok, facebook.\\nPaletas válidas: dorado, blanco, natural.\\nFormatos válidos: carrusel, historia, reel, post.\\n\\nResponde SOLO con el array JSON.\"\n    }\n  ]\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "parse-ideas",
+      "name": "Parsear Ideas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1920, 280],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Anthropic returns { content: [{ type: 'text', text: '...' }] }\nconst raw = $input.item.json;\nconst text = raw.content?.[0]?.text ?? '';\n\nlet ideas;\ntry {\n  // Strip possible markdown fences\n  const clean = text.replace(/```json?/gi, '').replace(/```/g, '').trim();\n  ideas = JSON.parse(clean);\n  if (!Array.isArray(ideas)) ideas = [ideas];\n} catch (e) {\n  // If parsing fails, skip this product and log\n  console.error('Parse error for product ideas:', e.message, 'Raw:', text.slice(0, 200));\n  return [];\n}\n\n// Get product context from the Set node (passed through $items)\n// We enrich each idea with fuente and producto data\nreturn ideas.map(idea => ({\n  json: {\n    fuente: 'ai',\n    red_objetivo: idea.red_objetivo ?? 'instagram',\n    tipo_pieza: idea.tipo_pieza ?? 'carrusel',\n    formato: idea.formato ?? 'feed',\n    hook: idea.hook ?? '',\n    idea_adaptacion: idea.idea_adaptacion ?? '',\n    paleta: idea.paleta ?? 'dorado',\n    recurso_visual: idea.recurso_visual ?? 'foto_producto',\n    angulo_marca: idea.angulo_marca ?? 'beneficio',\n    estilo_edicion: idea.estilo_edicion ?? 'minimalista',\n    tipo_hook: idea.tipo_hook ?? 'beneficio',\n    estado: 'nueva',\n    producto_categoria: idea.producto_categoria ?? null,\n  }\n}));"
+      }
+    },
+    {
+      "id": "insert-ideas",
+      "name": "Guardar Ideas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2140, 280],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/contenido_ideas",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "webhook-publish",
+      "name": "Webhook — Publicar Idea",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [1040, 780],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "content-mill-lioncub",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "get-idea",
+      "name": "Obtener Idea Aprobada",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1260, 780],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/contenido_ideas?id=eq.{{ $json.body.idea_id }}&select=*",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Accept", "value": "application/vnd.pgrst.object+json" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "render-asset",
+      "name": "Generar Imagen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1480, 780],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.LIONCUB_APP_URL }}/api/asset/render",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.LIONCUB_ADMIN_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"texto\": \"{{ $json.hook }}\",\n  \"subtexto\": \"{{ $json.idea_adaptacion?.slice(0, 60) }}\",\n  \"formato\": \"{{ $json.tipo_pieza === 'historia' ? 'historia' : 'carrusel' }}\",\n  \"paleta\": \"{{ $json.paleta || 'dorado' }}\"\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "save-asset-url",
+      "name": "Guardar asset_url",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1700, 780],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/contenido_ideas?id=eq.{{ $node[\"Obtener Idea Aprobada\"].json.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"asset_url\": \"{{ $json.url }}\" }",
+        "options": {}
+      }
+    },
+    {
+      "id": "switch-red",
+      "name": "¿Qué red?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1920, 780],
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "rules": [
+            {
+              "outputKey": "instagram",
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $node[\"Obtener Idea Aprobada\"].json.red_objetivo }}",
+                    "rightValue": "instagram",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "tiktok",
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $node[\"Obtener Idea Aprobada\"].json.red_objetivo }}",
+                    "rightValue": "tiktok",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "facebook",
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $node[\"Obtener Idea Aprobada\"].json.red_objetivo }}",
+                    "rightValue": "facebook",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "fallbackOutput": "none"
+      }
+    },
+    {
+      "id": "ig-create-container",
+      "name": "Instagram — Crear Contenedor",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2140, 620],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $env.INSTAGRAM_BUSINESS_ACCOUNT_ID }}/media",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"image_url\": \"{{ $node[\"Generar Imagen\"].json.url }}\",\n  \"caption\": \"{{ $node[\"Obtener Idea Aprobada\"].json.hook }}\\n\\n{{ $node[\"Obtener Idea Aprobada\"].json.idea_adaptacion?.slice(0, 200) }}\\n\\n#lioncub #ropabebe #modainfantil #bebe #mamaperuanas\",\n  \"access_token\": \"{{ $env.META_PAGE_ACCESS_TOKEN }}\"\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "ig-publish",
+      "name": "Instagram — Publicar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2360, 620],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $env.INSTAGRAM_BUSINESS_ACCOUNT_ID }}/media_publish",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"creation_id\": \"{{ $json.id }}\",\n  \"access_token\": \"{{ $env.META_PAGE_ACCESS_TOKEN }}\"\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "tiktok-publish",
+      "name": "TikTok — Publicar Foto",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2140, 780],
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.tiktokapis.com/v2/post/publish/content/init/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.TIKTOK_ACCESS_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json; charset=UTF-8" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"post_info\": {\n    \"title\": \"{{ $node[\"Obtener Idea Aprobada\"].json.hook }}\",\n    \"privacy_level\": \"PUBLIC_TO_EVERYONE\",\n    \"disable_duet\": false,\n    \"disable_comment\": false,\n    \"disable_stitch\": false,\n    \"brand_content_toggle\": false,\n    \"brand_organic_toggle\": false\n  },\n  \"source_info\": {\n    \"source\": \"PULL_FROM_URL\",\n    \"photo_cover_index\": 0,\n    \"photo_images\": [\"{{ $node[\"Generar Imagen\"].json.url }}\"]\n  },\n  \"media_type\": \"PHOTO\",\n  \"post_mode\": \"DIRECT_POST\"\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "fb-publish",
+      "name": "Facebook — Publicar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2140, 940],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/me/photos",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"url\": \"{{ $node[\"Generar Imagen\"].json.url }}\",\n  \"message\": \"{{ $node[\"Obtener Idea Aprobada\"].json.hook }}\\n\\n{{ $node[\"Obtener Idea Aprobada\"].json.idea_adaptacion?.slice(0, 400) }}\\n\\n#lioncub #ropabebe #modainfantil\",\n  \"access_token\": \"{{ $env.META_PAGE_ACCESS_TOKEN }}\"\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "merge-published",
+      "name": "Unir Redes",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [2580, 780],
+      "parameters": {
+        "mode": "passThrough",
+        "output": "first"
+      }
+    },
+    {
+      "id": "insert-genoma",
+      "name": "Guardar Genoma",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2800, 780],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/contenido_genoma",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"post_id\": \"{{ $json.id ?? $json.post_id ?? $node[\"Obtener Idea Aprobada\"].json.post_id_externo }}\",\n  \"red\": \"{{ $node[\"Obtener Idea Aprobada\"].json.red_objetivo }}\",\n  \"formato\": \"{{ $node[\"Obtener Idea Aprobada\"].json.tipo_pieza }}\",\n  \"tipo_hook\": \"{{ $node[\"Obtener Idea Aprobada\"].json.tipo_hook }}\",\n  \"paleta\": \"{{ $node[\"Obtener Idea Aprobada\"].json.paleta }}\",\n  \"recurso_visual\": \"{{ $node[\"Obtener Idea Aprobada\"].json.recurso_visual }}\",\n  \"angulo_marca\": \"{{ $node[\"Obtener Idea Aprobada\"].json.angulo_marca }}\",\n  \"estilo_edicion\": \"{{ $node[\"Obtener Idea Aprobada\"].json.estilo_edicion }}\",\n  \"producto_categoria\": \"{{ $node[\"Obtener Idea Aprobada\"].json.producto_categoria }}\",\n  \"fecha_publicacion\": \"{{ new Date().toISOString().slice(0,10) }}\"\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "mark-publicada",
+      "name": "Marcar Publicada",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3020, 780],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/contenido_ideas?id=eq.{{ $node[\"Obtener Idea Aprobada\"].json.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"estado\": \"publicada\",\n  \"post_id_externo\": \"{{ $node[\"Guardar Genoma\"].json[0]?.post_id ?? '' }}\"\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "respond-webhook",
+      "name": "Responder OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [3240, 780],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"ok\": true, \"post_id\": \"{{ $node[\"Guardar Genoma\"].json[0]?.post_id }}\" }"
+      }
+    }
+  ],
+  "connections": {
+    "Schedule — 9am Lima": {
+      "main": [
+        [{ "node": "Obtener Productos", "type": "main", "index": 0 }]
+      ]
+    },
+    "Obtener Productos": {
+      "main": [
+        [{ "node": "Por Producto", "type": "main", "index": 0 }]
+      ]
+    },
+    "Por Producto": {
+      "main": [
+        [{ "node": "Anthropic — Generar Ideas", "type": "main", "index": 0 }]
+      ]
+    },
+    "Anthropic — Generar Ideas": {
+      "main": [
+        [{ "node": "Parsear Ideas", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parsear Ideas": {
+      "main": [
+        [{ "node": "Guardar Ideas", "type": "main", "index": 0 }]
+      ]
+    },
+    "Guardar Ideas": {
+      "main": [
+        [{ "node": "Por Producto", "type": "main", "index": 0 }]
+      ]
+    },
+    "Webhook — Publicar Idea": {
+      "main": [
+        [{ "node": "Obtener Idea Aprobada", "type": "main", "index": 0 }]
+      ]
+    },
+    "Obtener Idea Aprobada": {
+      "main": [
+        [{ "node": "Generar Imagen", "type": "main", "index": 0 }]
+      ]
+    },
+    "Generar Imagen": {
+      "main": [
+        [{ "node": "Guardar asset_url", "type": "main", "index": 0 }]
+      ]
+    },
+    "Guardar asset_url": {
+      "main": [
+        [{ "node": "¿Qué red?", "type": "main", "index": 0 }]
+      ]
+    },
+    "¿Qué red?": {
+      "main": [
+        [{ "node": "Instagram — Crear Contenedor", "type": "main", "index": 0 }],
+        [{ "node": "TikTok — Publicar Foto", "type": "main", "index": 0 }],
+        [{ "node": "Facebook — Publicar", "type": "main", "index": 0 }]
+      ]
+    },
+    "Instagram — Crear Contenedor": {
+      "main": [
+        [{ "node": "Instagram — Publicar", "type": "main", "index": 0 }]
+      ]
+    },
+    "Instagram — Publicar": {
+      "main": [
+        [{ "node": "Unir Redes", "type": "main", "index": 0 }]
+      ]
+    },
+    "TikTok — Publicar Foto": {
+      "main": [
+        [{ "node": "Unir Redes", "type": "main", "index": 1 }]
+      ]
+    },
+    "Facebook — Publicar": {
+      "main": [
+        [{ "node": "Unir Redes", "type": "main", "index": 2 }]
+      ]
+    },
+    "Unir Redes": {
+      "main": [
+        [{ "node": "Guardar Genoma", "type": "main", "index": 0 }]
+      ]
+    },
+    "Guardar Genoma": {
+      "main": [
+        [{ "node": "Marcar Publicada", "type": "main", "index": 0 }]
+      ]
+    },
+    "Marcar Publicada": {
+      "main": [
+        [{ "node": "Responder OK", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "meta": {
+    "instanceId": "",
+    "templateId": "lioncub-content-mill-v1"
+  }
+}
