@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase-admin";
-import { processMessage, isBotPaused, setBotPaused, REACTIVATION_KEYWORD } from "../../../lib/chatbot";
+import { processMessage, isBotPaused, setBotPaused, REACTIVATION_KEYWORD, claimDedup } from "../../../lib/chatbot";
 import { sendWhatsApp, sendWhatsAppImage, fetchWhatsAppMedia } from "../../../lib/whatsapp";
 import { transcribeAudio } from "../../../lib/transcribe";
 import type { MessageParam } from "@anthropic-ai/sdk/resources";
@@ -79,6 +79,11 @@ async function processAndReply(phone: string, messageId: string, text: string, a
 
   // Deduplication: Meta can resend the same webhook on timeout
   if (session?.last_message_id === messageId) return;
+
+  // Anti-duplicados atómico: Meta reenvía el webhook en reintentos, a veces casi
+  // simultáneos mientras el primero aún procesa. claim_dedup (una sola sentencia
+  // SQL) garantiza que un mismo mensaje se procese una única vez.
+  if (!(await claimDedup(`wa:${messageId}`))) return;
 
   // Intervención humana: si un agente escribió en este chat, el bot queda en
   // silencio hasta que el agente lo reactive con la palabra clave
