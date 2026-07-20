@@ -114,20 +114,20 @@ async function processAndReply(phone: string, messageId: string, text: string, a
     }
   }
 
-  let reply: string;
+  let messages: string[] = [];
   let silent = false;
   let images: string[] = [];
   let updatedHistory: MessageParam[];
 
   try {
     const result = await processMessage(history, text);
-    reply = result.response;
+    messages = result.messages ?? [];
     silent = result.silent;
     images = result.images ?? [];
     updatedHistory = result.updatedHistory;
   } catch (err) {
     console.error("[chat/whatsapp] error procesando mensaje:", err);
-    reply = "Lo siento, tuve un problema técnico. Intenta de nuevo en un momentito porfa";
+    messages = ["Lo siento, tuve un problema técnico. Intenta de nuevo en un momentito porfa"];
     updatedHistory = history;
   }
 
@@ -145,9 +145,14 @@ async function processAndReply(phone: string, messageId: string, text: string, a
   } catch { /* table may not exist yet */ }
 
   // Regla de silencio: chats personales o sin intención comercial no reciben respuesta
-  if (silent || !reply.trim()) return;
+  if (silent || messages.length === 0) return;
 
-  await sendWhatsApp(phone, reply);
+  // Se envía como varios mensajes cortos, con una pausa entre cada uno para que
+  // se sienta como una persona escribiendo (no un bloque robótico de una sola vez).
+  for (let i = 0; i < messages.length; i++) {
+    if (i > 0) await new Promise((r) => setTimeout(r, 900));
+    await sendWhatsApp(phone, messages[i]);
+  }
 
   for (const img of images.slice(0, 3)) {
     await sendWhatsAppImage(phone, img);

@@ -20,6 +20,8 @@ const SUGERENCIAS = [
   "hacen envíos a provincia?",
 ];
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 export default function AgenteDemoPage() {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [history, setHistory] = useState<ApiMsg[]>([]);
@@ -35,16 +37,26 @@ export default function AgenteDemoPage() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [turns, loading]);
 
-  function applyResult(data: any, userTurn: Turn) {
-    setTurns((t) => {
-      const next = [...t, userTurn];
-      if (data.silent || !data.response?.trim()) {
-        next.push({ role: "assistant", text: "", silent: true });
-      } else {
-        next.push({ role: "assistant", text: data.response, images: data.images ?? [] });
-      }
-      return next;
-    });
+  // Muestra la respuesta del agente como VARIOS mensajes cortos, con un pequeño
+  // delay entre burbujas para que se sienta como una persona escribiendo.
+  async function showAssistant(data: any) {
+    if (data.error && !data.transcript) {
+      setTurns((t) => [...t, { role: "assistant", text: "No pude escuchar bien el audio, ¿me lo escribes?" }]);
+      return;
+    }
+    const msgs: string[] = Array.isArray(data.messages) ? data.messages : [];
+    if (data.silent || msgs.length === 0) {
+      setTurns((t) => [...t, { role: "assistant", text: "", silent: true }]);
+      return;
+    }
+    for (let i = 0; i < msgs.length; i++) {
+      await sleep(i === 0 ? 350 : 800);
+      const isLast = i === msgs.length - 1;
+      setTurns((t) => [
+        ...t,
+        { role: "assistant", text: msgs[i], images: isLast ? (data.images ?? []) : [] },
+      ]);
+    }
     if (Array.isArray(data.history)) setHistory(data.history);
   }
 
@@ -52,6 +64,7 @@ export default function AgenteDemoPage() {
     const msg = text.trim();
     if (!msg || loading) return;
     setInput("");
+    setTurns((t) => [...t, { role: "user", text: msg }]);
     setLoading(true);
     try {
       const res = await fetch("/api/chat/demo", {
@@ -60,13 +73,9 @@ export default function AgenteDemoPage() {
         body: JSON.stringify({ history, message: msg }),
       });
       const data = await res.json();
-      applyResult(data, { role: "user", text: msg });
+      await showAssistant(data);
     } catch {
-      setTurns((t) => [
-        ...t,
-        { role: "user", text: msg },
-        { role: "assistant", text: "Ups, hubo un problema de conexión. Intenta de nuevo." },
-      ]);
+      setTurns((t) => [...t, { role: "assistant", text: "Ups, hubo un problema de conexión. Intenta de nuevo." }]);
     } finally {
       setLoading(false);
     }
@@ -75,7 +84,6 @@ export default function AgenteDemoPage() {
   async function sendAudio(blob: Blob) {
     if (loading) return;
     setLoading(true);
-    // Burbuja temporal "nota de voz" mientras transcribe
     setTurns((t) => [...t, { role: "user", text: "🎤 nota de voz…", voice: true }]);
     try {
       const form = new FormData();
@@ -83,25 +91,14 @@ export default function AgenteDemoPage() {
       form.append("history", JSON.stringify(history));
       const res = await fetch("/api/chat/demo", { method: "POST", body: form });
       const data = await res.json();
-      // MODO ENTRENAMIENTO: se muestra la transcripción para poder diagnosticar
-      // (distinguir si Whisper entendió mal o si el agente respondió mal).
-      // Al publicar se ocultará para que se sienta como WhatsApp (solo la nota de voz).
+      // MODO ENTRENAMIENTO: muestra la transcripción para diagnosticar.
       setTurns((t) => {
-        const trimmed = t.slice(0, -1); // quita la burbuja temporal
         const userText = data.transcript?.trim()
           ? `🎤 ${data.transcript}`
           : "🎤 (no se entendió el audio)";
-        const next: Turn[] = [...trimmed, { role: "user", text: userText, voice: true }];
-        if (data.error && !data.transcript) {
-          next.push({ role: "assistant", text: "No pude escuchar bien el audio, ¿me lo escribes?" });
-        } else if (data.silent || !data.response?.trim()) {
-          next.push({ role: "assistant", text: "", silent: true });
-        } else {
-          next.push({ role: "assistant", text: data.response, images: data.images ?? [] });
-        }
-        return next;
+        return [...t.slice(0, -1), { role: "user", text: userText, voice: true }];
       });
-      if (Array.isArray(data.history)) setHistory(data.history);
+      await showAssistant(data);
     } catch {
       setTurns((t) => [...t.slice(0, -1), { role: "assistant", text: "Ups, problema al enviar el audio." }]);
     } finally {
@@ -143,25 +140,20 @@ export default function AgenteDemoPage() {
   return (
     <main className="min-h-screen bg-[#ece5dd] flex flex-col items-center">
       <div className="w-full max-w-md flex flex-col h-screen bg-[#efeae2] shadow-xl">
-        {/* Header estilo WhatsApp */}
         <div className="bg-[#075e54] text-white px-4 py-3 flex items-center gap-3 shrink-0">
           <div className="w-10 h-10 rounded-full bg-[#c9a94f] flex items-center justify-center text-lg">🦁</div>
           <div className="flex-1">
             <div className="font-semibold leading-tight">LionCub · Asistente</div>
             <div className="text-xs text-white/70">demo — texto y voz</div>
           </div>
-          <button
-            onClick={reset}
-            className="text-xs bg-white/15 hover:bg-white/25 rounded px-2 py-1 transition"
-          >
+          <button onClick={reset} className="text-xs bg-white/15 hover:bg-white/25 rounded px-2 py-1 transition">
             Reiniciar
           </button>
         </div>
 
-        {/* Mensajes */}
         <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto px-3 py-4 space-y-2"
+          className="flex-1 overflow-y-auto px-3 py-4 space-y-1.5"
           style={{
             backgroundImage:
               "url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22><circle cx=%2220%22 cy=%2220%22 r=%221%22 fill=%22%23d9d0c5%22/></svg>')",
@@ -192,16 +184,18 @@ export default function AgenteDemoPage() {
                 </div>
               </div>
             ) : t.silent ? (
-              <div key={i} className="flex justify-center">
+              <div key={i} className="flex justify-center py-1">
                 <div className="bg-amber-50 border border-amber-200 text-amber-700 text-xs rounded-full px-3 py-1">
                   El agente guardó silencio (mensaje fuera de contexto comercial)
                 </div>
               </div>
             ) : (
               <div key={i} className="flex justify-start flex-col items-start gap-1">
-                <div className="bg-white rounded-2xl rounded-tl-sm px-3 py-2 max-w-[80%] text-[15px] text-gray-800 whitespace-pre-wrap shadow-sm">
-                  {t.text}
-                </div>
+                {t.text && (
+                  <div className="bg-white rounded-2xl rounded-tl-sm px-3 py-2 max-w-[80%] text-[15px] text-gray-800 whitespace-pre-wrap shadow-sm">
+                    {t.text}
+                  </div>
+                )}
                 {t.images?.slice(0, 3).map((url) => (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -232,7 +226,6 @@ export default function AgenteDemoPage() {
           <div className="bg-red-50 text-red-600 text-xs px-4 py-1 text-center shrink-0">{micError}</div>
         )}
 
-        {/* Input */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
