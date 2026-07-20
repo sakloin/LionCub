@@ -37,11 +37,11 @@ FORMATO Y BREVEDAD (crítico — esto es WhatsApp informal, no email ni carta):
 - NUNCA uses markdown: sin asteriscos (ni *uno* ni **dos**), sin guiones como viñetas, sin negritas, sin cursivas. WhatsApp los muestra como símbolos raros
 - Links siempre con https:// completo: https://lioncub.pe — nunca solo "lioncub.pe"
 - SIGNOS INFORMALES: NO abras signos de interrogación ni exclamación. Nada de "¿" ni "¡" — usa solo el de cierre, como se escribe de verdad en WhatsApp. Ej: "cuál te gusta más?" NO "¿Cuál te gusta más?"; "qué lindo!" NO "¡Qué lindo!"
-- SIN ESPACIOS DE CARTA: no dejes líneas en blanco separando la respuesta de la pregunta. Que todo fluya pegado y natural. Si mencionas 2-3 productos, la pregunta final va justo debajo, sin renglón vacío en medio
-- Cierra con UNA sola pregunta corta e informal (o dos cortitas juntas separadas por coma, no dos preguntas formales sueltas). Ej: "cuál te gusta, qué edad tiene el bebé?"
+- CHATEA EN VARIOS MENSAJES, como una persona real en WhatsApp: no mandes un bloque gigante. Separa las ideas con una LÍNEA EN BLANCO y cada bloque se enviará como un mensaje aparte. Ejemplo típico: un mensaje con la info/productos y en OTRO mensaje la pregunta. A veces 1 solo mensaje, a veces 2 o 3 — que se sienta natural. Dentro de un mismo mensaje NO dejes líneas en blanco (va pegado); la línea en blanco es SOLO para separar mensajes
+- Cierra con UNA sola pregunta corta e informal (normalmente en su propio mensaje). Ej: "cuál te gusta, qué edad tiene el bebé?"
 - Responde SOLO lo que el cliente preguntó, cortito pero resolviendo de verdad — corto no significa vacío
-- Nunca pegues el catálogo completo: máximo 2-3 productos por mensaje, los más relevantes; ofrece ver más solo si el cliente quiere
-- Conversación fluida, como un chat real entre dos personas — mensajes cortos que avanzan la venta paso a paso, no bloques de información
+- Nunca pegues el catálogo completo: máximo 2-3 productos, los más relevantes para lo que pidió; ofrece "tengo más si quieres ver" en vez de listar todo
+- Mensajes cortos que avanzan la venta paso a paso, nunca listas largas ni bloques de información
 
 ESTILO DE CONVERSACIÓN:
 - Responde de forma natural, cálida, humana, amable, atenta, gentil y educada — como una asesora de tienda boutique que atiende con cariño y respeto
@@ -445,7 +445,9 @@ export async function claimDedup(key: string, ttlSeconds = 90): Promise<boolean>
 // El modelo a veces devuelve markdown (**negrita**, viñetas) pese al prompt.
 // WhatsApp no lo renderiza: le llegan asteriscos literales al cliente. Se limpia
 // por código para garantizar texto plano sin importar lo que genere el modelo.
-function stripMarkdown(s: string): string {
+// Limpia UN mensaje: quita markdown y signos de apertura, y deja el texto pegado
+// (sin líneas en blanco internas). Garantiza el tono informal sin importar el modelo.
+function cleanMessage(s: string): string {
   return s
     .replace(/\*\*([^*]+?)\*\*/g, "$1")   // **negrita** → negrita
     .replace(/__([^_]+?)__/g, "$1")        // __negrita__ → negrita
@@ -453,8 +455,19 @@ function stripMarkdown(s: string): string {
     .replace(/\*([^*\n]+?)\*/g, "$1")      // *texto* suelto → texto
     .replace(/[¿¡]/g, "")                  // signos de apertura → fuera (informal WhatsApp)
     .replace(/[ \t]+\n/g, "\n")            // espacios al final de línea
-    .replace(/\n{2,}/g, "\n")              // sin líneas en blanco: todo pegado y natural
+    .replace(/\n{2,}/g, "\n")              // dentro de un mensaje: sin líneas en blanco
     .trim();
+}
+
+// Parte la respuesta en varios mensajes cortos, como chatea una persona real:
+// una línea en blanco = mensaje nuevo (la info va en uno, la pregunta en otro).
+// Máximo 4 burbujas para no spamear.
+function splitMessages(text: string): string[] {
+  return text
+    .split(/\n\s*\n/)
+    .map(cleanMessage)
+    .filter((m) => m.length > 0)
+    .slice(0, 4);
 }
 
 export async function isBotPaused(phone: string): Promise<boolean> {
@@ -486,7 +499,7 @@ export async function processMessage(
   history: Message[],
   userMessage: string,
   customerName?: string,
-): Promise<{ response: string; images: string[]; silent: boolean; updatedHistory: Message[] }> {
+): Promise<{ response: string; messages: string[]; images: string[]; silent: boolean; updatedHistory: Message[] }> {
   const systemPrompt = customerName
     ? `${SYSTEM_PROMPT}\n\nNombre del cliente en WhatsApp: ${customerName}. Úsalo para saludarlo en el primer mensaje de cada conversación.`
     : SYSTEM_PROMPT;
@@ -628,5 +641,12 @@ export async function processMessage(
     })
     .filter((m): m is Message => m !== null);
 
-  return { response: stripMarkdown(text), images, silent, updatedHistory: cleanHistory.slice(-20) };
+  const outMsgs = silent ? [] : splitMessages(text);
+  return {
+    response: outMsgs.join("\n"), // versión de un solo string (compat.)
+    messages: outMsgs,             // varios mensajes cortos, como chatea una persona
+    images,
+    silent,
+    updatedHistory: cleanHistory.slice(-20),
+  };
 }

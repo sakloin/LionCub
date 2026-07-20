@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
     const result = await processMessage(history.slice(-20), message, name || undefined);
     return NextResponse.json({
       response: result.response,
+      messages: result.messages ?? [],
       images: result.images ?? [],
       silent: result.silent,
       history: result.updatedHistory,
