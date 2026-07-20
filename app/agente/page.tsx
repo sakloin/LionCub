@@ -83,13 +83,11 @@ export default function AgenteDemoPage() {
       form.append("history", JSON.stringify(history));
       const res = await fetch("/api/chat/demo", { method: "POST", body: form });
       const data = await res.json();
-      // Reemplazar la burbuja temporal por el texto transcrito real
+      // Igual que WhatsApp: se muestra solo la nota de voz, sin la transcripción.
+      // El agente la escucha y responde directo (se siente como conversación real).
       setTurns((t) => {
         const trimmed = t.slice(0, -1); // quita la burbuja temporal
-        const userText = data.transcript?.trim()
-          ? `🎤 ${data.transcript}`
-          : "🎤 (no se entendió el audio)";
-        const next: Turn[] = [...trimmed, { role: "user", text: userText, voice: true }];
+        const next: Turn[] = [...trimmed, { role: "user", text: "🎤 Nota de voz", voice: true }];
         if (data.error && !data.transcript) {
           next.push({ role: "assistant", text: "No pude escuchar bien el audio, ¿me lo escribes?" });
         } else if (data.silent || !data.response?.trim()) {
