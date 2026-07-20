@@ -7,6 +7,7 @@ type Turn = {
   text: string;
   images?: string[];
   silent?: boolean;
+  voice?: boolean;
 };
 
 // Historial en formato Anthropic que se manda al endpoint /api/chat/demo
@@ -24,17 +25,33 @@ export default function AgenteDemoPage() {
   const [history, setHistory] = useState<ApiMsg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [micError, setMicError] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [turns, loading]);
 
+  function applyResult(data: any, userTurn: Turn) {
+    setTurns((t) => {
+      const next = [...t, userTurn];
+      if (data.silent || !data.response?.trim()) {
+        next.push({ role: "assistant", text: "", silent: true });
+      } else {
+        next.push({ role: "assistant", text: data.response, images: data.images ?? [] });
+      }
+      return next;
+    });
+    if (Array.isArray(data.history)) setHistory(data.history);
+  }
+
   async function send(text: string) {
     const msg = text.trim();
     if (!msg || loading) return;
     setInput("");
-    setTurns((t) => [...t, { role: "user", text: msg }]);
     setLoading(true);
     try {
       const res = await fetch("/api/chat/demo", {
@@ -43,25 +60,75 @@ export default function AgenteDemoPage() {
         body: JSON.stringify({ history, message: msg }),
       });
       const data = await res.json();
-      if (data.silent || !data.response?.trim()) {
-        setTurns((t) => [
-          ...t,
-          { role: "assistant", text: "", silent: true },
-        ]);
-      } else {
-        setTurns((t) => [
-          ...t,
-          { role: "assistant", text: data.response, images: data.images ?? [] },
-        ]);
-      }
-      if (Array.isArray(data.history)) setHistory(data.history);
+      applyResult(data, { role: "user", text: msg });
     } catch {
       setTurns((t) => [
         ...t,
+        { role: "user", text: msg },
         { role: "assistant", text: "Ups, hubo un problema de conexión. Intenta de nuevo." },
       ]);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function sendAudio(blob: Blob) {
+    if (loading) return;
+    setLoading(true);
+    // Burbuja temporal "nota de voz" mientras transcribe
+    setTurns((t) => [...t, { role: "user", text: "🎤 nota de voz…", voice: true }]);
+    try {
+      const form = new FormData();
+      form.append("audio", blob, "nota.webm");
+      form.append("history", JSON.stringify(history));
+      const res = await fetch("/api/chat/demo", { method: "POST", body: form });
+      const data = await res.json();
+      // Reemplazar la burbuja temporal por el texto transcrito real
+      setTurns((t) => {
+        const trimmed = t.slice(0, -1); // quita la burbuja temporal
+        const userText = data.transcript?.trim()
+          ? `🎤 ${data.transcript}`
+          : "🎤 (no se entendió el audio)";
+        const next: Turn[] = [...trimmed, { role: "user", text: userText, voice: true }];
+        if (data.error && !data.transcript) {
+          next.push({ role: "assistant", text: "No pude escuchar bien el audio, ¿me lo escribes?" });
+        } else if (data.silent || !data.response?.trim()) {
+          next.push({ role: "assistant", text: "", silent: true });
+        } else {
+          next.push({ role: "assistant", text: data.response, images: data.images ?? [] });
+        }
+        return next;
+      });
+      if (Array.isArray(data.history)) setHistory(data.history);
+    } catch {
+      setTurns((t) => [...t.slice(0, -1), { role: "assistant", text: "Ups, problema al enviar el audio." }]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function toggleRecording() {
+    setMicError("");
+    if (recording) {
+      recorderRef.current?.stop();
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const rec = new MediaRecorder(stream);
+      chunksRef.current = [];
+      rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      rec.onstop = () => {
+        stream.getTracks().forEach((tr) => tr.stop());
+        const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
+        setRecording(false);
+        if (blob.size > 800) sendAudio(blob);
+      };
+      recorderRef.current = rec;
+      rec.start();
+      setRecording(true);
+    } catch {
+      setMicError("No pude acceder al micrófono. Revisa los permisos del navegador.");
     }
   }
 
@@ -79,7 +146,7 @@ export default function AgenteDemoPage() {
           <div className="w-10 h-10 rounded-full bg-[#c9a94f] flex items-center justify-center text-lg">🦁</div>
           <div className="flex-1">
             <div className="font-semibold leading-tight">LionCub · Asistente</div>
-            <div className="text-xs text-white/70">demo — en línea</div>
+            <div className="text-xs text-white/70">demo — texto y voz</div>
           </div>
           <button
             onClick={reset}
@@ -100,7 +167,7 @@ export default function AgenteDemoPage() {
         >
           {turns.length === 0 && (
             <div className="text-center text-gray-500 text-sm mt-8 space-y-4">
-              <p>Escríbele como si fueras un cliente 👇</p>
+              <p>Escríbele o mándale un audio 🎤 como si fueras cliente</p>
               <div className="flex flex-col gap-2 items-center">
                 {SUGERENCIAS.map((s) => (
                   <button
@@ -159,6 +226,10 @@ export default function AgenteDemoPage() {
           )}
         </div>
 
+        {micError && (
+          <div className="bg-red-50 text-red-600 text-xs px-4 py-1 text-center shrink-0">{micError}</div>
+        )}
+
         {/* Input */}
         <form
           onSubmit={(e) => {
@@ -170,17 +241,32 @@ export default function AgenteDemoPage() {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Escribe un mensaje…"
-            className="flex-1 rounded-full bg-white px-4 py-2 text-[15px] outline-none border border-black/5"
+            placeholder={recording ? "Grabando…" : "Escribe un mensaje…"}
+            disabled={recording}
+            className="flex-1 rounded-full bg-white px-4 py-2 text-[15px] outline-none border border-black/5 disabled:bg-gray-100"
           />
-          <button
-            type="submit"
-            disabled={loading || !input.trim()}
-            className="w-10 h-10 rounded-full bg-[#075e54] text-white flex items-center justify-center disabled:opacity-40 transition"
-            aria-label="Enviar"
-          >
-            ➤
-          </button>
+          {input.trim() ? (
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-10 h-10 rounded-full bg-[#075e54] text-white flex items-center justify-center disabled:opacity-40 transition"
+              aria-label="Enviar"
+            >
+              ➤
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={toggleRecording}
+              disabled={loading}
+              className={`w-10 h-10 rounded-full flex items-center justify-center text-white transition disabled:opacity-40 ${
+                recording ? "bg-red-500 animate-pulse" : "bg-[#075e54]"
+              }`}
+              aria-label={recording ? "Detener grabación" : "Grabar audio"}
+            >
+              {recording ? "■" : "🎤"}
+            </button>
+          )}
         </form>
       </div>
     </main>
