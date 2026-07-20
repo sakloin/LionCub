@@ -450,7 +450,9 @@ function stripMarkdown(s: string): string {
     .replace(/__([^_]+?)__/g, "$1")        // __negrita__ → negrita
     .replace(/^[ \t]*[-*]\s+/gm, "")       // viñetas "- " / "* " al inicio de línea
     .replace(/\*([^*\n]+?)\*/g, "$1")      // *texto* suelto → texto
-    .replace(/\n{3,}/g, "\n\n")            // colapsa saltos de línea excesivos
+    .replace(/[¿¡]/g, "")                  // signos de apertura → fuera (informal WhatsApp)
+    .replace(/[ \t]+\n/g, "\n")            // espacios al final de línea
+    .replace(/\n{2,}/g, "\n")              // sin líneas en blanco: todo pegado y natural
     .trim();
 }
 
