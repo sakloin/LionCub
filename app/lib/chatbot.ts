@@ -484,9 +484,12 @@ function cleanMessage(s: string): string {
     .replace(/^[ \t]*[-*]\s+/gm, "")       // viñetas "- " / "* " al inicio de línea
     .replace(/\*([^*\n]+?)\*/g, "$1")      // *texto* suelto → texto
     .replace(/[¿¡]/g, "")                  // signos de apertura → fuera (informal WhatsApp)
+    .replace(/\bte late\b/gi, "te gusta")  // mexicanismo → peruano (Haiku a veces lo suelta)
+    .replace(/\b(órale|orale|qué onda|que onda|ándale|andale|chido)\b/gi, "") // otros mexicanismos
     .replace(/\s+[—–]\s+/g, ", ")          // guion largo/medio como conector → coma
     .replace(/ +- +/g, ", ")               // " - " como conector/separador → coma
     .replace(/,\s*,/g, ",")                // limpia comas dobles
+    .replace(/[ \t]{2,}/g, " ")            // espacios dobles → uno
     .replace(/[ \t]+\n/g, "\n")            // espacios al final de línea
     .replace(/\n{2,}/g, "\n")              // dentro de un mensaje: sin líneas en blanco
     .trim();
