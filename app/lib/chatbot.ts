@@ -69,7 +69,7 @@ TRANSPARENCIA:
 - Nunca afirmes que eres una persona humana. Si te preguntan si eres bot o asistente responde con naturalidad: "Soy el asistente de LionCub.pe y te ayudo con la información de productos, tallas, stock y pedidos"
 
 REGLAS DE NEGOCIO:
-- Precios en Soles (S/). Nunca inventes stock, precios ni variantes — usa las herramientas
+- PRECIOS (crítico): usa EXACTAMENTE el precio que te devuelve buscar_productos para ese producto. Nunca lo redondees, cambies ni inventes. Si en un mensaje diste un precio, en los siguientes mantén el mismo para ese producto — no lo cambies. Precios en Soles (S/). Nunca inventes stock, precios ni variantes, siempre de la herramienta
 - Envíos: domicilio Lima s/10 | Shalom provincias s/15
 - Pago: Yape/Plin al 920201943 (Lion Cub) · transferencia bancaria · contraentrega solo Lima
 - Tallas: RN = recién nacido (0-1 mes), luego 0-3m, 3-6m, 6-9m, 9-12m
@@ -492,7 +492,9 @@ function cleanMessage(s: string): string {
     .replace(/[ \t]{2,}/g, " ")            // espacios dobles → uno
     .replace(/[ \t]+\n/g, "\n")            // espacios al final de línea
     .replace(/\n{2,}/g, "\n")              // dentro de un mensaje: sin líneas en blanco
-    .trim();
+    .trim()
+    // primera letra del mensaje en mayúscula (respeta la gramática al iniciar)
+    .replace(/^([^\p{L}]*)(\p{Ll})/u, (_, pre, c) => pre + c.toUpperCase());
 }
 
 // Parte la respuesta en varios mensajes cortos, como chatea una persona real:
@@ -504,6 +506,20 @@ function splitMessages(text: string): string[] {
     .map(cleanMessage)
     .filter((m) => m.length > 0)
     .slice(0, 4);
+}
+
+// ¿El producto se menciona en el texto? Sirve para elegir la foto correcta:
+// coincide si el nombre completo está en el texto, o si al menos 2 palabras
+// significativas (largo >= 4) del nombre aparecen. Evita mandar la foto de otro producto.
+function productMentioned(name: string, text: string): boolean {
+  if (!name) return false;
+  const t = text.toLowerCase();
+  const n = name.toLowerCase();
+  if (t.includes(n)) return true;
+  const words = n.split(/\s+/).filter((w) => w.length >= 4);
+  if (words.length === 0) return false;
+  const hits = words.filter((w) => t.includes(w)).length;
+  return hits >= Math.min(2, words.length);
 }
 
 export async function isBotPaused(phone: string): Promise<boolean> {
@@ -550,8 +566,9 @@ export async function processMessage(
     messages,
   });
 
-  // Tool-use loop — collect product image URLs from buscar_productos results
-  const productImagesFromTools: string[] = [];
+  // Tool-use loop — guarda {nombre, url} de cada producto para poder elegir la
+  // foto que corresponde al producto que el agente menciona en su respuesta.
+  const productImages: { name: string; url: string }[] = [];
 
   while (response.stop_reason === "tool_use") {
     messages.push({ role: "assistant", content: response.content });
@@ -561,13 +578,11 @@ export async function processMessage(
       if (block.type !== "tool_use") continue;
       const result = await executeTool(block.name, block.input);
 
-      // Capture image URLs from buscar_productos so we can inject them
-      // even if the LLM forgets to include them in its final response.
       if (block.name === "buscar_productos") {
         const r = result as any;
         for (const p of r?.products ?? []) {
           if (p.image_url && p.image_url.startsWith("http")) {
-            productImagesFromTools.push(p.image_url);
+            productImages.push({ name: p.name ?? "", url: p.image_url });
           }
         }
       }
@@ -592,73 +607,29 @@ export async function processMessage(
     .map(b => b.text)
     .join("\n");
 
-  // Extract image URLs from ===IMAGES===url1,url2===END=== marker
-  // Also filter out product page URLs that the LLM sometimes hallucinates
-  // (e.g. https://lioncub.pe/products/lc-028) — extensionless /products/ paths are page routes, not images
-  const isPageUrl = (u: string) =>
-    /^(https?:\/\/[^/]*)?\/products\/[^/]+\/?$/.test(u) && !/\.(jpe?g|png|webp|gif|avif)$/i.test(u);
-  const imageMatch = rawText.match(/===IMAGES===([\s\S]*?)===END===/);
-  let images: string[] = imageMatch
-    ? imageMatch[1].split(",").map(u => u.trim()).filter(u => u.startsWith("http") && !isPageUrl(u))
-    : [];
+  // El agente marca con ===IMAGES===...===END=== que quiere mostrar fotos, pero
+  // a veces pone la URL equivocada (mandaba un babero al recomendar un pantalón).
+  // En vez de confiar en sus URLs, elegimos la foto por el NOMBRE del producto que
+  // menciona en su respuesta → la imagen SIEMPRE corresponde al producto ofrecido.
+  const wantsPhoto = /===IMAGES===/.test(rawText);
   let text = rawText.replace(/===IMAGES===[\s\S]*?===END===/g, "").trim();
 
   // Regla de silencio: [SILENCIO] = chat personal / sin intención comercial → no responder
   const silent = /\[SILENCIO\]/i.test(rawText);
-  if (silent) {
-    text = "";
-    images = [];
-  }
+  if (silent) text = "";
 
+  // /products/lc-028 sin extensión es una página, no una imagen
+  const isPageUrl = (u: string) =>
+    /^(https?:\/\/[^/]*)?\/products\/[^/]+\/?$/.test(u) && !/\.(jpe?g|png|webp|gif|avif)$/i.test(u);
   const askedForPhoto = !silent && /foto|imagen|photo|pic\b|ver.*product|mostrar/i.test(userMessage);
 
-  // Safety net 1: LLM returned valid ===IMAGES=== but they all got filtered → use tool results
-  if (images.length === 0 && askedForPhoto && productImagesFromTools.length > 0) {
-    images = productImagesFromTools.slice(0, 3);
-  }
-
-  // Safety net 2: LLM refused to send photos ("no puedo enviar fotos directas" etc.) — retry once
-  // with an explicit correction injected into the conversation.
-  const refusedPhotos = /no puedo enviar foto|no tengo.*foto|solo tengo acceso al cat|no es posible.*enviar.*imagen|no puedo.*imagen.*direc/i.test(text);
-  if (images.length === 0 && askedForPhoto && refusedPhotos) {
-    messages.push({
-      role: "user" as const,
-      content: "[SISTEMA: Incorrecto — SÍ puedes enviar fotos por este wsp. USA buscar_productos ahora mismo y luego incluye ===IMAGES===url===END=== al final de tu respuesta. No digas que no puedes.]",
-    });
-    let retryResp = await anthropic.messages.create({
-      model: MODEL, max_tokens: 1024, system: systemPrompt, tools: TOOLS, messages,
-    });
-    while (retryResp.stop_reason === "tool_use") {
-      messages.push({ role: "assistant", content: retryResp.content });
-      const retryToolResults: Anthropic.ToolResultBlockParam[] = [];
-      for (const block of retryResp.content) {
-        if (block.type !== "tool_use") continue;
-        const result = await executeTool(block.name, block.input);
-        if (block.name === "buscar_productos") {
-          for (const p of (result as any)?.products ?? []) {
-            if (p.image_url?.startsWith("http")) productImagesFromTools.push(p.image_url);
-          }
-        }
-        retryToolResults.push({ type: "tool_result", tool_use_id: block.id, content: JSON.stringify(result) });
-      }
-      messages.push({ role: "user", content: retryToolResults });
-      retryResp = await anthropic.messages.create({
-        model: MODEL, max_tokens: 1024, system: systemPrompt, tools: TOOLS, messages,
-      });
-    }
-    messages.push({ role: "assistant", content: retryResp.content });
-    const retryRawText = retryResp.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map(b => b.text)
-      .join("\n");
-    const retryMatch = retryRawText.match(/===IMAGES===([\s\S]*?)===END===/);
-    const retryImages = retryMatch
-      ? retryMatch[1].split(",").map(u => u.trim()).filter(u => u.startsWith("http") && !isPageUrl(u))
-      : [];
-    if (retryImages.length > 0 || productImagesFromTools.length > 0) {
-      images = retryImages.length > 0 ? retryImages : productImagesFromTools.slice(0, 3);
-      text = retryRawText.replace(/===IMAGES===[\s\S]*?===END===/g, "").trim() || text;
-    }
+  let images: string[] = [];
+  if (!silent && (wantsPhoto || askedForPhoto)) {
+    const urls = productImages
+      .filter((p) => productMentioned(p.name, text))
+      .map((p) => p.url)
+      .filter((u) => u.startsWith("http") && !isPageUrl(u));
+    images = [...new Set(urls)].slice(0, 3);
   }
 
   // Strip tool_use/tool_result blocks before saving — keeps only plain text exchanges.
