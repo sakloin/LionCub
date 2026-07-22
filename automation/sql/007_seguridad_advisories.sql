@@ -21,10 +21,13 @@ revoke execute on function public.decrement_variant_stock(text, text, text, inte
 revoke execute on function public.get_kardex_for_month(integer, integer) from public;
 revoke execute on function public.set_monthly_initial_stock(integer, integer, jsonb[]) from public;
 
--- PENDIENTE (no aplicado aún, requiere decisión):
---  - register_purchase / delete_purchase siguen siendo llamables por cualquier
---    usuario AUTENTICADO (no solo admins). Fix recomendado: agregar dentro de
---    cada función un chequeo is_admin() que rechace a no-admins.
---  - Warnings menores: search_path de funciones, vista contenido_dashboard
---    (security definer), listado del bucket product-images, y activar la
---    protección de contraseñas filtradas en Auth (dashboard).
+-- NOTA: register_purchase / delete_purchase YA se auto-protegen: tienen dentro
+--  un `if not public.is_admin() then raise exception 'No autorizado'`, e is_admin()
+--  solo acepta el correo del dueño (sakloin@gmail.com). Aunque el advisor las marca
+--  como "ejecutables por authenticated", la función misma rechaza a los no-admin,
+--  así que están seguras. No requieren cambio (revocar a authenticated rompería el
+--  panel admin, que entra logueado). El revoke a anon de arriba es defensa extra.
+--
+-- Warnings menores restantes (opcionales, no urgentes): search_path de funciones,
+--  vista contenido_dashboard (security definer), listado del bucket product-images,
+--  y activar la protección de contraseñas filtradas en Auth (dashboard).
