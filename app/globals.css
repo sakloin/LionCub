@@ -13,7 +13,7 @@
    ───────────────────────────────────────────────────────────────────────── */
 @theme {
   /* surfaces */
-  --color-bg:        #FDFBF6;
+  --color-bg:        #FDF8F0;
   --color-bg-warm:   #F5ECDC;
   --color-bg-soft:   #F8F2E7;
   --color-bg-card:   #FFFFFF;
@@ -47,7 +47,7 @@
 }
 
 :root {
-  --background: #FDFBF6;
+  --background: #FDF8F0;
   --foreground: #1A1410;
 
   /* shadows */
