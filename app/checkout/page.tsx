@@ -692,7 +692,7 @@ export default function CheckoutPage() {
                     <p className="lc-display text-base text-ink leading-tight truncate">{item.product.name}</p>
                     <p className="text-ink-soft text-xs mt-0.5">{[item.selectedColor, item.selectedSize].filter(Boolean).join(" · ")} · x{item.quantity}</p>
                   </div>
-                  <p className="lc-display text-sm text-ink whitespace-nowrap">{formatSoles(fromCents(Math.round(item.product.price * 100) * item.quantity))}</p>
+                  <p className="lc-display text-sm text-ink whitespace-nowrap">{formatSoles(fromCents(Math.round((item.variant.unit_price_at_pick ?? item.product.price) * 100) * item.quantity))}</p>
                 </li>
               ))}
             </ul>
