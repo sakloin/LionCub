@@ -16,7 +16,7 @@
 
 | Rol | Token | Hex |
 |---|---|---|
-| Fondo principal (crema) | `--color-bg` | `#FDFBF6` |
+| Fondo principal (crema) | `--color-bg` | `#FDF8F0` |
 | Crema cálido (escenario de foto) | `--color-bg-warm` | `#F5ECDC` |
 | Crema suave (secciones) | `--color-bg-soft` | `#F8F2E7` |
 | Tarjeta / blanco | `--color-bg-card` | `#FFFFFF` |
@@ -30,7 +30,7 @@
 | Oro pálido | `--color-gold-pale` | `#EFE0BB` |
 | Pasteles bebé (desaturados) | pink / blue / mint / lav | `#F0D9D2` · `#D9E2EA` · `#DDE6D6` · `#E2DCE5` |
 
-⚠️ **A confirmar (Heber):** el crema del `theme-color` del navegador es `#FDF8F0` pero el fondo real del sitio es `#FDFBF6`. Hay que elegir **uno** como crema canónico. _(No lo cambio sin tu OK — es identidad.)_
+✅ **Crema canónico: `#FDF8F0` (cálido)** — aprobado por Heber el 2026-10-08. Unifica el fondo público con el admin, mi-cuenta, correos y assets, que ya lo usaban.
 
 ## 3. Tipografías
 - **Display / titulares:** **Cormorant Garamond** (serif, peso 300, cursiva para acentos poéticos). Es la voz visual de la marca.

@@ -33,7 +33,7 @@ export default function Footer() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-16 pb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-12">
         {/* Brand */}
         <div className="lg:col-span-2 flex flex-col gap-5">
-          <LogoMark size={28} color="#FDFBF6" />
+          <LogoMark size={28} color="#FDF8F0" />
           <p className="text-[13px] leading-relaxed font-light text-bg/60 max-w-sm">
             {brand.story}
           </p>
