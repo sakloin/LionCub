@@ -7,7 +7,7 @@ import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
 import { LionMark } from "./LogoMark";
 import { supabase } from "../lib/supabase";
-import type { Product, ProductVariant, Offer } from "../lib/types";
+import type { Product, Offer } from "../lib/types";
 import { bestOfferFor, effectivePrice } from "../lib/offers";
 import { formatSoles } from "../lib/money";
 
@@ -580,73 +580,22 @@ function ProductCard({
 
 // ── Collection ──────────────────────────────────────────────────────────────
 
-export default function Collection() {
+export default function Collection({
+  initialProducts,
+  initialOffers,
+}: {
+  initialProducts: Product[];
+  initialOffers: Offer[];
+}) {
   const { t } = useLang();
   const [activeCategory, setActiveCategory] = useState("all");
-  const [products, setProducts] = useState<Product[]>([]);
-  const [offers, setOffers] = useState<Offer[]>([]);
-  const [loading, setLoading] = useState(true);
+  // El catálogo llega renderizado desde el servidor (SSR): siempre está en el
+  // HTML. Ya no se pide al navegador, así que un bloqueador o una caída de red
+  // no pueden dejar la tienda vacía.
+  const products = initialProducts;
+  const offers = initialOffers;
   const [selectProduct, setSelectProduct] = useState<Product | null>(null);
   const [waitlistProduct, setWaitlistProduct] = useState<Product | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-      // PostgREST join: pull the variants (and their joined size/color) in the
-      // same round trip so the public store never re-queries per row.
-      // Offers are fetched in parallel; RLS already filters out paused or
-      // expired offers for anon users.
-      const [productsRes, offersRes] = await Promise.all([
-        supabase
-          .from("products")
-          .select(
-            `
-            id, sku, name, tagline, description, category, price, cost,
-            gender, material, has_offer, image_url, active, created_at,
-            variants:product_variants(
-              id, product_id, size_id, color_id, sku_variant, stock,
-              cost, price_override, active,
-              size:product_sizes(id, name, sort_order, active),
-              color:product_colors(id, name, hex_code, active)
-            ),
-            images:product_images(
-              id, product_id, url, storage_path, sort_order,
-              is_primary, is_hover, alt_text, image_type, color_id
-            )
-            `
-          )
-          .eq("active", true)
-          .order("created_at", { ascending: true }),
-        supabase.from("offers").select("*").eq("active", true),
-      ]);
-      if (cancelled) return;
-      if (productsRes.error) {
-        console.error("[Collection] products fetch failed:", productsRes.error.message);
-        setProducts([]);
-      } else {
-        setProducts((productsRes.data ?? []) as unknown as Product[]);
-      }
-      if (offersRes.error) {
-        console.error("[Collection] offers fetch failed:", offersRes.error.message);
-        setOffers([]);
-      } else {
-        setOffers((offersRes.data ?? []) as Offer[]);
-      }
-      } catch (err) {
-        // Si el fetch lanza (base pausada, red caída, bloqueador), degradar al
-        // estado vacío en vez de quedarnos en "Cargando…" para siempre.
-        if (cancelled) return;
-        console.error("[Collection] carga del catálogo falló:", err);
-        setProducts([]);
-        setOffers([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
 
   // Per-product offer lookup (most specific live offer wins). Memoised
   // because both ProductCard and the SelectionSheet need it.
@@ -768,17 +717,8 @@ export default function Collection() {
           </div>
         )}
 
-        {/* Loading */}
-        {loading && (
-          <div className="text-center py-16">
-            <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute">
-              {t("Cargando…", "Loading…")}
-            </p>
-          </div>
-        )}
-
         {/* Empty state */}
-        {!loading && products.length === 0 && (
+        {products.length === 0 && (
           <div className="text-center py-20 flex flex-col items-center gap-5">
             <LionMark size={64} color="var(--color-ink-mute)" />
             <p className="lc-display text-2xl text-ink max-w-md">
@@ -794,7 +734,7 @@ export default function Collection() {
         )}
 
         {/* Groups */}
-        {!loading && grouped.map((group) => (
+        {grouped.map((group) => (
           <div key={group.id} className="mb-16 last:mb-0">
             <div className="flex items-end gap-4 mb-8 pb-4 border-b border-rule">
               <div>
