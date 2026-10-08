@@ -593,6 +593,7 @@ export default function Collection() {
     let cancelled = false;
     (async () => {
       setLoading(true);
+      try {
       // PostgREST join: pull the variants (and their joined size/color) in the
       // same round trip so the public store never re-queries per row.
       // Offers are fetched in parallel; RLS already filters out paused or
@@ -633,7 +634,16 @@ export default function Collection() {
       } else {
         setOffers((offersRes.data ?? []) as Offer[]);
       }
-      setLoading(false);
+      } catch (err) {
+        // Si el fetch lanza (base pausada, red caída, bloqueador), degradar al
+        // estado vacío en vez de quedarnos en "Cargando…" para siempre.
+        if (cancelled) return;
+        console.error("[Collection] carga del catálogo falló:", err);
+        setProducts([]);
+        setOffers([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
     return () => { cancelled = true; };
   }, []);
