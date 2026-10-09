@@ -234,6 +234,17 @@ export default function CheckoutPage() {
   }
 
   async function submitOrder() {
+    // Validación de correo: si lo ingresó, que tenga formato válido; y es
+    // obligatorio para pagar con tarjeta (Culqi lo necesita para el recibo).
+    const email = form.customer_email.trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setSubmitError(t("El correo no tiene un formato válido.", "That email doesn't look valid."));
+      return;
+    }
+    if (form.payment_method === "culqi" && !email) {
+      setSubmitError(t("Para pagar con tarjeta necesitamos tu correo.", "We need your email to pay by card."));
+      return;
+    }
     setSubmitting(true);
     setCulqiError(null);
     setSubmitError(null);
@@ -409,7 +420,7 @@ export default function CheckoutPage() {
     { value: "yape",          label: "Yape",                       desc: t("QR instantáneo", "Instant QR") },
     { value: "plin",          label: "Plin",                       desc: t("QR instantáneo", "Instant QR") },
     { value: "transferencia", label: t("Transferencia bancaria", "Bank transfer"), desc: "BCP · BBVA · Interbank" },
-    { value: "contraentrega", label: t("Contra entrega", "Cash on delivery"),      desc: t("Solo Lima Metropolitana (domicilio)", "Metro Lima only (home delivery)") },
+    { value: "contraentrega", label: t("Contra entrega", "Cash on delivery"),      desc: isShalom ? t("Solo con entrega a domicilio", "Home delivery only") : t("Solo Lima Metropolitana (domicilio)", "Metro Lima only (home delivery)"), disabled: isShalom },
     ...(CULQI_ENABLED
       ? [{ value: "culqi" as PaymentMethod, label: t("Tarjeta de crédito/débito", "Credit/debit card"), desc: t("Visa, Mastercard · Powered by Culqi", "Visa, Mastercard · Powered by Culqi") }]
       : [{ value: "izipay" as PaymentMethod, label: t("Tarjeta", "Card"), desc: t("Próximamente disponible", "Coming soon"), disabled: true }]),
@@ -497,7 +508,15 @@ export default function CheckoutPage() {
                   <h2 className="lc-display text-2xl text-ink">{t("Método de envío", "Shipping method")}</h2>
                   <div className="grid gap-3">
                     {shippingOptions.map(opt => (
-                      <button key={opt.value} onClick={() => field("shipping_method", opt.value)}
+                      <button key={opt.value} onClick={() => {
+                          field("shipping_method", opt.value);
+                          // Contra entrega no aplica a Shalom (envío a provincia): si estaba
+                          // elegida y el cliente cambia a Shalom, se vuelve a Yape.
+                          if (opt.value === "shalom" && form.payment_method === "contraentrega") {
+                            field("payment_method", "yape");
+                            resetProof();
+                          }
+                        }}
                         className={cardCls(form.shipping_method === opt.value)}>
                         <p className="lc-display text-lg text-ink">{opt.label}</p>
                         <p className="text-ink-soft text-sm mt-0.5">{opt.desc}</p>
