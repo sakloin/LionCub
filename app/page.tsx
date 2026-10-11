@@ -5,7 +5,6 @@ import TrustBar from "./components/TrustBar";
 import Collection from "./components/Collection";
 import WhyPima from "./components/WhyPima";
 import OurStory from "./components/OurStory";
-import Testimonials from "./components/Testimonials";
 import Footer from "./components/Footer";
 import { getCatalog } from "./lib/catalog";
 
@@ -25,7 +24,6 @@ export default async function Home() {
         <TrustBar />
         <WhyPima />
         <OurStory />
-        <Testimonials />
       </main>
       <Footer />
     </>

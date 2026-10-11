@@ -8,13 +8,13 @@
 ## 🧑 Tareas de Heber
 - [x] ~~Reactivar Supabase `cqwvhfcrmboscivtwkog`~~ — **✅ Activo (2026-10-11)**
 - [ ] Probar compra real punta a punta (2.5) cuando PR #99 esté en main
-- [ ] Aprobar formalmente `IDENTIDAD.md` (Fase 0)
-- [ ] Decidir selector de idioma EN/ES para lanzamiento
+- [x] ~~Aprobar formalmente `IDENTIDAD.md` (Fase 0)~~ — **✅ Aprobada (2026-10-11)**
+- [x] ~~Decidir selector de idioma EN/ES para lanzamiento~~ — **✅ Va al lanzamiento (2026-10-11)**
 
 ## Estado de fases
 | Fase | Qué | Estado |
 |---|---|---|
-| 0 | Kit de orquestación + `IDENTIDAD.md` + `PRINCIPIOS.md`; congelar alcance | 🟡 IDENTIDAD + PRINCIPIOS hechos; `.claude/*` + `docs/` instalados (2026-10-11); falta aprobación formal de IDENTIDAD por Heber |
+| 0 | Kit de orquestación + `IDENTIDAD.md` + `PRINCIPIOS.md`; congelar alcance | ✅ Completo — IDENTIDAD aprobada por Heber (2026-10-11) |
 | 1 | Auditoría móvil + desktop (home, colección, ficha, bolsa, checkout) | ✅ hecha (5 hallazgos) |
 | 2 | Críticos de compra | 🔵 en curso |
 | 3 | Jerarquía y contenido | ⬜ |
@@ -40,6 +40,6 @@
 - [ ] **4.3 Congelamiento**: solo correcciones desde 2026-10-25. Revisión final del auditor.
 
 ## Notas
-- El **inglés ya está implementado** (`t()` en todo el código) — decidir si va al lanzamiento o se oculta el selector (🧑 Heber).
+- El **inglés va al lanzamiento** — selector EN/ES visible. Aprobado por Heber 2026-10-11.
 - La skill `auditoria-diseno` aún no existe como skill de Claude Code; crearla/instalarla en Fase 0 si se quiere reutilizable.
 - Archivos protegidos (migraciones, pagos, `.env`) solo con ADR aprobada por Heber.

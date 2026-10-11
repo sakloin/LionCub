@@ -3,14 +3,14 @@
   "actualizadoEl": "2026-10-11",
   "lanzamiento": "2026-10-31",
   "diasAlLanzamiento": 20,
-  "progresoGeneral": 58,
+  "progresoGeneral": 62,
   "fases": [
     {
       "id": 0,
       "nombre": "Kit de orquestación + IDENTIDAD + PRINCIPIOS",
-      "estado": "en_curso",
-      "porcentaje": 75,
-      "notas": "IDENTIDAD y PRINCIPIOS hechos. .claude/* creado ahora. Falta aprobación formal de IDENTIDAD por Heber."
+      "estado": "completo",
+      "porcentaje": 100,
+      "notas": "IDENTIDAD y PRINCIPIOS hechos. .claude/* creado. IDENTIDAD aprobada por Heber 2026-10-11."
     },
     {
       "id": 1,
@@ -29,18 +29,18 @@
         { "id": "2.2", "nombre": "SSR del catálogo", "estado": "completo", "rol": "🤖" },
         { "id": "2.3", "nombre": "Precio por línea en checkout", "estado": "completo", "rol": "🤖" },
         { "id": "2.4", "nombre": "Validación de checkout (contraentrega+email)", "estado": "completo", "rol": "🤖", "pr": 99 },
-        { "id": "2.5", "nombre": "Prueba de compra real punta a punta", "estado": "pendiente", "rol": "🧑", "nota": "Supabase reactivado 2026-10-11 — listo para prueba cuando PR #99 esté en main" }
+        { "id": "2.5", "nombre": "Prueba de compra real punta a punta", "estado": "pendiente", "rol": "🧑", "nota": "Todo en main — listo para probar" }
       ]
     },
     {
       "id": 3,
       "nombre": "Jerarquía y contenido",
       "estado": "en_curso",
-      "porcentaje": 85,
+      "porcentaje": 90,
       "subtareas": [
         { "id": "3.1", "nombre": "Quitar beneficios repetidos", "estado": "completo", "rol": "🤖" },
         { "id": "3.2", "nombre": "Subir la colección (menos scroll)", "estado": "completo", "rol": "🤖" },
-        { "id": "3.3", "nombre": "Prueba junto a cada afirmación", "estado": "en_curso", "rol": "🤖+🧑", "nota": "Sello origen ✅; avatar iniciales ✅; foto real testimonio 🧑 Heber pendiente" },
+        { "id": "3.3", "nombre": "Prueba junto a cada afirmación", "estado": "en_curso", "rol": "🤖+🧑", "nota": "Sello origen ✅; avatar iniciales ✅; Testimonials oculto (sin fotos reales)" },
         { "id": "3.4", "nombre": "Imágenes: alt + next/image", "estado": "completo", "rol": "🤖" }
       ]
     },
@@ -67,9 +67,9 @@
       {
         "id": "H-01",
         "descripcion": "Supabase proyecto INACTIVO — tienda no muestra productos",
-        "estado": "abierto",
+        "estado": "resuelto",
         "responsable": "🧑 Heber",
-        "accion": "Reactivar cqwvhfcrmboscivtwkog en supabase.com Dashboard"
+        "accion": "Reactivado 2026-10-11"
       }
     ],
     "alto": [
@@ -93,17 +93,23 @@
     "bajo": [
       {
         "id": "H-04",
-        "descripcion": "Selector de idioma EN/ES — decidir si va al lanzamiento o se oculta",
-        "estado": "pendiente_decision",
-        "responsable": "🧑 Heber"
+        "descripcion": "Selector de idioma EN/ES — va al lanzamiento",
+        "estado": "resuelto",
+        "responsable": "🧑 Heber",
+        "decision": "Incluir en lanzamiento — 2026-10-11"
+      },
+      {
+        "id": "H-05",
+        "descripcion": "Testimonials oculto — fotos reales pendientes para post-lanzamiento",
+        "estado": "abierto",
+        "responsable": "🧑 Heber",
+        "nota": "Componente existe, se puede reactivar en page.tsx cuando Heber provea fotos"
       }
     ]
   },
   "bloqueadores": [],
   "tareasPendientesHeber": [
-    "Probar compra real punta a punta (2.5) — Supabase ya activo, PR #99 pendiente merge",
-    "Aprobar formalmente IDENTIDAD.md (Fase 0)",
-    "Decidir selector de idioma EN/ES para lanzamiento (H-04)"
+    "Probar compra real punta a punta (2.5 + 4.2) — todo en main"
   ],
   "freezeDate": "2026-10-25",
   "nota": "Desde el 25 de octubre solo correcciones de bugs. Sin features nuevas."
