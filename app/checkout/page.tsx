@@ -19,6 +19,7 @@ const SHALOM_AGENCIES = ["Lima Centro","San Juan de Lurigancho","Los Olivos","Sa
 const ALL_SLOTS  = ["10:00 - 13:00", "13:00 - 16:00", "16:00 - 19:00"];
 const FRI_SLOTS  = ["10:00 - 13:00", "13:00 - 16:00"];
 
+function isValidEmail(s: string) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim()); }
 function getMinDate() { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); }
 function getMaxDate() { const d = new Date(); d.setDate(d.getDate() + 90); return d.toISOString().slice(0, 10); }
 function isSaturday(s: string) { return !!s && new Date(s + "T12:00:00").getDay() === 6; }
@@ -107,6 +108,13 @@ export default function CheckoutPage() {
   const [culqiError, setCulqiError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // Auto-switch away from contraentrega when user selects Shalom shipping
+  useEffect(() => {
+    if (form.shipping_method === "shalom" && form.payment_method === "contraentrega") {
+      setForm(f => ({ ...f, payment_method: "yape" }));
+    }
+  }, [form.shipping_method]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Load Culqi checkout.js when the flag is enabled
   useEffect(() => {
     if (!CULQI_ENABLED) return;
@@ -124,7 +132,9 @@ export default function CheckoutPage() {
   const grandTotal      = fromCents(grandTotalCents);
   const availableSlots  = isFriday(form.delivery_date) ? FRI_SLOTS : ALL_SLOTS;
   const requiresProof   = (PROOF_REQUIRED as string[]).includes(form.payment_method);
-  const confirmDisabled = submitting || proofUploading || (requiresProof && !proofUrl);
+  const requiresEmail   = form.payment_method === "culqi";
+  const emailOk         = !requiresEmail || isValidEmail(form.customer_email);
+  const confirmDisabled = submitting || proofUploading || (requiresProof && !proofUrl) || !emailOk;
 
   function field(key: keyof typeof form, value: string) {
     setForm(f => ({ ...f, [key]: value }));
@@ -409,7 +419,7 @@ export default function CheckoutPage() {
     { value: "yape",          label: "Yape",                       desc: t("QR instantáneo", "Instant QR") },
     { value: "plin",          label: "Plin",                       desc: t("QR instantáneo", "Instant QR") },
     { value: "transferencia", label: t("Transferencia bancaria", "Bank transfer"), desc: "BCP · BBVA · Interbank" },
-    { value: "contraentrega", label: t("Contra entrega", "Cash on delivery"),      desc: t("Solo Lima Metropolitana (domicilio)", "Metro Lima only (home delivery)") },
+    { value: "contraentrega", label: t("Contra entrega", "Cash on delivery"),      desc: t("Solo Lima Metropolitana (domicilio)", "Metro Lima only (home delivery)"), disabled: form.shipping_method === "shalom" },
     ...(CULQI_ENABLED
       ? [{ value: "culqi" as PaymentMethod, label: t("Tarjeta de crédito/débito", "Credit/debit card"), desc: t("Visa, Mastercard · Powered by Culqi", "Visa, Mastercard · Powered by Culqi") }]
       : [{ value: "izipay" as PaymentMethod, label: t("Tarjeta", "Card"), desc: t("Próximamente disponible", "Coming soon"), disabled: true }]),
@@ -641,6 +651,16 @@ export default function CheckoutPage() {
                       )}
 
                       {proofError && <p className="text-xs text-red-600">{proofError}</p>}
+                    </div>
+                  )}
+
+                  {/* Email required for Culqi */}
+                  {requiresEmail && !emailOk && (
+                    <div className="border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800">
+                      {t(
+                        "El correo electrónico es obligatorio para pagar con tarjeta. Vuelve al paso 1 e ingrésalo.",
+                        "A valid email is required for card payment. Go back to step 1 to add it."
+                      )}
                     </div>
                   )}
 
