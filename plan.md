@@ -11,7 +11,7 @@
 ## Estado de fases
 | Fase | Qué | Estado |
 |---|---|---|
-| 0 | Kit de orquestación + `IDENTIDAD.md` + `PRINCIPIOS.md`; congelar alcance | 🟡 IDENTIDAD + PRINCIPIOS hechos; falta kit (.claude/*) y aprobación de IDENTIDAD |
+| 0 | Kit de orquestación + `IDENTIDAD.md` + `PRINCIPIOS.md`; congelar alcance | 🟡 IDENTIDAD + PRINCIPIOS hechos; `.claude/*` + `docs/` instalados (2026-10-11); falta aprobación formal de IDENTIDAD por Heber |
 | 1 | Auditoría móvil + desktop (home, colección, ficha, bolsa, checkout) | ✅ hecha (5 hallazgos) |
 | 2 | Críticos de compra | 🔵 en curso |
 | 3 | Jerarquía y contenido | ⬜ |
@@ -22,7 +22,7 @@
 - [x] **2.1 Resiliencia de la colección** (`app/components/Collection.tsx`): `try/catch/finally` en la carga para que un fallo del fetch NO deje "Cargando…" eterno; cae al estado vacío. _(hecho en rama; criterio: con la base caída, la sección no se cuelga)._
 - [x] **2.2 SSR del catálogo**: `app/lib/catalog.ts` trae productos+ofertas en el servidor; `page.tsx` (async, `revalidate=60`) se los pasa a `Collection` como props. `Collection` ya no pide datos al navegador → el catálogo SIEMPRE está en el HTML (resuelve de raíz el "Cargando" y mejora SEO). _(hecho; criterio: productos en el HTML sin depender del cliente)._
 - [x] **2.3 Precio por línea en checkout** (`app/checkout/page.tsx:695`): usar `unit_price_at_pick` (precio pagado), no `product.price` base; así cuadra con el subtotal. _(hecho en rama)._
-- [ ] **2.4 Validación de checkout**: contra entrega solo con domicilio (no Shalom); validar formato de correo (obligatorio si paga con tarjeta). Criterio: no se puede enviar un pedido contradictorio.
+- [~] **2.4 Validación de checkout** (`app/checkout/page.tsx`): contra entrega deshabilitada con Shalom + auto-switch a Yape; email obligatorio para Culqi con aviso inline. _(implementado 2026-10-11 en `claude/install-ui-ux-package-kXymP`; pendiente auditoría + merge)._
 - [ ] **2.5 Prueba de compra real** de punta a punta (requiere Supabase activo): ver producto → variante → bolsa → checkout → Yape/transferencia/tarjeta → pedido registrado.
 
 ## Fase 3 — Jerarquía y contenido

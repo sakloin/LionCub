@@ -1,0 +1,113 @@
+{
+  "proyecto": "Lion Cub — Rediseño y lanzamiento de tienda",
+  "actualizadoEl": "2026-10-11",
+  "lanzamiento": "2026-10-31",
+  "diasAlLanzamiento": 20,
+  "progresoGeneral": 42,
+  "fases": [
+    {
+      "id": 0,
+      "nombre": "Kit de orquestación + IDENTIDAD + PRINCIPIOS",
+      "estado": "en_curso",
+      "porcentaje": 75,
+      "notas": "IDENTIDAD y PRINCIPIOS hechos. .claude/* creado ahora. Falta aprobación formal de IDENTIDAD por Heber."
+    },
+    {
+      "id": 1,
+      "nombre": "Auditoría móvil + desktop",
+      "estado": "completo",
+      "porcentaje": 100,
+      "notas": "5 hallazgos; 3 críticos resueltos en Fase 2."
+    },
+    {
+      "id": 2,
+      "nombre": "Críticos de compra",
+      "estado": "en_curso",
+      "porcentaje": 75,
+      "subtareas": [
+        { "id": "2.1", "nombre": "Resiliencia de la colección", "estado": "completo", "rol": "🤖" },
+        { "id": "2.2", "nombre": "SSR del catálogo", "estado": "completo", "rol": "🤖" },
+        { "id": "2.3", "nombre": "Precio por línea en checkout", "estado": "completo", "rol": "🤖" },
+        { "id": "2.4", "nombre": "Validación de checkout (contraentrega+email)", "estado": "en_revision", "rol": "🤖", "rama": "claude/install-ui-ux-package-kXymP" },
+        { "id": "2.5", "nombre": "Prueba de compra real punta a punta", "estado": "bloqueado", "rol": "🧑", "bloqueador": "Supabase proyecto cqwvhfcrmboscivtwkog INACTIVO" }
+      ]
+    },
+    {
+      "id": 3,
+      "nombre": "Jerarquía y contenido",
+      "estado": "pendiente",
+      "porcentaje": 0,
+      "subtareas": [
+        { "id": "3.1", "nombre": "Quitar beneficios repetidos", "estado": "pendiente", "rol": "🤖" },
+        { "id": "3.2", "nombre": "Subir la colección (menos scroll)", "estado": "pendiente", "rol": "🤖" },
+        { "id": "3.3", "nombre": "Prueba junto a cada afirmación", "estado": "pendiente", "rol": "🤖" },
+        { "id": "3.4", "nombre": "Imágenes: alt + tamaño < 200 KB", "estado": "pendiente", "rol": "🤖" }
+      ]
+    },
+    {
+      "id": 4,
+      "nombre": "Congelamiento + velocidad + prueba real",
+      "estado": "pendiente",
+      "porcentaje": 0
+    },
+    {
+      "id": 5,
+      "nombre": "Lanzamiento",
+      "estado": "pendiente",
+      "porcentaje": 0
+    }
+  ],
+  "hallazgosPorGravedad": {
+    "critico": [
+      {
+        "id": "H-01",
+        "descripcion": "Supabase proyecto INACTIVO — tienda no muestra productos",
+        "estado": "abierto",
+        "responsable": "🧑 Heber",
+        "accion": "Reactivar cqwvhfcrmboscivtwkog en supabase.com Dashboard"
+      }
+    ],
+    "alto": [
+      {
+        "id": "H-02",
+        "descripcion": "whatsapp/route.ts ignora result.images — fotos nunca se envían por WA directo",
+        "estado": "abierto",
+        "responsable": "🤖",
+        "modulo": "app/api/chat/whatsapp/route.ts"
+      }
+    ],
+    "medio": [
+      {
+        "id": "H-03",
+        "descripcion": "Meta Graph API v20.0 en whatsapp.ts — debería ser v21.0",
+        "estado": "abierto",
+        "responsable": "🤖",
+        "modulo": "app/lib/whatsapp.ts"
+      }
+    ],
+    "bajo": [
+      {
+        "id": "H-04",
+        "descripcion": "Selector de idioma EN/ES — decidir si va al lanzamiento o se oculta",
+        "estado": "pendiente_decision",
+        "responsable": "🧑 Heber"
+      }
+    ]
+  },
+  "bloqueadores": [
+    {
+      "id": "B-01",
+      "descripcion": "Supabase proyecto cqwvhfcrmboscivtwkog INACTIVO",
+      "impacto": "Sin productos en tienda; sin prueba de compra real (2.5)",
+      "accion": "🧑 Heber: Dashboard → Restore / upgrade de la organización",
+      "urgencia": "critico"
+    }
+  ],
+  "tareasPendientesHeber": [
+    "Reactivar Supabase (B-01) — bloquea 2.5 y prueba real",
+    "Aprobar formalmente IDENTIDAD.md (Fase 0)",
+    "Decidir selector de idioma EN/ES para lanzamiento (H-04)"
+  ],
+  "freezeDate": "2026-10-25",
+  "nota": "Desde el 25 de octubre solo correcciones de bugs. Sin features nuevas."
+}

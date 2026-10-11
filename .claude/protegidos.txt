@@ -1,0 +1,7 @@
+supabase/migrations/**
+app/api/payments/**
+.env
+.env.local
+.env.production
+design-patterns/IDENTIDAD.md
+design-patterns/PRINCIPIOS.md
