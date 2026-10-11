@@ -48,9 +48,9 @@
       "id": 4,
       "nombre": "Congelamiento + velocidad + prueba real",
       "estado": "en_curso",
-      "porcentaje": 40,
+      "porcentaje": 55,
       "subtareas": [
-        { "id": "4.1", "nombre": "Velocidad: priority cards + AVIF", "estado": "en_revision", "rol": "🤖" },
+        { "id": "4.1", "nombre": "Velocidad: priority cards + AVIF", "estado": "completo", "rol": "🤖", "pr": 101 },
         { "id": "4.2", "nombre": "Prueba de compra real", "estado": "pendiente", "rol": "🧑" },
         { "id": "4.3", "nombre": "Congelamiento desde 2026-10-25", "estado": "pendiente", "rol": "🤖+🧑" }
       ]
