@@ -6,7 +6,8 @@ import { useLang } from "../context/LanguageContext";
 export default function WhyPima() {
   const { lang, t } = useLang();
 
-  const benefits = [
+  type Benefit = { titleEs: string; titleEn: string; descEs: string; descEn: string; proofEs?: string; proofEn?: string };
+  const benefits: Benefit[] = [
     {
       titleEs: "3× más suave",
       titleEn: "3× softer",
@@ -46,6 +47,8 @@ export default function WhyPima() {
         "Cultivado en los valles costeros del Perú, donde el Pima crece con condiciones únicas en el mundo.",
       descEn:
         "Grown in Peru's coastal valleys, where Pima flourishes under conditions found nowhere else.",
+      proofEs: "🇵🇪 Piura · Lambayeque · cosecha a mano",
+      proofEn: "🇵🇪 Piura · Lambayeque · hand-harvested",
     },
     {
       titleEs: "Más sostenible",
@@ -127,6 +130,11 @@ export default function WhyPima() {
               <p className="text-[13px] leading-relaxed font-light text-ink-soft mt-2">
                 {lang === "es" ? b.descEs : b.descEn}
               </p>
+              {(lang === "es" ? b.proofEs : b.proofEn) && (
+                <p className="lc-mono text-[10px] tracking-[0.12em] text-gold-deep mt-2.5">
+                  {lang === "es" ? b.proofEs : b.proofEn}
+                </p>
+              )}
             </div>
           ))}
         </div>
