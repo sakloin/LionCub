@@ -470,11 +470,13 @@ function ProductCard({
   offer,
   onSelect,
   onWaitlist,
+  priority = false,
 }: {
   product: Product;
   offer: Offer | null;
   onSelect: () => void;
   onWaitlist: () => void;
+  priority?: boolean;
 }) {
   const { t } = useLang();
   const [imgError, setImgError] = useState(false);
@@ -498,6 +500,7 @@ function ProductCard({
               src={primaryUrl}
               alt={product.name}
               fill
+              priority={priority}
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               className={`object-cover transition-[opacity,transform] duration-[600ms] ease-in-out ${
                 hoverUrl ? "md:group-hover:opacity-0 md:group-hover:scale-[1.02]" : ""
@@ -733,42 +736,50 @@ export default function Collection({
           </div>
         )}
 
-        {/* Groups */}
-        {grouped.map((group) => (
-          <div key={group.id} className="mb-16 last:mb-0">
-            <div className="flex items-end gap-4 mb-8 pb-4 border-b border-rule">
-              <div>
-                <h3 className="lc-display text-2xl sm:text-3xl text-ink leading-tight">
-                  {group.name}
-                </h3>
-                {group.desc && <p className="text-sm text-ink-soft mt-1 font-light">{group.desc}</p>}
+        {/* Groups — first 4 cards get priority to improve LCP */}
+        {(() => {
+          let cardIndex = 0;
+          return grouped.map((group) => (
+            <div key={group.id} className="mb-16 last:mb-0">
+              <div className="flex items-end gap-4 mb-8 pb-4 border-b border-rule">
+                <div>
+                  <h3 className="lc-display text-2xl sm:text-3xl text-ink leading-tight">
+                    {group.name}
+                  </h3>
+                  {group.desc && <p className="text-sm text-ink-soft mt-1 font-light">{group.desc}</p>}
+                </div>
+                {(() => {
+                  const live = offers.find(
+                    o => o.scope_type === "category" && o.category === group.id,
+                  );
+                  if (!live) return null;
+                  return (
+                    <span className="ml-auto shrink-0 lc-pill lc-pill-gold whitespace-nowrap">
+                      {t(`Oferta −${Math.round(live.discount_percent)}%`, `Offer −${Math.round(live.discount_percent)}%`)}
+                    </span>
+                  );
+                })()}
               </div>
-              {(() => {
-                const live = offers.find(
-                  o => o.scope_type === "category" && o.category === group.id,
-                );
-                if (!live) return null;
-                return (
-                  <span className="ml-auto shrink-0 lc-pill lc-pill-gold whitespace-nowrap">
-                    {t(`Oferta −${Math.round(live.discount_percent)}%`, `Offer −${Math.round(live.discount_percent)}%`)}
-                  </span>
-                );
-              })()}
-            </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-10 sm:gap-x-6 sm:gap-y-12">
-              {group.items.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  offer={offerFor(product.id)}
-                  onSelect={() => setSelectProduct(product)}
-                  onWaitlist={() => setWaitlistProduct(product)}
-                />
-              ))}
+              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-10 sm:gap-x-6 sm:gap-y-12">
+                {group.items.map((product) => {
+                  const eager = cardIndex < 4;
+                  cardIndex++;
+                  return (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      offer={offerFor(product.id)}
+                      onSelect={() => setSelectProduct(product)}
+                      onWaitlist={() => setWaitlistProduct(product)}
+                      priority={eager}
+                    />
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          ));
+        })()}
       </div>
 
       {selectProduct && (

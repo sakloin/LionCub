@@ -35,7 +35,9 @@
 - [x] **3.4** Alt text confirmado en todas las imágenes de contenido; `alt=""` correcto en imágenes decorativas; next/image cubre optimización. _(2026-10-11)_
 
 ## Fase 4 — Congelamiento
-- [ ] Solo correcciones. Velocidad: LCP < 2.5 s en móvil. Prueba de compra real repetida. Revisión del auditor.
+- [~] **4.1 Velocidad** (2026-10-11): `priority` en primeros 4 cards de Collection (ahora posición 2 → LCP candidato); AVIF habilitado en next.config; Hero images ya tenían `priority`. _(rama `claude/fase4-velocidad`)_
+- [ ] **4.2 Prueba de compra real** (punta a punta, repetida): 🧑 Heber — Supabase activo.
+- [ ] **4.3 Congelamiento**: solo correcciones desde 2026-10-25. Revisión final del auditor.
 
 ## Notas
 - El **inglés ya está implementado** (`t()` en todo el código) — decidir si va al lanzamiento o se oculta el selector (🧑 Heber).
