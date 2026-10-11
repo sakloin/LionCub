@@ -3,7 +3,7 @@
   "actualizadoEl": "2026-10-11",
   "lanzamiento": "2026-10-31",
   "diasAlLanzamiento": 20,
-  "progresoGeneral": 62,
+  "progresoGeneral": 70,
   "fases": [
     {
       "id": 0,
@@ -22,14 +22,14 @@
     {
       "id": 2,
       "nombre": "Críticos de compra",
-      "estado": "en_curso",
-      "porcentaje": 80,
+      "estado": "completo",
+      "porcentaje": 100,
       "subtareas": [
         { "id": "2.1", "nombre": "Resiliencia de la colección", "estado": "completo", "rol": "🤖" },
         { "id": "2.2", "nombre": "SSR del catálogo", "estado": "completo", "rol": "🤖" },
         { "id": "2.3", "nombre": "Precio por línea en checkout", "estado": "completo", "rol": "🤖" },
         { "id": "2.4", "nombre": "Validación de checkout (contraentrega+email)", "estado": "completo", "rol": "🤖", "pr": 99 },
-        { "id": "2.5", "nombre": "Prueba de compra real punta a punta", "estado": "pendiente", "rol": "🧑", "nota": "Todo en main — listo para probar" }
+        { "id": "2.5", "nombre": "Prueba de compra real punta a punta", "estado": "completo", "rol": "🧑", "nota": "Probado y OK — 2026-10-11" }
       ]
     },
     {
@@ -48,10 +48,10 @@
       "id": 4,
       "nombre": "Congelamiento + velocidad + prueba real",
       "estado": "en_curso",
-      "porcentaje": 55,
+      "porcentaje": 70,
       "subtareas": [
         { "id": "4.1", "nombre": "Velocidad: priority cards + AVIF", "estado": "completo", "rol": "🤖", "pr": 101 },
-        { "id": "4.2", "nombre": "Prueba de compra real", "estado": "pendiente", "rol": "🧑" },
+        { "id": "4.2", "nombre": "Prueba de compra real", "estado": "completo", "rol": "🧑", "nota": "OK — 2026-10-11" },
         { "id": "4.3", "nombre": "Congelamiento desde 2026-10-25", "estado": "pendiente", "rol": "🤖+🧑" }
       ]
     },
@@ -108,9 +108,7 @@
     ]
   },
   "bloqueadores": [],
-  "tareasPendientesHeber": [
-    "Probar compra real punta a punta (2.5 + 4.2) — todo en main"
-  ],
+  "tareasPendientesHeber": [],
   "freezeDate": "2026-10-25",
   "nota": "Desde el 25 de octubre solo correcciones de bugs. Sin features nuevas."
 }

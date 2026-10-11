@@ -7,7 +7,7 @@
 
 ## 🧑 Tareas de Heber
 - [x] ~~Reactivar Supabase `cqwvhfcrmboscivtwkog`~~ — **✅ Activo (2026-10-11)**
-- [ ] Probar compra real punta a punta (2.5) cuando PR #99 esté en main
+- [x] ~~Probar compra real punta a punta (2.5)~~ — **✅ OK (2026-10-11)**
 - [x] ~~Aprobar formalmente `IDENTIDAD.md` (Fase 0)~~ — **✅ Aprobada (2026-10-11)**
 - [x] ~~Decidir selector de idioma EN/ES para lanzamiento~~ — **✅ Va al lanzamiento (2026-10-11)**
 
@@ -26,7 +26,7 @@
 - [x] **2.2 SSR del catálogo**: `app/lib/catalog.ts` trae productos+ofertas en el servidor; `page.tsx` (async, `revalidate=60`) se los pasa a `Collection` como props. `Collection` ya no pide datos al navegador → el catálogo SIEMPRE está en el HTML (resuelve de raíz el "Cargando" y mejora SEO). _(hecho; criterio: productos en el HTML sin depender del cliente)._
 - [x] **2.3 Precio por línea en checkout** (`app/checkout/page.tsx:695`): usar `unit_price_at_pick` (precio pagado), no `product.price` base; así cuadra con el subtotal. _(hecho en rama)._
 - [x] **2.4 Validación de checkout** (`app/checkout/page.tsx`): contra entrega deshabilitada con Shalom + auto-switch a Yape; email obligatorio para Culqi con aviso inline. _(mergeado en main — PR #99, 2026-10-11)._
-- [ ] **2.5 Prueba de compra real** de punta a punta (requiere Supabase activo): ver producto → variante → bolsa → checkout → Yape/transferencia/tarjeta → pedido registrado.
+- [x] **2.5 Prueba de compra real** de punta a punta — **✅ OK (2026-10-11)**
 
 ## Fase 3 — Jerarquía y contenido
 - [x] **3.1** Un beneficio por lugar: Hero paragraph sin claims de TrustBar ("hipoalergénica, transpirable"); stat "Lima hecho a mano" removido (vive en OurStory + Footer). _(2026-10-11)_
@@ -36,7 +36,7 @@
 
 ## Fase 4 — Congelamiento
 - [x] **4.1 Velocidad** (2026-10-11): `priority` en primeros 4 cards de Collection (ahora posición 2 → LCP candidato); AVIF habilitado en next.config; Hero images ya tenían `priority`. _(mergeado PR #101)_
-- [ ] **4.2 Prueba de compra real** (punta a punta, repetida): 🧑 Heber — Supabase activo.
+- [x] **4.2 Prueba de compra real** (punta a punta, repetida) — **✅ OK (2026-10-11)**
 - [ ] **4.3 Congelamiento**: solo correcciones desde 2026-10-25. Revisión final del auditor.
 
 ## Notas
