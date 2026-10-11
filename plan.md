@@ -5,8 +5,11 @@
 > Método: método orquestado + `design-patterns/IDENTIDAD.md` (NO tocar) + `design-patterns/PRINCIPIOS.md`.
 > Meta de lanzamiento: **fin de octubre 2026**. Prioridad: lo que **impide comprar**.
 
-## 🧑 Bloqueador de Heber (acción manual)
-- [ ] **Reactivar el proyecto de Supabase de LionCub** (`cqwvhfcrmboscivtwkog`, estado `INACTIVE`). Mientras siga pausado, la tienda NO muestra productos (la web no puede leer la base). Dashboard → Restore / upgrade de la organización. **Sin esto no hay prueba de compra real.**
+## 🧑 Tareas de Heber
+- [x] ~~Reactivar Supabase `cqwvhfcrmboscivtwkog`~~ — **✅ Activo (2026-10-11)**
+- [ ] Probar compra real punta a punta (2.5) cuando PR #99 esté en main
+- [ ] Aprobar formalmente `IDENTIDAD.md` (Fase 0)
+- [ ] Decidir selector de idioma EN/ES para lanzamiento
 
 ## Estado de fases
 | Fase | Qué | Estado |
