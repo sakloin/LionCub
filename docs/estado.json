@@ -35,13 +35,13 @@
     {
       "id": 3,
       "nombre": "Jerarquía y contenido",
-      "estado": "pendiente",
-      "porcentaje": 0,
+      "estado": "en_curso",
+      "porcentaje": 85,
       "subtareas": [
-        { "id": "3.1", "nombre": "Quitar beneficios repetidos", "estado": "pendiente", "rol": "🤖" },
-        { "id": "3.2", "nombre": "Subir la colección (menos scroll)", "estado": "pendiente", "rol": "🤖" },
-        { "id": "3.3", "nombre": "Prueba junto a cada afirmación", "estado": "pendiente", "rol": "🤖" },
-        { "id": "3.4", "nombre": "Imágenes: alt + tamaño < 200 KB", "estado": "pendiente", "rol": "🤖" }
+        { "id": "3.1", "nombre": "Quitar beneficios repetidos", "estado": "completo", "rol": "🤖" },
+        { "id": "3.2", "nombre": "Subir la colección (menos scroll)", "estado": "completo", "rol": "🤖" },
+        { "id": "3.3", "nombre": "Prueba junto a cada afirmación", "estado": "en_curso", "rol": "🤖+🧑", "nota": "Sello origen ✅; avatar iniciales ✅; foto real testimonio 🧑 Heber pendiente" },
+        { "id": "3.4", "nombre": "Imágenes: alt + next/image", "estado": "completo", "rol": "🤖" }
       ]
     },
     {

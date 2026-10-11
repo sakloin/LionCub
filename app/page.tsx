@@ -21,8 +21,8 @@ export default async function Home() {
       <Navbar />
       <main>
         <Hero />
-        <TrustBar />
         <Collection initialProducts={products} initialOffers={offers} />
+        <TrustBar />
         <WhyPima />
         <OurStory />
         <Testimonials />

@@ -9,7 +9,6 @@ export default function Hero() {
   const stats: [string, string][] = [
     ["200+", t("familias acompañadas", "families served")],
     ["100%", t("algodón Pima", "Pima cotton")],
-    ["Lima", t("hecho a mano", "handmade")],
   ];
 
   return (
@@ -42,8 +41,8 @@ export default function Hero() {
             </h1>
             <p className="mt-8 max-w-md text-base leading-relaxed font-light text-ink-soft">
               {t(
-                "Hilamos cada prenda en algodón Pima peruano — la fibra más suave del mundo. Hipoalergénica, transpirable y delicada, pensada para los primeros días, las primeras noches y los abrazos que vienen.",
-                "We spin every garment in Peruvian Pima cotton — the softest fiber in the world. Hypoallergenic, breathable and delicate, made for the first days, the first nights, and the embraces to come."
+                "Cada prenda, tejida en algodón Pima peruano. Pensada para los primeros días, las primeras noches y los abrazos que vienen.",
+                "Every garment, woven in Peruvian Pima cotton. Made for the first days, the first nights, and the embraces to come."
               )}
             </p>
             <div className="mt-10 flex flex-wrap items-center gap-4">

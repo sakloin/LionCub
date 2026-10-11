@@ -13,6 +13,8 @@ const testimonials = [
     nameEn: "María · mom of Sofía",
     metaEs: "Lima · 4 meses",
     metaEn: "Lima · 4 months",
+    initials: "M",
+    color: "#D4A520",
   },
   {
     textEs:
@@ -23,6 +25,8 @@ const testimonials = [
     nameEn: "Rosa · grandmother of Lucas",
     metaEs: "Lima → Miami",
     metaEn: "Lima → Miami",
+    initials: "R",
+    color: "#A8896C",
   },
   {
     textEs:
@@ -33,6 +37,8 @@ const testimonials = [
     nameEn: "Carlos & Paola · parents of Mateo",
     metaEs: "Miraflores, Lima",
     metaEn: "Miraflores, Lima",
+    initials: "CP",
+    color: "#8B7355",
   },
 ];
 
@@ -54,7 +60,14 @@ export default function Testimonials() {
         <p className="lc-display mt-4 text-2xl sm:text-3xl lg:text-[2.25rem] leading-snug tracking-[-0.01em] text-ink">
           {lang === "es" ? tm.textEs : tm.textEn}
         </p>
-        <div className="mt-8 flex flex-col items-center gap-1.5">
+        <div className="mt-8 flex flex-col items-center gap-2">
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center lc-mono text-[11px] tracking-[0.1em] text-bg font-medium"
+            style={{ background: tm.color }}
+            aria-hidden
+          >
+            {tm.initials}
+          </div>
           <div className="lc-mono uppercase text-[11px] tracking-[0.24em] text-ink-soft">
             {lang === "es" ? tm.nameEs : tm.nameEn}
           </div>
