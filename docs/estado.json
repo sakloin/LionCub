@@ -23,12 +23,12 @@
       "id": 2,
       "nombre": "Críticos de compra",
       "estado": "en_curso",
-      "porcentaje": 75,
+      "porcentaje": 80,
       "subtareas": [
         { "id": "2.1", "nombre": "Resiliencia de la colección", "estado": "completo", "rol": "🤖" },
         { "id": "2.2", "nombre": "SSR del catálogo", "estado": "completo", "rol": "🤖" },
         { "id": "2.3", "nombre": "Precio por línea en checkout", "estado": "completo", "rol": "🤖" },
-        { "id": "2.4", "nombre": "Validación de checkout (contraentrega+email)", "estado": "en_revision", "rol": "🤖", "rama": "claude/install-ui-ux-package-kXymP" },
+        { "id": "2.4", "nombre": "Validación de checkout (contraentrega+email)", "estado": "completo", "rol": "🤖", "pr": 99 },
         { "id": "2.5", "nombre": "Prueba de compra real punta a punta", "estado": "pendiente", "rol": "🧑", "nota": "Supabase reactivado 2026-10-11 — listo para prueba cuando PR #99 esté en main" }
       ]
     },
