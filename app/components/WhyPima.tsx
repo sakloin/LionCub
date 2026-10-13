@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useLang } from "../context/LanguageContext";
+import { useReveal } from "../lib/useReveal";
 
 export default function WhyPima() {
   const { lang, t } = useLang();
@@ -60,20 +61,25 @@ export default function WhyPima() {
     },
   ];
 
+  const ref = useReveal<HTMLElement>();
+
   return (
-    <section id="por-que-pima" className="bg-bg">
+    <section ref={ref} id="por-que-pima" className="bg-bg">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-20 lg:py-28">
         {/* Material chapter */}
         <div className="grid lg:grid-cols-[0.9fr_1.1fr] gap-12 lg:gap-20 items-center">
           <div>
-            <p className="lc-eyebrow">{t("Capítulo 01 · El material", "Chapter 01 · The material")}</p>
-            <h2 className="lc-display mt-6 text-4xl sm:text-5xl lg:text-6xl leading-[0.95] tracking-[-0.02em] text-ink">
+            <p data-reveal style={{ "--lc-reveal-i": 0 } as React.CSSProperties}
+              className="lc-eyebrow">{t("Capítulo 01 · El material", "Chapter 01 · The material")}</p>
+            <h2 data-reveal style={{ "--lc-reveal-i": 1 } as React.CSSProperties}
+              className="lc-display mt-6 text-4xl sm:text-5xl lg:text-6xl leading-[0.95] tracking-[-0.02em] text-ink">
               {t("La fibra más", "The softest")}
               <br />
               {t("suave del ", "fiber in the ")}
               <em className="lc-display-i text-gold-deep">{t("mundo.", "world.")}</em>
             </h2>
-            <p className="mt-7 max-w-md text-[15px] leading-relaxed font-light text-ink-soft">
+            <p data-reveal style={{ "--lc-reveal-i": 2 } as React.CSSProperties}
+              className="mt-7 max-w-md text-[15px] leading-relaxed font-light text-ink-soft">
               {t(
                 "El algodón Pima crece bajo el sol constante de la costa norte del Perú. Su hebra extra-larga le da un brillo natural, una resistencia silenciosa y un tacto que se mantiene lavado tras lavado.",
                 "Pima cotton grows under the constant sun of Peru's northern coast. Its extra-long staple gives it a natural sheen, a quiet strength, and a feel that endures wash after wash."
@@ -120,7 +126,8 @@ export default function WhyPima() {
         {/* Benefits — editorial numbered list */}
         <div className="mt-20 lg:mt-24 grid sm:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-10">
           {benefits.map((b, i) => (
-            <div key={i} className="pt-5 border-t border-rule">
+            <div key={i} data-reveal style={{ "--lc-reveal-i": i } as React.CSSProperties}
+              className="pt-5 border-t border-rule">
               <span className="lc-mono text-[10px] tracking-[0.24em] text-gold-deep">
                 0{i + 1}
               </span>

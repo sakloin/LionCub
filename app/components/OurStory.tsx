@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useLang } from "../context/LanguageContext";
+import { useReveal } from "../lib/useReveal";
 
 export default function OurStory() {
   const { t } = useLang();
@@ -13,8 +14,10 @@ export default function OurStory() {
     [t("Con amor", "With love"), t("en cada pieza", "in every piece")],
   ];
 
+  const ref = useReveal<HTMLElement>();
+
   return (
-    <section id="nuestra-historia" className="bg-bg-warm">
+    <section ref={ref} id="nuestra-historia" className="bg-bg-warm">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-20 lg:py-28">
         <div className="grid md:grid-cols-2 gap-12 lg:gap-20 items-center">
           {/* Visual */}
@@ -41,13 +44,16 @@ export default function OurStory() {
 
           {/* Text */}
           <div>
-            <p className="lc-eyebrow">{t("Capítulo 02 · Quiénes somos", "Chapter 02 · Who we are")}</p>
-            <h2 className="lc-display mt-6 text-4xl sm:text-5xl lg:text-6xl leading-[0.95] tracking-[-0.02em] text-ink">
+            <p data-reveal style={{ "--lc-reveal-i": 0 } as React.CSSProperties}
+              className="lc-eyebrow">{t("Capítulo 02 · Quiénes somos", "Chapter 02 · Who we are")}</p>
+            <h2 data-reveal style={{ "--lc-reveal-i": 1 } as React.CSSProperties}
+              className="lc-display mt-6 text-4xl sm:text-5xl lg:text-6xl leading-[0.95] tracking-[-0.02em] text-ink">
               {t("Una historia ", "A story ")}
               <em className="lc-display-i text-gold-deep">{t("familiar.", "of family.")}</em>
             </h2>
 
-            <div className="mt-7 flex flex-col gap-5 max-w-md">
+            <div data-reveal style={{ "--lc-reveal-i": 2 } as React.CSSProperties}
+              className="mt-7 flex flex-col gap-5 max-w-md">
               <p className="text-[15px] leading-relaxed font-light text-ink-soft">
                 {t(
                   "Lion Cub nació del amor por los bebés y el orgullo por lo peruano. Somos una familia que descubrió en el algodón Pima la mejor forma de cuidar a los más pequeños.",
