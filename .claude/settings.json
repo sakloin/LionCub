@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "deny": [
+      "Edit(supabase/migrations/**)",
+      "Write(supabase/migrations/**)",
+      "Edit(app/api/payments/**)",
+      "Write(app/api/payments/**)",
+      "Edit(.env*)",
+      "Write(.env*)",
+      "Edit(design-patterns/IDENTIDAD.md)",
+      "Edit(design-patterns/PRINCIPIOS.md)"
+    ]
+  }
+}

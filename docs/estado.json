@@ -1,0 +1,114 @@
+{
+  "proyecto": "Lion Cub — Rediseño y lanzamiento de tienda",
+  "actualizadoEl": "2026-10-13",
+  "lanzamiento": "2026-10-31",
+  "diasAlLanzamiento": 18,
+  "progresoGeneral": 78,
+  "fases": [
+    {
+      "id": 0,
+      "nombre": "Kit de orquestación + IDENTIDAD + PRINCIPIOS",
+      "estado": "completo",
+      "porcentaje": 100,
+      "notas": "IDENTIDAD y PRINCIPIOS hechos. .claude/* creado. IDENTIDAD aprobada por Heber 2026-10-11."
+    },
+    {
+      "id": 1,
+      "nombre": "Auditoría móvil + desktop",
+      "estado": "completo",
+      "porcentaje": 100,
+      "notas": "5 hallazgos; 3 críticos resueltos en Fase 2."
+    },
+    {
+      "id": 2,
+      "nombre": "Críticos de compra",
+      "estado": "completo",
+      "porcentaje": 100,
+      "subtareas": [
+        { "id": "2.1", "nombre": "Resiliencia de la colección", "estado": "completo", "rol": "🤖" },
+        { "id": "2.2", "nombre": "SSR del catálogo", "estado": "completo", "rol": "🤖" },
+        { "id": "2.3", "nombre": "Precio por línea en checkout", "estado": "completo", "rol": "🤖" },
+        { "id": "2.4", "nombre": "Validación de checkout (contraentrega+email)", "estado": "completo", "rol": "🤖", "pr": 99 },
+        { "id": "2.5", "nombre": "Prueba de compra real punta a punta", "estado": "completo", "rol": "🧑", "nota": "Probado y OK — 2026-10-11" }
+      ]
+    },
+    {
+      "id": 3,
+      "nombre": "Jerarquía y contenido",
+      "estado": "en_curso",
+      "porcentaje": 90,
+      "subtareas": [
+        { "id": "3.1", "nombre": "Quitar beneficios repetidos", "estado": "completo", "rol": "🤖" },
+        { "id": "3.2", "nombre": "Subir la colección (menos scroll)", "estado": "completo", "rol": "🤖" },
+        { "id": "3.3", "nombre": "Prueba junto a cada afirmación", "estado": "en_curso", "rol": "🤖+🧑", "nota": "Sello origen ✅; avatar iniciales ✅; Testimonials oculto (sin fotos reales)" },
+        { "id": "3.4", "nombre": "Imágenes: alt + next/image", "estado": "completo", "rol": "🤖" }
+      ]
+    },
+    {
+      "id": 4,
+      "nombre": "Congelamiento + velocidad + prueba real",
+      "estado": "en_curso",
+      "porcentaje": 70,
+      "subtareas": [
+        { "id": "4.1", "nombre": "Velocidad: priority cards + AVIF", "estado": "completo", "rol": "🤖", "pr": 101 },
+        { "id": "4.2", "nombre": "Prueba de compra real", "estado": "completo", "rol": "🧑", "nota": "OK — 2026-10-11" },
+        { "id": "4.3", "nombre": "Congelamiento desde 2026-10-25", "estado": "pendiente", "rol": "🤖+🧑" }
+      ]
+    },
+    {
+      "id": 5,
+      "nombre": "Lanzamiento",
+      "estado": "pendiente",
+      "porcentaje": 0
+    }
+  ],
+  "hallazgosPorGravedad": {
+    "critico": [
+      {
+        "id": "H-01",
+        "descripcion": "Supabase proyecto INACTIVO — tienda no muestra productos",
+        "estado": "resuelto",
+        "responsable": "🧑 Heber",
+        "accion": "Reactivado 2026-10-11"
+      }
+    ],
+    "alto": [
+      {
+        "id": "H-02",
+        "descripcion": "whatsapp/route.ts ignora result.images — fotos nunca se envían por WA directo",
+        "estado": "resuelto",
+        "responsable": "🤖",
+        "accion": "Verificado: el bucle for(img of images.slice(0,3)) ya existe y envía las fotos — 2026-10-13"
+      }
+    ],
+    "medio": [
+      {
+        "id": "H-03",
+        "descripcion": "Meta Graph API v20.0 en whatsapp.ts — debería ser v21.0",
+        "estado": "resuelto",
+        "responsable": "🤖",
+        "accion": "Verificado: GRAPH_URL ya usa v21.0 — 2026-10-13"
+      }
+    ],
+    "bajo": [
+      {
+        "id": "H-04",
+        "descripcion": "Selector de idioma EN/ES — va al lanzamiento",
+        "estado": "resuelto",
+        "responsable": "🧑 Heber",
+        "decision": "Incluir en lanzamiento — 2026-10-11"
+      },
+      {
+        "id": "H-05",
+        "descripcion": "Testimonials oculto — fotos reales pendientes para post-lanzamiento",
+        "estado": "abierto",
+        "responsable": "🧑 Heber",
+        "nota": "Componente existe, se puede reactivar en page.tsx cuando Heber provea fotos"
+      }
+    ]
+  },
+  "bloqueadores": [],
+  "tareasPendientesHeber": [],
+  "freezeDate": "2026-10-25",
+  "nota": "Desde el 25 de octubre solo correcciones de bugs. Sin features nuevas."
+}

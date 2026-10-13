@@ -1,9 +1,11 @@
 "use client";
 
 import { useLang } from "../context/LanguageContext";
+import { useReveal } from "../lib/useReveal";
 
 export default function TrustBar() {
   const { t } = useLang();
+  const ref = useReveal<HTMLElement>();
 
   const promises: [string, string][] = [
     [
@@ -30,11 +32,12 @@ export default function TrustBar() {
   ];
 
   return (
-    <section className="bg-bg-warm">
+    <section ref={ref} className="bg-bg-warm">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16 lg:py-20">
         <div className="grid sm:grid-cols-3 gap-10 sm:gap-12">
           {promises.map(([title, desc], i) => (
-            <div key={title} className="pt-5 border-t border-rule">
+            <div key={title} data-reveal style={{ "--lc-reveal-i": i } as React.CSSProperties}
+              className="pt-5 border-t border-rule">
               <span className="lc-mono text-[10px] tracking-[0.24em] text-gold-deep">
                 0{i + 1}
               </span>

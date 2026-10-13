@@ -4,6 +4,9 @@ import { processMessage, isBotPaused, claimDedup, hashText } from "../../../lib/
 import { transcribeAudio } from "../../../lib/transcribe";
 import type { MessageParam } from "@anthropic-ai/sdk/resources";
 
+// Cambiar a true para reactivar el bot automático
+const BOT_ENABLED = false;
+
 export const maxDuration = 55;
 
 async function loadHistory(phone: string): Promise<MessageParam[]> {
@@ -40,6 +43,8 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ response: "Error al procesar el mensaje." });
   }
+
+  if (!BOT_ENABLED) return NextResponse.json({ response: "" });
 
   const phone: string = body.phone ?? body.subscriber_phone ?? "";
   let text: string = body.message ?? body.last_input_text ?? "";
