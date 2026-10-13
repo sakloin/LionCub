@@ -54,6 +54,52 @@
   --lc-shadow-1: 0 1px 2px rgba(26,20,16,.04), 0 2px 6px rgba(26,20,16,.04);
   --lc-shadow-2: 0 6px 24px rgba(26,20,16,.08);
   --lc-shadow-3: 0 20px 60px rgba(26,20,16,.12);
+
+  /* motion */
+  --lc-ease-soft:  cubic-bezier(0.22, 1, 0.36, 1);
+  --lc-ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+  --lc-dur-xs:  180ms;
+  --lc-dur-sm:  320ms;
+  --lc-dur-md:  600ms;
+  --lc-dur-lg:  900ms;
+  --lc-stagger: 90ms;
+  --lc-reveal-y: 24px;
+  --lc-radius:    14px;
+  --lc-radius-lg: 22px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --lc-dur-xs: 1ms; --lc-dur-sm: 1ms; --lc-dur-md: 1ms; --lc-dur-lg: 1ms;
+    --lc-stagger: 0ms; --lc-reveal-y: 0px;
+  }
+}
+
+/* ── Reveal on scroll ────────────────────────────────────────────────────── */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(var(--lc-reveal-y));
+  transition:
+    opacity  var(--lc-dur-md) var(--lc-ease-soft),
+    transform var(--lc-dur-md) var(--lc-ease-soft);
+  transition-delay: calc(var(--lc-stagger) * var(--lc-reveal-i, 0));
+  will-change: opacity, transform;
+}
+[data-reveal].is-in {
+  opacity: 1;
+  transform: none;
+  will-change: auto;
+}
+
+/* ── Hairline draw (scaleX 0→1 desde la izquierda) ─────────────────────── */
+[data-draw] {
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--lc-dur-md) var(--lc-ease-soft);
+  transition-delay: calc(var(--lc-stagger) * var(--lc-reveal-i, 0));
+}
+[data-draw].is-in {
+  transform: scaleX(1);
 }
 
 * {
