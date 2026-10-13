@@ -1,9 +1,9 @@
 {
   "proyecto": "Lion Cub — Rediseño y lanzamiento de tienda",
-  "actualizadoEl": "2026-10-11",
+  "actualizadoEl": "2026-10-13",
   "lanzamiento": "2026-10-31",
-  "diasAlLanzamiento": 20,
-  "progresoGeneral": 70,
+  "diasAlLanzamiento": 18,
+  "progresoGeneral": 78,
   "fases": [
     {
       "id": 0,
@@ -76,18 +76,18 @@
       {
         "id": "H-02",
         "descripcion": "whatsapp/route.ts ignora result.images — fotos nunca se envían por WA directo",
-        "estado": "abierto",
+        "estado": "resuelto",
         "responsable": "🤖",
-        "modulo": "app/api/chat/whatsapp/route.ts"
+        "accion": "Verificado: el bucle for(img of images.slice(0,3)) ya existe y envía las fotos — 2026-10-13"
       }
     ],
     "medio": [
       {
         "id": "H-03",
         "descripcion": "Meta Graph API v20.0 en whatsapp.ts — debería ser v21.0",
-        "estado": "abierto",
+        "estado": "resuelto",
         "responsable": "🤖",
-        "modulo": "app/lib/whatsapp.ts"
+        "accion": "Verificado: GRAPH_URL ya usa v21.0 — 2026-10-13"
       }
     ],
     "bajo": [

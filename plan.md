@@ -39,6 +39,13 @@
 - [x] **4.2 Prueba de compra real** (punta a punta, repetida) — **✅ OK (2026-10-11)**
 - [ ] **4.3 Congelamiento**: solo correcciones desde 2026-10-25. Revisión final del auditor.
 
+## UX — Paquete sonner + mejoras (2026-10-13)
+- [x] `sonner` instalado — toast notifications para confirmación de carrito
+- [x] SelectionSheet rediseñado: galería de imágenes de producto (aspect 4:3, prev/next, dots), guía de tallas inline
+- [x] `SizeGuide.tsx` — tabla con 8 tallas RN→2T, peso, altura, nota sobre holgura Pima
+- [x] `AnnouncementBar` dismissible — botón X + `localStorage` para persistir la decisión
+- [x] DT-01 y DT-02 verificados como ya resueltos en código; actualizados en `deuda-tecnica.md`
+
 ## Notas
 - El **inglés va al lanzamiento** — selector EN/ES visible. Aprobado por Heber 2026-10-11.
 - La skill `auditoria-diseno` aún no existe como skill de Claude Code; crearla/instalarla en Fase 0 si se quiere reutilizable.
