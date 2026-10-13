@@ -493,7 +493,7 @@ function ProductCard({
   return (
     <button type="button" onClick={outOfStock ? onWaitlist : onSelect} className="group text-left flex flex-col">
       {/* Image plate */}
-      <div className="relative lc-plate aspect-[4/5] rounded-sm bg-pink-soft">
+      <div className="relative lc-plate aspect-[4/5] rounded-sm bg-pink-soft overflow-hidden transition-shadow duration-500 group-hover:[box-shadow:var(--lc-shadow-3)]">
         {!imgError && primaryUrl ? (
           <>
             <Image
@@ -503,7 +503,7 @@ function ProductCard({
               priority={priority}
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               className={`object-cover transition-[opacity,transform] duration-[600ms] ease-in-out ${
-                hoverUrl ? "md:group-hover:opacity-0 md:group-hover:scale-[1.02]" : ""
+                hoverUrl ? "md:group-hover:opacity-0 md:group-hover:scale-[1.03]" : "md:group-hover:scale-[1.03]"
               } ${outOfStock ? "opacity-70" : ""}`}
               onError={() => setImgError(true)}
             />
@@ -570,11 +570,12 @@ function ProductCard({
         </div>
 
         <span
-          className={`mt-3 lc-mono uppercase text-[10px] tracking-[0.2em] ${
+          className={`mt-3 lc-mono uppercase text-[10px] tracking-[0.2em] inline-flex items-center gap-1 transition-transform duration-300 group-hover:translate-x-1.5 ${
             outOfStock ? "text-ink-mute" : "text-gold-deep"
           }`}
         >
-          {outOfStock ? `${t("Avísame", "Notify me")} →` : `${t("Elegir talla", "Choose size")} →`}
+          {outOfStock ? t("Avísame", "Notify me") : t("Elegir talla", "Choose size")}
+          <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
         </span>
       </div>
     </button>
