@@ -2,10 +2,12 @@
 
 import Image from "next/image";
 import { useState, useEffect, useMemo } from "react";
-import { X } from "lucide-react";
+import { X, Ruler, ChevronLeft, ChevronRight } from "lucide-react";
+import { toast } from "sonner";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
 import { LionMark } from "./LogoMark";
+import SizeGuide from "./SizeGuide";
 import { supabase } from "../lib/supabase";
 import type { Product, Offer } from "../lib/types";
 import { bestOfferFor, effectivePrice } from "../lib/offers";
@@ -69,11 +71,27 @@ function SelectionSheet({ product, offer, onClose }: { product: Product; offer: 
   const { t } = useLang();
   const { add } = useCart();
 
+  // Build gallery from product_images; fall back to the legacy single URL.
+  const galleryUrls = useMemo(() => {
+    const imgs = product.images ?? [];
+    const primary = imgs.find(i => i.is_primary);
+    const rest = imgs.filter(i => !i.is_primary);
+    const ordered = primary ? [primary, ...rest] : imgs;
+    const urls = ordered.map(i => i.url).filter(Boolean) as string[];
+    if (urls.length === 0 && product.image_url) urls.push(product.image_url);
+    if (urls.length === 0) urls.push(`/products/${product.id}.jpeg`);
+    return urls;
+  }, [product]);
+
+  const [galleryIdx, setGalleryIdx] = useState(0);
+  const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
+
+  const prevImg = () => setGalleryIdx(i => (i - 1 + galleryUrls.length) % galleryUrls.length);
+  const nextImg = () => setGalleryIdx(i => (i + 1) % galleryUrls.length);
+
   // Only consider active variants with positive stock for selection.
   const buyable = (product.variants ?? []).filter(v => v.active && v.stock > 0);
 
-  // Unique sizes (sorted by sort_order) and unique colours, both restricted to
-  // variants the customer can actually purchase.
   const sizes = useMemo(() => {
     const map = new Map<string, { id: string; name: string; sort_order: number }>();
     for (const v of buyable) {
@@ -104,14 +122,11 @@ function SelectionSheet({ product, offer, onClose }: { product: Product; offer: 
   }, [sizeId, buyable]);
 
   const [colorId, setColorId] = useState<string>("");
-  // Reset the colour pick whenever the size changes, defaulting to the first
-  // available one so the user can confirm fast.
   useEffect(() => {
     setColorId(colorsForSize[0]?.id ?? "");
   }, [colorsForSize]);
 
   const selectedVariant = buyable.find(v => v.size_id === sizeId && v.color_id === colorId) ?? null;
-  const [added, setAdded] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -126,34 +141,81 @@ function SelectionSheet({ product, offer, onClose }: { product: Product; offer: 
       basePrice,
       unitPrice: displayPrice,
     });
-    setAdded(true);
-    setTimeout(onClose, 1100);
+    toast.success(t("Agregado a tu bolsa", "Added to your bag"), { duration: 2500 });
+    onClose();
   }
 
   const basePrice = selectedVariant?.price_override ?? product.price;
   const displayPrice = effectivePrice(basePrice, offer);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/40"
-      onClick={onClose}
-    >
+    <>
       <div
-        className="bg-bg w-full sm:max-w-md rounded-t-2xl sm:rounded-sm shadow-2xl animate-fade-in-up"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/40"
+        onClick={onClose}
       >
-        {/* Header */}
-        <div className="flex items-start gap-4 p-5 sm:p-6 border-b border-rule">
-          <div className="lc-plate w-16 h-20 shrink-0 rounded-sm">
+        <div
+          className="bg-bg w-full sm:max-w-md max-h-[92svh] overflow-y-auto rounded-t-2xl sm:rounded-sm shadow-2xl animate-fade-in-up"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Image gallery */}
+          <div className="relative w-full aspect-[4/3] bg-pink-soft overflow-hidden">
             <Image
-              src={product.image_url || `/products/${product.id}.jpeg`}
+              key={galleryUrls[galleryIdx]}
+              src={galleryUrls[galleryIdx]}
               alt={product.name}
-              width={64}
-              height={80}
-              className="object-cover w-full h-full"
+              fill
+              sizes="(max-width: 640px) 100vw, 448px"
+              className="object-cover"
             />
+            {galleryUrls.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); prevImg(); }}
+                  aria-label={t("Imagen anterior", "Previous image")}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-bg/70 hover:bg-bg text-ink rounded-full p-1.5 transition-colors"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); nextImg(); }}
+                  aria-label={t("Siguiente imagen", "Next image")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-bg/70 hover:bg-bg text-ink rounded-full p-1.5 transition-colors"
+                >
+                  <ChevronRight size={16} />
+                </button>
+                <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+                  {galleryUrls.map((_, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setGalleryIdx(i); }}
+                      aria-label={`${t("Imagen", "Image")} ${i + 1}`}
+                      className={`w-1.5 h-1.5 rounded-full transition-colors ${i === galleryIdx ? "bg-bg" : "bg-bg/50"}`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+            {offer && (
+              <span className="absolute top-3 left-3 lc-mono uppercase text-[9px] tracking-[0.2em] text-gold-deep bg-bg/90 px-2.5 py-1">
+                −{Math.round(offer.discount_percent)}%
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={t("Cerrar", "Close")}
+              className="absolute top-3 right-3 bg-bg/70 hover:bg-bg text-ink rounded-full p-1.5 transition-colors"
+            >
+              <X size={16} />
+            </button>
           </div>
-          <div className="flex-1 min-w-0">
+
+          {/* Product info */}
+          <div className="px-5 sm:px-6 pt-4 pb-1">
             {product.gender && product.gender !== "Unisex" && (
               <p className="lc-mono uppercase text-[9px] tracking-[0.24em] text-ink-mute">
                 {product.gender}
@@ -162,35 +224,27 @@ function SelectionSheet({ product, offer, onClose }: { product: Product; offer: 
             <h3 className="lc-display text-xl text-ink leading-tight mt-0.5">{product.name}</h3>
             <p className="lc-display-i text-sm text-ink-soft">{product.tagline}</p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t("Cerrar", "Close")}
-            className="text-ink-mute hover:text-ink transition-colors -mt-1"
-          >
-            <X size={18} />
-          </button>
-        </div>
 
-        {added ? (
-          <div className="px-6 py-10 flex flex-col items-center text-center gap-4">
-            <LionMark size={48} color="var(--color-gold-deep)" />
-            <p className="lc-display text-2xl text-ink">{t("En tu bolsa", "In your bag")}</p>
-            <p className="text-sm text-ink-soft">
-              {t("Lo agregamos con cuidado.", "Added with care.")}
-            </p>
-          </div>
-        ) : (
           <div className="p-5 sm:p-6 flex flex-col gap-6">
             {/* Size — pick first */}
             {sizes.length > 0 && (
               <div>
-                <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-3">
-                  {t("Talla", "Size")} ·{" "}
-                  <span className="text-ink">
-                    {sizes.find(s => s.id === sizeId)?.name ?? t("Elige", "Pick")}
-                  </span>
-                </p>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft">
+                    {t("Talla", "Size")} ·{" "}
+                    <span className="text-ink">
+                      {sizes.find(s => s.id === sizeId)?.name ?? t("Elige", "Pick")}
+                    </span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setSizeGuideOpen(true)}
+                    className="flex items-center gap-1 lc-mono uppercase text-[9px] tracking-[0.18em] text-gold-deep hover:text-ink transition-colors"
+                  >
+                    <Ruler size={11} />
+                    {t("Guía de tallas", "Size guide")}
+                  </button>
+                </div>
                 <div className="flex flex-wrap gap-2.5">
                   {sizes.map((s) => (
                     <button
@@ -210,7 +264,7 @@ function SelectionSheet({ product, offer, onClose }: { product: Product; offer: 
               </div>
             )}
 
-            {/* Color — only those available for the chosen size */}
+            {/* Color */}
             {colorsForSize.length > 0 && (
               <div>
                 <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-3">
@@ -242,7 +296,7 @@ function SelectionSheet({ product, offer, onClose }: { product: Product; offer: 
               </div>
             )}
 
-            {/* Stock readout for the picked variant */}
+            {/* Stock */}
             {selectedVariant && (
               <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute">
                 {selectedVariant.stock === 1
@@ -251,6 +305,7 @@ function SelectionSheet({ product, offer, onClose }: { product: Product; offer: 
               </p>
             )}
 
+            {/* Price */}
             <div className="flex items-baseline justify-between pt-1">
               <span className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute">
                 {product.material}
@@ -277,9 +332,11 @@ function SelectionSheet({ product, offer, onClose }: { product: Product; offer: 
               {selectedVariant ? t("Agregar a la bolsa", "Add to bag") : t("Elige una variante", "Pick a variant")}
             </button>
           </div>
-        )}
+        </div>
       </div>
-    </div>
+
+      {sizeGuideOpen && <SizeGuide onClose={() => setSizeGuideOpen(false)} />}
+    </>
   );
 }
 
@@ -470,11 +527,13 @@ function ProductCard({
   offer,
   onSelect,
   onWaitlist,
+  priority = false,
 }: {
   product: Product;
   offer: Offer | null;
   onSelect: () => void;
   onWaitlist: () => void;
+  priority?: boolean;
 }) {
   const { t } = useLang();
   const [imgError, setImgError] = useState(false);
@@ -491,16 +550,17 @@ function ProductCard({
   return (
     <button type="button" onClick={outOfStock ? onWaitlist : onSelect} className="group text-left flex flex-col">
       {/* Image plate */}
-      <div className="relative lc-plate aspect-[4/5] rounded-sm bg-pink-soft">
+      <div className="relative lc-plate aspect-[4/5] rounded-sm bg-pink-soft overflow-hidden transition-shadow duration-500 group-hover:[box-shadow:var(--lc-shadow-3)]">
         {!imgError && primaryUrl ? (
           <>
             <Image
               src={primaryUrl}
               alt={product.name}
               fill
+              priority={priority}
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               className={`object-cover transition-[opacity,transform] duration-[600ms] ease-in-out ${
-                hoverUrl ? "md:group-hover:opacity-0 md:group-hover:scale-[1.02]" : ""
+                hoverUrl ? "md:group-hover:opacity-0 md:group-hover:scale-[1.03]" : "md:group-hover:scale-[1.03]"
               } ${outOfStock ? "opacity-70" : ""}`}
               onError={() => setImgError(true)}
             />
@@ -567,11 +627,12 @@ function ProductCard({
         </div>
 
         <span
-          className={`mt-3 lc-mono uppercase text-[10px] tracking-[0.2em] ${
+          className={`mt-3 lc-mono uppercase text-[10px] tracking-[0.2em] inline-flex items-center gap-1 transition-transform duration-300 group-hover:translate-x-1.5 ${
             outOfStock ? "text-ink-mute" : "text-gold-deep"
           }`}
         >
-          {outOfStock ? `${t("Avísame", "Notify me")} →` : `${t("Elegir talla", "Choose size")} →`}
+          {outOfStock ? t("Avísame", "Notify me") : t("Elegir talla", "Choose size")}
+          <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
         </span>
       </div>
     </button>
@@ -733,42 +794,50 @@ export default function Collection({
           </div>
         )}
 
-        {/* Groups */}
-        {grouped.map((group) => (
-          <div key={group.id} className="mb-16 last:mb-0">
-            <div className="flex items-end gap-4 mb-8 pb-4 border-b border-rule">
-              <div>
-                <h3 className="lc-display text-2xl sm:text-3xl text-ink leading-tight">
-                  {group.name}
-                </h3>
-                {group.desc && <p className="text-sm text-ink-soft mt-1 font-light">{group.desc}</p>}
+        {/* Groups — first 4 cards get priority to improve LCP */}
+        {(() => {
+          let cardIndex = 0;
+          return grouped.map((group) => (
+            <div key={group.id} className="mb-16 last:mb-0">
+              <div className="flex items-end gap-4 mb-8 pb-4 border-b border-rule">
+                <div>
+                  <h3 className="lc-display text-2xl sm:text-3xl text-ink leading-tight">
+                    {group.name}
+                  </h3>
+                  {group.desc && <p className="text-sm text-ink-soft mt-1 font-light">{group.desc}</p>}
+                </div>
+                {(() => {
+                  const live = offers.find(
+                    o => o.scope_type === "category" && o.category === group.id,
+                  );
+                  if (!live) return null;
+                  return (
+                    <span className="ml-auto shrink-0 lc-pill lc-pill-gold whitespace-nowrap">
+                      {t(`Oferta −${Math.round(live.discount_percent)}%`, `Offer −${Math.round(live.discount_percent)}%`)}
+                    </span>
+                  );
+                })()}
               </div>
-              {(() => {
-                const live = offers.find(
-                  o => o.scope_type === "category" && o.category === group.id,
-                );
-                if (!live) return null;
-                return (
-                  <span className="ml-auto shrink-0 lc-pill lc-pill-gold whitespace-nowrap">
-                    {t(`Oferta −${Math.round(live.discount_percent)}%`, `Offer −${Math.round(live.discount_percent)}%`)}
-                  </span>
-                );
-              })()}
-            </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-10 sm:gap-x-6 sm:gap-y-12">
-              {group.items.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  offer={offerFor(product.id)}
-                  onSelect={() => setSelectProduct(product)}
-                  onWaitlist={() => setWaitlistProduct(product)}
-                />
-              ))}
+              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-10 sm:gap-x-6 sm:gap-y-12">
+                {group.items.map((product) => {
+                  const eager = cardIndex < 4;
+                  cardIndex++;
+                  return (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      offer={offerFor(product.id)}
+                      onSelect={() => setSelectProduct(product)}
+                      onWaitlist={() => setWaitlistProduct(product)}
+                      priority={eager}
+                    />
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          ));
+        })()}
       </div>
 
       {selectProduct && (

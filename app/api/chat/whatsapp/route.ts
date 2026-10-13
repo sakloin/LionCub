@@ -5,6 +5,9 @@ import { sendWhatsApp, sendWhatsAppImage, fetchWhatsAppMedia } from "../../../li
 import { transcribeAudio } from "../../../lib/transcribe";
 import type { MessageParam } from "@anthropic-ai/sdk/resources";
 
+// Cambiar a true para reactivar el bot automático
+const BOT_ENABLED = false;
+
 // Allow up to 55s for Claude + Supabase processing
 export const maxDuration = 55;
 
@@ -29,6 +32,8 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ ok: true });
   }
+
+  if (!BOT_ENABLED) return NextResponse.json({ ok: true });
 
   const value = body?.entry?.[0]?.changes?.[0]?.value;
 
