@@ -1,6 +1,6 @@
 import AnnouncementBar from "./components/AnnouncementBar";
 import Navbar from "./components/Navbar";
-import HeroPlanos from "./components/HeroPlanos";
+import HeroVitrina from "./components/HeroVitrina";
 import TrustBar from "./components/TrustBar";
 import Collection from "./components/Collection";
 import WhyPima from "./components/WhyPima";
@@ -19,7 +19,7 @@ export default async function Home() {
       <AnnouncementBar />
       <Navbar />
       <main>
-        <HeroPlanos />
+        <HeroVitrina />
         <Collection initialProducts={products} initialOffers={offers} />
         <TrustBar />
         <WhyPima />
