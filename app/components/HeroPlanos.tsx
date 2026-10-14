@@ -171,6 +171,7 @@ function HeroOverlay({ show }: { show: boolean }) {
         style={{
           fontFamily:  "var(--font-display, 'Cormorant Garamond', Georgia, serif)",
           fontWeight:  300,
+          fontStyle:   "italic",
           color:       "#fff",
           fontSize:    "clamp(2rem, 5vw, 3.5rem)",
           lineHeight:  1.1,
