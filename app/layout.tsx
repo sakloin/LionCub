@@ -27,7 +27,7 @@ const jetbrainsMono = JetBrains_Mono({
 const _sUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
 const SITE_URL  = (_sUrl && !_sUrl.includes("vercel.app")) ? _sUrl : "https://lioncub.pe";
 const SITE_NAME = "Lion Cub Baby Clothing";
-const OG_IMAGE  = `${SITE_URL}/logo-solid.png`;
+const OG_IMAGE  = `${SITE_URL}/hero/poster-desktop.webp`;
 
 const DESCRIPTION_ES =
   "Ropa de bebé en 100% algodón pima peruano. Suave, hipoalergénica y respirable — conjuntos, bodies, baberos y mantas hechos para el primer abrazo y los días que siguen. Envíos a todo Perú.";
