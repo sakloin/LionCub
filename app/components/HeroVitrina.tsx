@@ -5,7 +5,9 @@
  * ────────────────────────────────────────────────────
  * Desktop ≥768px: columna de texto izquierda + vitrina derecha (cross-fade + Ken Burns).
  * Móvil <768px: imagen arriba (gradiente top→bottom) + texto abajo.
- * prefers-reduced-motion: poster estático K04 + texto sin animación.
+ * El layout es CSS (.lc-hero* en globals.css) y las imágenes usan <picture>:
+ * el HTML del servidor ya sale bien en móvil (sin salto al hidratar ni doble descarga).
+ * prefers-reduced-motion: no rota ni anima (Ken Burns apagado por CSS).
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -31,20 +33,20 @@ const PAUSE_MS = 4500;
 const FADE_MS  = 800;
 
 export default function HeroVitrina() {
-  const [reduced, setReduced]   = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const [current, setCurrent]   = useState(0);
-  const [prev, setPrev]         = useState<number | null>(null);
+  const [reduced, setReduced] = useState(false);
+  const [current, setCurrent] = useState(0);
+  const [prev, setPrev]       = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Solo se escucha la preferencia de movimiento reducido (para no rotar).
+  // El layout móvil/escritorio lo resuelve CSS (.lc-hero*) y las imágenes
+  // <picture>: el HTML del servidor ya sale correcto en ambos tamaños.
   useEffect(() => {
-    const mqR = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const mqM = window.matchMedia("(max-width: 767px)");
-    const upd = () => { setReduced(mqR.matches); setIsMobile(mqM.matches); };
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const upd = () => setReduced(mq.matches);
     upd();
-    mqR.addEventListener("change", upd);
-    mqM.addEventListener("change", upd);
-    return () => { mqR.removeEventListener("change", upd); mqM.removeEventListener("change", upd); };
+    mq.addEventListener("change", upd);
+    return () => mq.removeEventListener("change", upd);
   }, []);
 
   useEffect(() => {
@@ -60,200 +62,97 @@ export default function HeroVitrina() {
 
   const slide = SLIDES[current];
   const prevSlide = prev !== null ? SLIDES[prev] : null;
-  const src = (s: Slide) => isMobile ? s.imgMobile : s.img;
 
-  if (reduced) {
-    return (
-      <section
-        aria-label="Del algodón al abrazo"
-        style={{
-          position: "relative",
-          minHeight: "100svh",
-          display: "flex",
-          alignItems: "center",
-          background: "var(--background)",
-        }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={isMobile ? "/hero/poster-mobile.webp" : "/hero/poster-desktop.webp"}
-          alt="Mamá abrazando a su bebé envuelto en una manta de algodón Pima"
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-        />
-        <div style={{ position: "relative", zIndex: 2, padding: "0 24px 8svh", maxWidth: "480px", marginLeft: "8%" }}>
-          <TextContent />
-        </div>
-      </section>
-    );
+  function goTo(i: number) {
+    if (i === current) return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setPrev(current);
+    setCurrent(i);
+    setTimeout(() => setPrev(null), FADE_MS + 50);
   }
 
   return (
-    <section
-      aria-label="Del algodón al abrazo"
-      style={{
-        position: "relative",
-        minHeight: "100svh",
-        display: "flex",
-        flexDirection: isMobile ? "column" : "row",
-        alignItems: isMobile ? "stretch" : "center",
-        background: "var(--background)",
-        overflow: "hidden",
-      }}
-    >
+    <section aria-label="Del algodón al abrazo" className="lc-hero">
       {/* ── Vitrina ── */}
-      <div
-        style={{
-          order: isMobile ? 0 : 1,
-          position: "relative",
-          flex: isMobile ? "none" : 1,
-          height: isMobile ? "60svh" : "min(88vh, 720px)",
-          alignSelf: isMobile ? "auto" : "center",
-          borderRadius: isMobile ? 0 : "0 0 0 0",
-          overflow: "hidden",
-        }}
-      >
-        {/* Blurry layer — visible only on desktop, masked to left edge */}
-        {!isMobile && (
-          <div
-            aria-hidden
-            style={{
-              position: "absolute",
-              inset: 0,
-              overflow: "hidden",
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={src(slide)}
-              alt=""
-              style={{
-                position: "absolute",
-                inset: 0,
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                objectPosition: slide.focal,
-                filter: "blur(20px)",
-                transform: "scale(1.08)",
-                WebkitMaskImage: "linear-gradient(to right, black 0%, black 20%, transparent 62%)",
-                maskImage: "linear-gradient(to right, black 0%, black 20%, transparent 62%)",
-              }}
-            />
-          </div>
-        )}
+      <div className="lc-hero-media">
+        {/* Capa desenfocada (solo escritorio, por CSS). Usa las mismas URLs que
+            la imagen principal: no agrega descargas. */}
+        <div aria-hidden className="lc-hero-blur">
+          <SlidePicture slide={slide} alt="" imgClassName="lc-hero-blur-img" />
+        </div>
 
-        {/* Previous slide (fading out) */}
         {prevSlide && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <SlidePicture
             key={`prev-${prev}`}
-            src={src(prevSlide)}
+            slide={prevSlide}
             alt=""
-            aria-hidden
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              objectPosition: prevSlide.focal,
-              opacity: 0,
-              transition: `opacity ${FADE_MS}ms linear`,
-              WebkitMaskImage: isMobile
-                ? "linear-gradient(to bottom, black 60%, transparent 100%)"
-                : "linear-gradient(to left, black 55%, transparent 100%)",
-              maskImage: isMobile
-                ? "linear-gradient(to bottom, black 60%, transparent 100%)"
-                : "linear-gradient(to left, black 55%, transparent 100%)",
-            }}
+            hidden
+            imgClassName="lc-hero-img"
+            style={{ opacity: 0, transition: `opacity ${FADE_MS}ms linear` }}
           />
         )}
 
-        {/* Current slide (sharp, Ken Burns) */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <SlidePicture
           key={`cur-${current}`}
-          src={src(slide)}
+          slide={slide}
           alt={slide.alt}
-          aria-hidden={!slide.alt}
-          {...(current === 0 ? { fetchPriority: "high" as "high" } : {})}
+          hidden={!slide.alt}
+          highPriority={current === 0}
+          imgClassName="lc-hero-img lc-hero-img-kb"
           style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            objectPosition: slide.focal,
             opacity: 1,
             transition: `opacity ${FADE_MS}ms linear`,
-            animationName: "lc-ken-burns",
             animationDuration: `${PAUSE_MS + FADE_MS}ms`,
-            animationTimingFunction: "linear",
-            animationFillMode: "forwards",
-            WebkitMaskImage: isMobile
-              ? "linear-gradient(to bottom, black 60%, transparent 100%)"
-              : "linear-gradient(to left, black 55%, transparent 100%)",
-            maskImage: isMobile
-              ? "linear-gradient(to bottom, black 60%, transparent 100%)"
-              : "linear-gradient(to left, black 55%, transparent 100%)",
           }}
         />
 
-        {/* Dots */}
-        <div
-          aria-hidden
-          style={{
-            position: "absolute",
-            bottom: isMobile ? "12px" : "16px",
-            right: isMobile ? "50%" : "20px",
-            transform: isMobile ? "translateX(50%)" : "none",
-            display: "flex",
-            gap: "6px",
-            zIndex: 3,
-          }}
-        >
+        {/* Puntos: botones de 44 px con el punto visible dentro */}
+        <div className="lc-hero-dots" role="group" aria-label="Imágenes del inicio">
           {SLIDES.map((_, i) => (
             <button
               key={i}
-              aria-label={`Slide ${i + 1}`}
-              onClick={() => {
-                if (timerRef.current) clearTimeout(timerRef.current);
-                setPrev(current);
-                setCurrent(i);
-                setTimeout(() => setPrev(null), FADE_MS + 50);
-              }}
-              style={{
-                width: i === current ? "18px" : "6px",
-                height: "6px",
-                borderRadius: "999px",
-                border: "none",
-                background: i === current ? "#fff" : "rgba(255,255,255,0.5)",
-                padding: 0,
-                cursor: "pointer",
-                transition: "all 300ms ease",
-                pointerEvents: "auto",
-              }}
-            />
+              type="button"
+              aria-label={`Ver imagen ${i + 1} de ${SLIDES.length}`}
+              aria-current={i === current ? "true" : undefined}
+              onClick={() => goTo(i)}
+              className="lc-hero-dot"
+            >
+              <span aria-hidden className={i === current ? "lc-hero-dot-mark is-on" : "lc-hero-dot-mark"} />
+            </button>
           ))}
         </div>
       </div>
 
-      {/* ── Text column ── */}
-      <div
-        style={{
-          order: isMobile ? 1 : 0,
-          flex: isMobile ? "none" : "0 0 42%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: isMobile ? "40px 24px 48px" : "0 6% 0 8%",
-          zIndex: 2,
-          background: isMobile ? "var(--background)" : "transparent",
-        }}
-      >
+      {/* ── Texto ── */}
+      <div className="lc-hero-text">
         <TextContent />
       </div>
     </section>
+  );
+}
+
+function SlidePicture({
+  slide, alt, hidden = false, highPriority = false, imgClassName, style,
+}: {
+  slide: Slide;
+  alt: string;
+  hidden?: boolean;
+  highPriority?: boolean;
+  imgClassName: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <picture>
+      <source media="(max-width: 767px)" srcSet={slide.imgMobile} />
+      <img
+        src={slide.img}
+        alt={alt}
+        aria-hidden={hidden || undefined}
+        className={imgClassName}
+        {...(highPriority ? { fetchPriority: "high" as const } : { loading: "lazy" as const })}
+        style={{ objectPosition: slide.focal, ...style }}
+      />
+    </picture>
   );
 }
 

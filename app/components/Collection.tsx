@@ -527,13 +527,11 @@ function ProductCard({
   offer,
   onSelect,
   onWaitlist,
-  priority = false,
 }: {
   product: Product;
   offer: Offer | null;
   onSelect: () => void;
   onWaitlist: () => void;
-  priority?: boolean;
 }) {
   const { t } = useLang();
   const [imgError, setImgError] = useState(false);
@@ -557,7 +555,6 @@ function ProductCard({
               src={primaryUrl}
               alt={product.name}
               fill
-              priority={priority}
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               className={`object-cover transition-[opacity,transform] duration-[600ms] ease-in-out ${
                 hoverUrl ? "md:group-hover:opacity-0 md:group-hover:scale-[1.03]" : "md:group-hover:scale-[1.03]"
@@ -794,9 +791,8 @@ export default function Collection({
           </div>
         )}
 
-        {/* Groups — first 4 cards get priority to improve LCP */}
+        {/* Groups — sin priority en tarjetas: el LCP es el hero (no competir con su descarga) */}
         {(() => {
-          let cardIndex = 0;
           return grouped.map((group) => (
             <div key={group.id} className="mb-16 last:mb-0">
               <div className="flex items-end gap-4 mb-8 pb-4 border-b border-rule">
@@ -820,20 +816,15 @@ export default function Collection({
               </div>
 
               <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-10 sm:gap-x-6 sm:gap-y-12">
-                {group.items.map((product) => {
-                  const eager = cardIndex < 4;
-                  cardIndex++;
-                  return (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      offer={offerFor(product.id)}
-                      onSelect={() => setSelectProduct(product)}
-                      onWaitlist={() => setWaitlistProduct(product)}
-                      priority={eager}
-                    />
-                  );
-                })}
+                {group.items.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    offer={offerFor(product.id)}
+                    onSelect={() => setSelectProduct(product)}
+                    onWaitlist={() => setWaitlistProduct(product)}
+                  />
+                ))}
               </div>
             </div>
           ));
