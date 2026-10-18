@@ -97,6 +97,8 @@ export default function CheckoutPage() {
     payment_method: "yape" as PaymentMethod,
     notes: "",
   });
+  // Aceptación expresa de Términos y Privacidad (Ley 29733) antes de confirmar.
+  const [acceptTerms, setAcceptTerms] = useState(false);
 
   // Proof upload state
   const [proofFile,       setProofFile]       = useState<File | null>(null);
@@ -134,7 +136,7 @@ export default function CheckoutPage() {
   const requiresProof   = (PROOF_REQUIRED as string[]).includes(form.payment_method);
   const requiresEmail   = form.payment_method === "culqi";
   const emailOk         = !requiresEmail || isValidEmail(form.customer_email);
-  const confirmDisabled = submitting || proofUploading || (requiresProof && !proofUrl) || !emailOk;
+  const confirmDisabled = submitting || proofUploading || (requiresProof && !proofUrl) || !emailOk || !acceptTerms;
 
   function field(key: keyof typeof form, value: string) {
     setForm(f => ({ ...f, [key]: value }));
@@ -439,6 +441,7 @@ export default function CheckoutPage() {
   ];
 
   const inputCls = "lc-input";
+  const labelCls = "block lc-mono uppercase text-[12px] tracking-[0.18em] text-ink-soft mb-1";
   const cardCls = (active: boolean, disabled = false) =>
     `w-full text-left p-4 border transition-colors ${
       active ? "border-ink bg-bg-warm" : "border-rule hover:border-ink"
@@ -496,13 +499,14 @@ export default function CheckoutPage() {
                 <>
                   <h2 className="lc-display text-2xl text-ink">{t("Tus datos", "Your details")}</h2>
                   {[
-                    { key: "customer_name",  label: t("Nombre completo *", "Full name *"),    type: "text"  },
-                    { key: "customer_phone", label: t("WhatsApp / Celular *", "WhatsApp / Phone *"), type: "tel" },
-                    { key: "customer_email", label: t("Correo electrónico", "Email"),   type: "email" },
+                    { key: "customer_name",  label: t("Nombre completo *", "Full name *"),    type: "text",  autoComplete: "name",  inputMode: "text"  as const },
+                    { key: "customer_phone", label: t("WhatsApp / Celular *", "WhatsApp / Phone *"), type: "tel", autoComplete: "tel", inputMode: "tel" as const },
+                    { key: "customer_email", label: t("Correo electrónico", "Email"),   type: "email", autoComplete: "email", inputMode: "email" as const },
                   ].map(f => (
                     <div key={f.key}>
-                      <label className="block lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-1">{f.label}</label>
-                      <input type={f.type} value={form[f.key as keyof typeof form] as string}
+                      <label htmlFor={`co-${f.key}`} className={labelCls}>{f.label}</label>
+                      <input id={`co-${f.key}`} name={f.key} type={f.type} autoComplete={f.autoComplete} inputMode={f.inputMode}
+                        value={form[f.key as keyof typeof form] as string}
                         onChange={e => field(f.key as keyof typeof form, e.target.value)}
                         className={inputCls} />
                     </div>
@@ -529,6 +533,7 @@ export default function CheckoutPage() {
                             resetProof();
                           }
                         }}
+                        aria-pressed={form.shipping_method === opt.value}
                         className={cardCls(form.shipping_method === opt.value)}>
                         <p className="lc-display text-lg text-ink">{opt.label}</p>
                         <p className="text-ink-soft text-sm mt-0.5">{opt.desc}</p>
@@ -539,21 +544,22 @@ export default function CheckoutPage() {
                   {form.shipping_method === "domicilio" && (
                     <div className="flex flex-col gap-5">
                       {[
-                        { key: "address",  label: t("Dirección *", "Address *") },
-                        { key: "district", label: t("Distrito *", "District *")  },
+                        { key: "address",  label: t("Dirección *", "Address *"), autoComplete: "street-address" },
+                        { key: "district", label: t("Distrito *", "District *"), autoComplete: "address-level3" },
                       ].map(f => (
                         <div key={f.key}>
-                          <label className="block lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-1">{f.label}</label>
-                          <input value={form[f.key as keyof typeof form] as string}
+                          <label htmlFor={`co-${f.key}`} className={labelCls}>{f.label}</label>
+                          <input id={`co-${f.key}`} name={f.key} autoComplete={f.autoComplete}
+                            value={form[f.key as keyof typeof form] as string}
                             onChange={e => field(f.key as keyof typeof form, e.target.value)}
                             className={inputCls} />
                         </div>
                       ))}
                       <div>
-                        <label className="block lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-1">
+                        <label htmlFor="co-delivery_date" className={labelCls}>
                           {t("Fecha de entrega *", "Delivery date *")}
                         </label>
-                        <input type="date" value={form.delivery_date}
+                        <input id="co-delivery_date" type="date" value={form.delivery_date}
                           min={getMinDate()} max={getMaxDate()}
                           onChange={e => handleDateChange(e.target.value)}
                           className={inputCls} />
@@ -562,12 +568,13 @@ export default function CheckoutPage() {
                       </div>
                       {form.delivery_date && !dateError && (
                         <div>
-                          <label className="block lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-2">
+                          <p id="co-slot-label" className={labelCls}>
                             {t("Franja horaria *", "Time slot *")}
-                          </label>
-                          <div className="grid gap-2">
+                          </p>
+                          <div className="grid gap-2" role="group" aria-labelledby="co-slot-label">
                             {availableSlots.map(slot => (
                               <button key={slot} type="button" onClick={() => field("delivery_time_slot", slot)}
+                                aria-pressed={form.delivery_time_slot === slot}
                                 className={`px-4 py-3 border text-left lc-mono text-[12px] tracking-[0.08em] transition-colors ${
                                   form.delivery_time_slot === slot ? "border-ink bg-bg-warm text-ink" : "border-rule text-ink-soft hover:border-ink"
                                 }`}>
@@ -583,8 +590,8 @@ export default function CheckoutPage() {
 
                   {form.shipping_method === "shalom" && (
                     <div>
-                      <label className="block lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-1">{t("Agencia Shalom *", "Shalom agency *")}</label>
-                      <select value={form.shalom_agency} onChange={e => field("shalom_agency", e.target.value)}
+                      <label htmlFor="co-shalom_agency" className={labelCls}>{t("Agencia Shalom *", "Shalom agency *")}</label>
+                      <select id="co-shalom_agency" value={form.shalom_agency} onChange={e => field("shalom_agency", e.target.value)}
                         className={inputCls}>
                         <option value="">{t("Seleccionar agencia...", "Select agency...")}</option>
                         {SHALOM_AGENCIES.map(a => <option key={a} value={a}>{a}</option>)}
@@ -612,6 +619,7 @@ export default function CheckoutPage() {
                       <button key={opt.value}
                         onClick={() => { if (!opt.disabled) { field("payment_method", opt.value); resetProof(); } }}
                         disabled={opt.disabled}
+                        aria-pressed={form.payment_method === opt.value}
                         className={cardCls(form.payment_method === opt.value, opt.disabled)}>
                         <p className="lc-display text-lg text-ink">{opt.label}</p>
                         <p className="text-ink-soft text-sm mt-0.5">{opt.desc}</p>
@@ -632,8 +640,8 @@ export default function CheckoutPage() {
                       </label>
 
                       {!proofUrl ? (
-                        <label className={`flex flex-col items-center justify-center gap-2 border border-dashed px-4 py-6 cursor-pointer transition-colors ${proofUploading ? "border-ink bg-bg-warm" : "border-rule hover:border-ink hover:bg-bg-warm"}`}>
-                          <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={handleProofFile} className="hidden" disabled={proofUploading} />
+                        <label className={`flex flex-col items-center justify-center gap-2 border border-dashed px-4 py-6 cursor-pointer transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-ink ${proofUploading ? "border-ink bg-bg-warm" : "border-rule hover:border-ink hover:bg-bg-warm"}`}>
+                          <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={handleProofFile} className="sr-only" disabled={proofUploading} />
                           {proofUploading ? (
                             <>
                               <RefreshCw size={20} className="text-ink animate-spin" />
@@ -694,10 +702,29 @@ export default function CheckoutPage() {
 
                   {/* Notes */}
                   <div>
-                    <label className="block lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-1">{t("Notas adicionales", "Additional notes")}</label>
-                    <textarea rows={2} value={form.notes} onChange={e => field("notes", e.target.value)}
+                    <label htmlFor="co-notes" className={labelCls}>{t("Notas adicionales", "Additional notes")}</label>
+                    <textarea id="co-notes" rows={2} value={form.notes} onChange={e => field("notes", e.target.value)}
                       placeholder={t("Instrucciones de entrega, talla especial, etc.", "Delivery instructions, special size, etc.")}
-                      className="w-full bg-transparent border border-rule px-4 py-3 text-sm text-ink focus:outline-none focus:border-ink transition-colors" />
+                      className="w-full bg-transparent border border-rule px-4 py-3 text-base text-ink focus:border-ink transition-colors" />
+                  </div>
+
+                  {/* Aceptación de Términos y Privacidad */}
+                  <div className="flex flex-col gap-2">
+                    <label htmlFor="co-accept" className="flex items-start gap-3 cursor-pointer text-sm text-ink-soft leading-relaxed min-h-11">
+                      <input id="co-accept" type="checkbox" checked={acceptTerms}
+                        onChange={e => setAcceptTerms(e.target.checked)}
+                        className="mt-0.5 w-5 h-5 shrink-0 accent-[var(--color-ink)]" />
+                      <span>
+                        {t("He leído y acepto los ", "I have read and accept the ")}
+                        <Link href="/terminos" target="_blank" className="underline text-ink">{t("Términos y condiciones", "Terms & conditions")}</Link>
+                        {t(" y la ", " and the ")}
+                        <Link href="/privacidad" target="_blank" className="underline text-ink">{t("Política de privacidad", "Privacy policy")}</Link>.
+                      </span>
+                    </label>
+                    <p className="text-[12px] text-ink-soft">
+                      {t("¿Algún problema con tu compra? ", "Any problem with your order? ")}
+                      <Link href="/libro-reclamaciones" target="_blank" className="underline">{t("Libro de Reclamaciones", "Complaints Book")}</Link>
+                    </p>
                   </div>
 
                   <div className="flex gap-3">
@@ -706,7 +733,7 @@ export default function CheckoutPage() {
                     </button>
                     <button onClick={submitOrder} disabled={confirmDisabled}
                       className="lc-btn lc-btn-primary flex-1 disabled:opacity-60">
-                      {submitting ? t("Enviando…", "Sending…") : requiresProof && !proofUrl ? t("Sube el comprobante primero", "Upload proof first") : t("Confirmar pedido", "Place order")}
+                      {submitting ? t("Enviando…", "Sending…") : requiresProof && !proofUrl ? t("Sube el comprobante primero", "Upload proof first") : !acceptTerms ? t("Acepta los términos para continuar", "Accept the terms to continue") : t("Confirmar pedido", "Place order")}
                     </button>
                   </div>
                 </>
