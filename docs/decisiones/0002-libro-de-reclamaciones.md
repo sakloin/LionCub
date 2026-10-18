@@ -1,5 +1,5 @@
 # ADR 0002 — Libro de Reclamaciones virtual (tabla `libro_reclamaciones`)
-- Fecha: 2026-10-18
+- Fecha: 2026-10-18 (revisada el mismo día tras el RECHAZO del auditor: B1 antispam, B2 solo servidor + inmutabilidad, B3 constancia)
 - Estado: **propuesta, pendiente de Heber** (toca `supabase/migrations/**`, archivo protegido)
 - Origen: auditoría previa al lanzamiento (2026-10-18), hallazgo #1 (bloqueante legal)
 
@@ -26,7 +26,7 @@ Crear `supabase/migrations/20261018_libro_reclamaciones.sql` con este contenido:
 -- Libro de Reclamaciones virtual (Ley 29571; D.S. 011-2011-PCM mod. D.S. 101-2022-PCM)
 create table if not exists public.libro_reclamaciones (
   id                          uuid primary key default gen_random_uuid(),
-  numero                      bigint generated always as identity unique,   -- correlativo
+  numero                      bigint generated always as identity unique,   -- correlativo (puede tener saltos)
   anio                        smallint not null
                                 default extract(year from (now() at time zone 'America/Lima'))::smallint,
   created_at                  timestamptz not null default now(),
@@ -52,6 +52,9 @@ create table if not exists public.libro_reclamaciones (
   pedido_consumidor           text not null check (char_length(pedido_consumidor) between 5 and 2000),
   acepta_politica             boolean not null check (acepta_politica),
 
+  -- Antispam: HMAC-SHA256 de la IP con sal de servidor. Nunca la IP en claro.
+  ip_hash                     text not null check (ip_hash ~ '^[0-9a-f]{64}$'),
+
   -- Gestión interna (solo admin)
   estado                      text not null default 'pendiente'
                                 check (estado in ('pendiente','en_revision','respondido')),
@@ -62,26 +65,20 @@ create table if not exists public.libro_reclamaciones (
 );
 
 comment on table public.libro_reclamaciones is
-  'Hojas del Libro de Reclamaciones virtual. Append-only: no se borran (conservar >= 2 años).';
+  'Hojas del Libro de Reclamaciones virtual. Append-only: no se borran (conservar >= 2 años). Solo el servidor inserta.';
 
 create index if not exists libro_reclamaciones_estado_idx on public.libro_reclamaciones (estado, created_at);
+-- Límite de envíos por hora (consultas de la API).
+create index if not exists libro_reclamaciones_ip_idx     on public.libro_reclamaciones (ip_hash, created_at);
+create index if not exists libro_reclamaciones_email_idx  on public.libro_reclamaciones (consumidor_email, created_at);
 
 alter table public.libro_reclamaciones enable row level security;
+alter table public.libro_reclamaciones force row level security;
 
--- Permisos explícitos: nada por defecto.
+-- Permisos explícitos. El público NO inserta directo: solo la API de servidor
+-- (POST /api/reclamos, con la llave de servicio) crea hojas, después de validar,
+-- aplicar el antispam y calcular ip_hash. Sin grant ni política de INSERT para anon.
 revoke all on public.libro_reclamaciones from anon, authenticated;
-
--- El público solo puede INSERTAR las columnas del formulario (nunca numero, estado ni respuesta).
-grant insert (
-  tipo, consumidor_nombre, consumidor_tipo_documento, consumidor_numero_documento,
-  consumidor_domicilio, consumidor_telefono, consumidor_email, menor_de_edad, apoderado_nombre,
-  bien_tipo, bien_descripcion, monto_reclamado, numero_pedido, detalle, pedido_consumidor,
-  acepta_politica
-) on public.libro_reclamaciones to anon, authenticated;
-
-create policy lr_insert_publico on public.libro_reclamaciones
-  for insert to anon, authenticated
-  with check (estado = 'pendiente' and respuesta is null and respondido_at is null);
 
 -- Lectura y gestión: solo admin.
 grant select on public.libro_reclamaciones to authenticated;
@@ -93,18 +90,55 @@ create policy lr_select_admin on public.libro_reclamaciones
 create policy lr_update_admin on public.libro_reclamaciones
   for update to authenticated using (public.is_admin()) with check (public.is_admin());
 
--- Sin política de DELETE: nadie borra hojas (append-only).
+-- Inmutabilidad: nadie borra hojas y nadie cambia lo que escribió el consumidor
+-- (ni siquiera con la llave de servicio). Solo cambian estado/respuesta/respondido_at.
+create or replace function public.lr_proteger_hoja()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if tg_op = 'DELETE' then
+    raise exception 'Las hojas del Libro de Reclamaciones no se pueden borrar';
+  end if;
+  if (new.id, new.numero, new.anio, new.created_at, new.tipo,
+      new.consumidor_nombre, new.consumidor_tipo_documento, new.consumidor_numero_documento,
+      new.consumidor_domicilio, new.consumidor_telefono, new.consumidor_email,
+      new.menor_de_edad, new.apoderado_nombre, new.bien_tipo, new.bien_descripcion,
+      new.monto_reclamado, new.numero_pedido, new.detalle, new.pedido_consumidor,
+      new.acepta_politica, new.ip_hash)
+     is distinct from
+     (old.id, old.numero, old.anio, old.created_at, old.tipo,
+      old.consumidor_nombre, old.consumidor_tipo_documento, old.consumidor_numero_documento,
+      old.consumidor_domicilio, old.consumidor_telefono, old.consumidor_email,
+      old.menor_de_edad, old.apoderado_nombre, old.bien_tipo, old.bien_descripcion,
+      old.monto_reclamado, old.numero_pedido, old.detalle, old.pedido_consumidor,
+      old.acepta_politica, old.ip_hash) then
+    raise exception 'Solo se pueden cambiar estado, respuesta y respondido_at';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger lr_proteger_hoja
+  before update or delete on public.libro_reclamaciones
+  for each row execute function public.lr_proteger_hoja();
+
+revoke all on function public.lr_proteger_hoja() from public, anon, authenticated;
 ```
 
 Notas:
-- La API usa el cliente de servidor (`SUPABASE_SERVICE_ROLE_KEY`) para insertar y leer de vuelta el `numero`; las políticas de arriba blindan la tabla si alguien la llama con la llave pública.
-- El código visible es `numero` con 9 dígitos + `anio` (`000000001-2026`). El correlativo es global, no se reinicia cada año (más simple y sigue siendo único y correlativo).
-- Después de aplicar la migración: probar una hoja real en `/libro-reclamaciones` y confirmar que llegan las dos copias (consumidor y `ADMIN_EMAIL`).
+- **Solo el servidor inserta** (revisión del auditor, B2): `POST /api/reclamos` usa `SUPABASE_SERVICE_ROLE_KEY`. Con la llave pública no se puede leer, insertar, editar ni borrar.
+- **Antispam** (B1): la API exige un token de carga firmado en el servidor (`GET /api/reclamos`) y rechaza envíos en menos de 3 s; además cuenta en esta tabla los envíos de la última hora por `ip_hash` y por `consumidor_email` (máximo 3 de cada uno). `ip_hash` = HMAC-SHA256 de la IP con la sal `RECLAMOS_SAL` (o, si no existe, una derivada de la llave de servicio).
+- El código visible es `numero` con 9 dígitos + `anio` (`000000001-2026`). El correlativo es global y **puede tener saltos**: una identidad de Postgres no reutiliza valores si un insert falla o se revierte. Los saltos no significan hojas borradas (el trigger impide borrar).
+- Después de aplicar la migración: probar una hoja real en `/libro-reclamaciones`, confirmar que llegan las dos copias (consumidor y `ADMIN_EMAIL`), que un 4.º envío en la misma hora responde 429 y que `delete` falla.
+- Recomendado: crear `RECLAMOS_SAL` (cadena aleatoria larga) en Vercel, solo servidor.
 
 ## Consecuencias
 - Se cumple el requisito legal en la web. Falta lo físico: el aviso del Libro de Reclamaciones en el taller/punto de entrega, si hay atención presencial.
 - Para responder, por ahora Heber usa Supabase (cambia `estado`, escribe `respuesta`). Una vista en `/admin` para responder queda como deuda (DT-08).
-- Los datos de la hoja son datos personales: entran en la Política de privacidad (ya se agregó la finalidad).
+- Los datos de la hoja son datos personales: entran en la Política de privacidad (finalidad, conservación ≥ 2 años y encargados fuera del Perú ya agregados).
+- Aparte (no es de esta tabla): la aceptación de Términos del checkout se valida en `/api/orders`, pero guardarla requiere una columna `orders.acepta_terminos_at timestamptz` en otra migración (DT-17).
 
 ## Qué necesita Heber
 1. Aprobar esta ADR.

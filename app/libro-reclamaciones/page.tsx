@@ -20,7 +20,7 @@ export default function LibroReclamacionesPage() {
     <main className="max-w-3xl mx-auto px-4 sm:px-6 py-16 bg-bg text-ink">
       <Link
         href="/"
-        className="lc-mono uppercase text-[12px] tracking-[0.18em] text-ink-soft hover:text-ink transition-colors inline-flex items-center min-h-11 mb-6"
+        className="lc-mono uppercase text-[12px] tracking-[0.18em] text-ink-soft hover:text-ink transition-colors inline-flex items-center min-h-11 mb-6 print:hidden"
       >
         ← Volver a la tienda
       </Link>
@@ -36,7 +36,7 @@ export default function LibroReclamacionesPage() {
         Proveedor: {proveedor.join(" · ")}
       </p>
 
-      <div className="bg-bg-warm border border-rule p-5 mb-10 text-sm text-ink-soft leading-relaxed flex flex-col gap-2">
+      <div className="print:hidden bg-bg-warm border border-rule p-5 mb-10 text-sm text-ink-soft leading-relaxed flex flex-col gap-2">
         <p>
           <strong className="text-ink font-semibold">Reclamo:</strong> disconformidad relacionada con los
           productos o servicios.{" "}

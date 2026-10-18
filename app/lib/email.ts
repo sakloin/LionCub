@@ -300,18 +300,23 @@ function adminOrderHTML(order: EmailOrder, items: EmailOrderItem[], headline: st
 
 // ─── Public API ─────────────────────────────────────────────────────────
 
-async function send(to: string | string[], subject: string, html: string, tag: string): Promise<void> {
+/** Envía un correo. Devuelve true si Resend lo aceptó. No registra el
+ *  destinatario en los logs (es un dato personal). */
+async function send(to: string | string[], subject: string, html: string, tag: string): Promise<boolean> {
   if (!resend) {
-    console.warn(`[email] RESEND_API_KEY not set, skipping ${tag} email to`, to);
-    return;
+    console.warn(`[email] RESEND_API_KEY not set, skipping ${tag} email`);
+    return false;
   }
   try {
     const { error } = await resend.emails.send({ from: EMAIL_FROM, to, subject, html });
     if (error) {
       console.error(`[email] ${tag} failed:`, error.message ?? error);
+      return false;
     }
-  } catch (err: any) {
-    console.error(`[email] ${tag} threw:`, err?.message ?? err);
+    return true;
+  } catch (err: unknown) {
+    console.error(`[email] ${tag} threw:`, err instanceof Error ? err.message : err);
+    return false;
   }
 }
 
@@ -410,11 +415,13 @@ function reclamoHTML(r: EmailReclamo): string {
     </p>`);
 }
 
-/** Copia de la hoja al consumidor (obligatoria) y aviso al admin. Best-effort. */
-export async function sendReclamoRegistrado(r: EmailReclamo): Promise<void> {
+/** Copia de la hoja al consumidor (obligatoria) y aviso al admin.
+ *  Devuelve si la copia al consumidor fue aceptada por el proveedor de correo. */
+export async function sendReclamoRegistrado(r: EmailReclamo): Promise<{ copiaEnviada: boolean }> {
   const html = reclamoHTML(r);
-  await send(r.consumidor_email, `Tu hoja de reclamación N.° ${r.codigo} · Lion Cub`, html, "customer/reclamo");
+  const copiaEnviada = await send(r.consumidor_email, `Tu hoja de reclamación N.° ${r.codigo} · Lion Cub`, html, "customer/reclamo");
   if (ADMIN_EMAIL) {
     await send(ADMIN_EMAIL, `⚠️ ${r.tipo === "reclamo" ? "Reclamo" : "Queja"} N.° ${r.codigo} · responder en ${r.plazo_dias_habiles} días hábiles`, html, "admin/reclamo");
   }
+  return { copiaEnviada };
 }
