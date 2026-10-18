@@ -7,17 +7,18 @@ import { useCart } from "../../context/CartContext";
 import { useLang } from "../../context/LanguageContext";
 import { LionMark } from "../LogoMark";
 import { formatSoles } from "../../lib/money";
+import { metodosDePagoVisibles } from "../../lib/payment-info";
+import { CULQI_ENABLED } from "../../lib/feature-flags";
 
 interface Props {
   open: boolean;
   onClose: () => void;
 }
 
-const PAYMENT_METHODS = "YAPE · PLIN · TRANSFERENCIA · CONTRA ENTREGA · IZIPAY";
-
 export default function CartDrawer({ open, onClose }: Props) {
   const { items, count, total, remove, updateQty } = useCart();
   const { t } = useLang();
+  const paymentMethods = metodosDePagoVisibles(CULQI_ENABLED).map((m) => t(m.es, m.en)).join(" · ");
 
   return (
     <>
@@ -172,8 +173,8 @@ export default function CartDrawer({ open, onClose }: Props) {
             <Link href="/checkout" onClick={onClose} className="lc-btn lc-btn-primary w-full">
               {t("Continuar al checkout", "Continue to checkout")} →
             </Link>
-            <p className="lc-mono uppercase text-[9px] tracking-[0.22em] text-ink-mute text-center">
-              {PAYMENT_METHODS}
+            <p className="lc-mono uppercase text-[12px] tracking-[0.14em] text-ink-soft text-center leading-relaxed">
+              {paymentMethods}
             </p>
           </div>
         )}

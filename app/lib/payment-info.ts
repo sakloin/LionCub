@@ -26,5 +26,18 @@ export const PAYMENT_INFO = {
 
 export type PaymentMethod = "yape" | "plin" | "transferencia" | "contraentrega" | "izipay" | "culqi";
 
+// Métodos de pago que se anuncian al cliente (bolsa, pie y checkout usan esta
+// misma lista). La tarjeta es Culqi y solo aparece si NEXT_PUBLIC_CULQI_ENABLED=true.
+// "izipay" queda en el tipo solo por pedidos antiguos; no se ofrece.
+export function metodosDePagoVisibles(culqiEnabled: boolean): { es: string; en: string }[] {
+  return [
+    { es: "Yape", en: "Yape" },
+    { es: "Plin", en: "Plin" },
+    { es: "Transferencia", en: "Bank transfer" },
+    { es: "Contra entrega (Lima)", en: "Cash on delivery (Lima)" },
+    ...(culqiEnabled ? [{ es: "Tarjeta", en: "Card" }] : []),
+  ];
+}
+
 // Methods that require a payment proof to be uploaded before confirming.
 export const PROOF_REQUIRED: PaymentMethod[] = ["yape", "plin", "transferencia"];

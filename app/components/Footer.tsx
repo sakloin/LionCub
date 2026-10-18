@@ -6,6 +6,8 @@ import Link from "next/link";
 import LogoMark from "./LogoMark";
 import data from "../data/productos.json";
 import { DATOS_LEGALES, ENLACES_LEGALES } from "../lib/legal";
+import { metodosDePagoVisibles } from "../lib/payment-info";
+import { CULQI_ENABLED } from "../lib/feature-flags";
 
 const { brand } = data;
 
@@ -105,6 +107,10 @@ export default function Footer() {
                 {t("Envíos a", "Ships to")}
               </div>
               <span>{t("Todo el Perú", "All of Peru")}</span>
+            </div>
+            <div>
+              <div className={smallLabel}>{t("Pagos", "Payments")}</div>
+              <span>{metodosDePagoVisibles(CULQI_ENABLED).map((m) => t(m.es, m.en)).join(" · ")}</span>
             </div>
           </div>
         </div>

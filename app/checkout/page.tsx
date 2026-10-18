@@ -429,11 +429,13 @@ export default function CheckoutPage() {
   const paymentOptions: { value: PaymentMethod; label: string; desc: string; disabled?: boolean }[] = [
     { value: "yape",          label: "Yape",                       desc: t("QR instantáneo", "Instant QR") },
     { value: "plin",          label: "Plin",                       desc: t("QR instantáneo", "Instant QR") },
-    { value: "transferencia", label: t("Transferencia bancaria", "Bank transfer"), desc: "BCP · BBVA · Interbank" },
+    { value: "transferencia", label: t("Transferencia bancaria", "Bank transfer"), desc: t("Depósito o transferencia a nuestra cuenta", "Deposit or transfer to our account") },
     { value: "contraentrega", label: t("Contra entrega", "Cash on delivery"),      desc: isShalom ? t("Solo con entrega a domicilio", "Home delivery only") : t("Solo Lima Metropolitana (domicilio)", "Metro Lima only (home delivery)"), disabled: isShalom },
+    // Tarjeta solo con Culqi activo; si está apagado no se anuncia (misma lista
+    // que la bolsa y el pie: metodosDePagoVisibles en lib/payment-info.ts).
     ...(CULQI_ENABLED
       ? [{ value: "culqi" as PaymentMethod, label: t("Tarjeta de crédito/débito", "Credit/debit card"), desc: t("Visa, Mastercard · Powered by Culqi", "Visa, Mastercard · Powered by Culqi") }]
-      : [{ value: "izipay" as PaymentMethod, label: t("Tarjeta", "Card"), desc: t("Próximamente disponible", "Coming soon"), disabled: true }]),
+      : []),
   ];
 
   const inputCls = "lc-input";
