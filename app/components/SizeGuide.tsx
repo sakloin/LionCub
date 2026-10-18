@@ -75,16 +75,16 @@ export default function SizeGuide({ onClose }: { onClose: () => void }) {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-rule">
-                <th className="lc-mono uppercase text-[9px] tracking-[0.22em] text-ink-mute pb-3 pr-4 font-normal whitespace-nowrap">
+                <th className="lc-mono uppercase text-[9px] tracking-[0.22em] text-ink-mute-text pb-3 pr-4 font-normal whitespace-nowrap">
                   {t("Talla", "Size")}
                 </th>
-                <th className="lc-mono uppercase text-[9px] tracking-[0.22em] text-ink-mute pb-3 pr-4 font-normal whitespace-nowrap">
+                <th className="lc-mono uppercase text-[9px] tracking-[0.22em] text-ink-mute-text pb-3 pr-4 font-normal whitespace-nowrap">
                   {t("Edad aprox.", "Age approx.")}
                 </th>
-                <th className="lc-mono uppercase text-[9px] tracking-[0.22em] text-ink-mute pb-3 pr-4 font-normal whitespace-nowrap">
+                <th className="lc-mono uppercase text-[9px] tracking-[0.22em] text-ink-mute-text pb-3 pr-4 font-normal whitespace-nowrap">
                   {t("Peso", "Weight")}
                 </th>
-                <th className="lc-mono uppercase text-[9px] tracking-[0.22em] text-ink-mute pb-3 font-normal whitespace-nowrap">
+                <th className="lc-mono uppercase text-[9px] tracking-[0.22em] text-ink-mute-text pb-3 font-normal whitespace-nowrap">
                   {t("Talla / Altura", "Height")}
                 </th>
               </tr>
@@ -112,7 +112,7 @@ export default function SizeGuide({ onClose }: { onClose: () => void }) {
 
         {/* Footer note */}
         <div className="px-5 sm:px-6 pb-6">
-          <p className="lc-mono uppercase text-[9px] tracking-[0.18em] text-ink-mute">
+          <p className="lc-mono uppercase text-[9px] tracking-[0.18em] text-ink-mute-text">
             {t(
               "¿Dudas? Escríbenos al +51 920 201 943",
               "Questions? Message us at +51 920 201 943"

@@ -31,6 +31,11 @@
   --color-gold-deep: #A47C3B;
   --color-gold-pale: #EFE0BB;
 
+  /* Texto pequeño que debe pasar AA (4.5:1). Propuesta ADR 0003: no cambian
+     los tokens de superficie; solo se usan para texto < 18 px. */
+  --color-gold-text:      #86652C; /* 5.08 sobre crema · 4.58 sobre bg-warm */
+  --color-ink-mute-text:  #756A5E; /* 4.99 sobre crema · 4.50 sobre bg-warm */
+
   /* pastels (very desaturated) */
   --color-pink:      #F0D9D2;
   --color-pink-soft: #F7E8E3;
@@ -173,10 +178,10 @@ body {
   /* Eyebrow */
   .lc-eyebrow {
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: 12px;
     letter-spacing: 0.28em;
     text-transform: uppercase;
-    color: var(--color-gold-deep);
+    color: var(--color-gold-text);
     font-weight: 400;
   }
   .lc-eyebrow-ink { color: var(--color-ink-soft); }
@@ -284,7 +289,7 @@ body {
     border-radius: 999px;
     background: var(--color-bg);
   }
-  .lc-pill-gold { border-color: var(--color-gold); color: var(--color-gold-deep); }
+  .lc-pill-gold { border-color: var(--color-gold); color: var(--color-gold-text); }
 
   /* ── Hero vitrina (layout por CSS: el servidor ya sirve el móvil correcto) ── */
   .lc-hero {

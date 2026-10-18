@@ -42,14 +42,14 @@ function QrPanel({ info, label }: { info: { qrImage: string; phone: string; hold
           // eslint-disable-next-line @next/next/no-img-element
           <img src={info.qrImage} alt={`QR ${label}`} className="w-full h-full object-contain" onError={() => setImgErr(true)} />
         ) : (
-          <p className="text-[10px] text-center text-ink-mute px-2">QR pendiente<br/>(actualizar en payment-info.ts)</p>
+          <p className="text-[10px] text-center text-ink-mute-text px-2">QR pendiente<br/>(actualizar en payment-info.ts)</p>
         )}
       </div>
       <div className="text-sm flex flex-col gap-1.5">
-        <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute">{label}</p>
+        <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute-text">{label}</p>
         <p className="text-ink-soft">Número · <strong className="text-ink font-semibold">{info.phone}</strong></p>
         <p className="text-ink-soft">Titular · <strong className="text-ink font-semibold">{info.holder}</strong></p>
-        <p className="text-ink-mute text-xs mt-1">Escanea el QR o yapea al número. Después sube tu comprobante.</p>
+        <p className="text-ink-mute-text text-xs mt-1">Escanea el QR o yapea al número. Después sube tu comprobante.</p>
       </div>
     </div>
   );
@@ -59,7 +59,7 @@ function BankPanel() {
   const b = PAYMENT_INFO.bank;
   return (
     <div className="bg-bg-warm border border-rule p-4 text-sm flex flex-col gap-2">
-      <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute mb-1">Datos bancarios</p>
+      <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute-text mb-1">Datos bancarios</p>
       {[
         ["Banco",   b.name],
         ["Cuenta",  b.account],
@@ -72,7 +72,7 @@ function BankPanel() {
           <span className="font-semibold text-ink text-right">{v}</span>
         </div>
       ))}
-      <p className="text-ink-mute text-xs mt-1">Realiza la transferencia y sube tu comprobante.</p>
+      <p className="text-ink-mute-text text-xs mt-1">Realiza la transferencia y sube tu comprobante.</p>
     </div>
   );
 }
@@ -369,13 +369,13 @@ export default function CheckoutPage() {
             {t("para confirmar tu pedido.", "to confirm your order.")}
           </p>
           {orderId && (
-            <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute border border-rule px-4 py-2">
+            <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute-text border border-rule px-4 py-2">
               {t("Nro. pedido", "Order no.")} · {orderId.slice(0, 8).toUpperCase()}
             </p>
           )}
           {!isShalom && form.delivery_date && (
             <div className="w-full bg-bg-warm p-4 text-sm">
-              <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute mb-1.5">
+              <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute-text mb-1.5">
                 {t("Entrega programada", "Scheduled delivery")}
               </p>
               <p className="lc-display-i text-lg text-ink capitalize">{fmtDeliveryDate(form.delivery_date)}</p>
@@ -388,7 +388,7 @@ export default function CheckoutPage() {
             <ol className="flex flex-col gap-5">
               {nextSteps.map(([title, desc], i) => (
                 <li key={title} className="flex gap-4">
-                  <span className="lc-mono text-[11px] tracking-[0.1em] text-gold-deep pt-1">
+                  <span className="lc-mono text-[11px] tracking-[0.1em] text-gold-text pt-1">
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   <div>
@@ -469,15 +469,15 @@ export default function CheckoutPage() {
                       state === "active"
                         ? "border-ink bg-ink text-bg"
                         : state === "done"
-                        ? "border-gold-deep text-gold-deep"
-                        : "border-rule text-ink-mute"
+                        ? "border-gold-deep text-gold-text"
+                        : "border-rule text-ink-mute-text"
                     }`}
                   >
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   <span
                     className={`lc-mono uppercase text-[10px] tracking-[0.22em] ${
-                      state === "next" ? "text-ink-mute" : "text-ink"
+                      state === "next" ? "text-ink-mute-text" : "text-ink"
                     }`}
                   >
                     {s.label}
@@ -564,7 +564,7 @@ export default function CheckoutPage() {
                           onChange={e => handleDateChange(e.target.value)}
                           className={inputCls} />
                         {dateError && <p className="text-xs text-red-600 mt-1">{dateError}</p>}
-                        <p className="text-[11px] text-ink-mute mt-1.5">{t("De lunes a domingo (excepto sábados)", "Monday to Sunday (except Saturdays)")}</p>
+                        <p className="text-[11px] text-ink-mute-text mt-1.5">{t("De lunes a domingo (excepto sábados)", "Monday to Sunday (except Saturdays)")}</p>
                       </div>
                       {form.delivery_date && !dateError && (
                         <div>
@@ -582,7 +582,7 @@ export default function CheckoutPage() {
                               </button>
                             ))}
                           </div>
-                          {isFriday(form.delivery_date) && <p className="text-[11px] text-ink-mute mt-1.5">{t("Los viernes solo hay entrega hasta las 16:00 h", "Fridays deliver only until 4:00 pm")}</p>}
+                          {isFriday(form.delivery_date) && <p className="text-[11px] text-ink-mute-text mt-1.5">{t("Los viernes solo hay entrega hasta las 16:00 h", "Fridays deliver only until 4:00 pm")}</p>}
                         </div>
                       )}
                     </div>
@@ -649,9 +649,9 @@ export default function CheckoutPage() {
                             </>
                           ) : (
                             <>
-                              <Upload size={20} className="text-ink-mute" />
+                              <Upload size={20} className="text-ink-mute-text" />
                               <p className="text-xs font-semibold text-ink">{t("Haz clic para seleccionar", "Click to select")}</p>
-                              <p className="text-[11px] text-ink-mute">JPG, PNG o PDF · máx. 5 MB</p>
+                              <p className="text-[11px] text-ink-mute-text">JPG, PNG o PDF · máx. 5 MB</p>
                             </>
                           )}
                         </label>
@@ -669,11 +669,11 @@ export default function CheckoutPage() {
                             </a>
                           )}
                           <div className="flex-1">
-                            <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-gold-deep">{t("Comprobante subido", "Proof uploaded")}</p>
+                            <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-gold-text">{t("Comprobante subido", "Proof uploaded")}</p>
                             {proofFile && <p className="text-[11px] text-ink-soft truncate max-w-[160px]">{proofFile.name}</p>}
                           </div>
                           <button onClick={resetProof}
-                            className="lc-mono uppercase text-[9px] tracking-[0.22em] text-ink-mute hover:text-ink shrink-0">
+                            className="lc-mono uppercase text-[9px] tracking-[0.22em] text-ink-mute-text hover:text-ink shrink-0">
                             {t("Cambiar", "Change")}
                           </button>
                         </div>

@@ -71,7 +71,7 @@ export default function Testimonials() {
           <div className="lc-mono uppercase text-[11px] tracking-[0.24em] text-ink-soft">
             {lang === "es" ? tm.nameEs : tm.nameEn}
           </div>
-          <div className="lc-mono uppercase text-[9px] tracking-[0.24em] text-ink-mute">
+          <div className="lc-mono uppercase text-[9px] tracking-[0.24em] text-ink-mute-text">
             {lang === "es" ? tm.metaEs : tm.metaEn}
           </div>
         </div>

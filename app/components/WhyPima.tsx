@@ -120,7 +120,7 @@ export default function WhyPima() {
           {benefits.map((b, i) => (
             <div key={i} data-reveal style={{ "--lc-reveal-i": i } as React.CSSProperties}
               className="pt-5 border-t border-rule">
-              <span className="lc-mono text-[10px] tracking-[0.24em] text-gold-deep">
+              <span className="lc-mono text-[12px] tracking-[0.2em] text-gold-text">
                 0{i + 1}
               </span>
               <div className="lc-display text-xl text-ink mt-3" style={{ fontWeight: 400 }}>
@@ -130,7 +130,7 @@ export default function WhyPima() {
                 {lang === "es" ? b.descEs : b.descEn}
               </p>
               {(lang === "es" ? b.proofEs : b.proofEn) && (
-                <p className="lc-mono text-[10px] tracking-[0.12em] text-gold-deep mt-2.5">
+                <p className="lc-mono text-[12px] tracking-[0.1em] text-gold-text mt-2.5">
                   {lang === "es" ? b.proofEs : b.proofEn}
                 </p>
               )}

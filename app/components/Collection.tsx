@@ -224,7 +224,7 @@ function SelectionSheet({ product, offer, onClose }: { product: Product; offer: 
           {/* Product info */}
           <div className="px-5 sm:px-6 pt-4 pb-1">
             {product.gender && product.gender !== "Unisex" && (
-              <p className="lc-mono uppercase text-[9px] tracking-[0.24em] text-ink-mute">
+              <p className="lc-mono uppercase text-[9px] tracking-[0.24em] text-ink-mute-text">
                 {product.gender}
               </p>
             )}
@@ -307,7 +307,7 @@ function SelectionSheet({ product, offer, onClose }: { product: Product; offer: 
 
             {/* Stock */}
             {selectedVariant && (
-              <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute">
+              <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute-text">
                 {selectedVariant.stock === 1
                   ? t("1 unidad disponible", "1 unit available")
                   : `${selectedVariant.stock} ${t("unidades disponibles", "units available")}`}
@@ -316,12 +316,12 @@ function SelectionSheet({ product, offer, onClose }: { product: Product; offer: 
 
             {/* Price */}
             <div className="flex items-baseline justify-between pt-1">
-              <span className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute">
+              <span className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute-text">
                 {product.material}
               </span>
               <div className="flex items-baseline gap-2">
                 {offer && (
-                  <span className="lc-mono text-xs text-ink-mute line-through">
+                  <span className="lc-mono text-xs text-ink-mute-text line-through">
                     {formatSoles(basePrice)}
                   </span>
                 )}
@@ -589,7 +589,7 @@ function ProductCard({
             )}
           </>
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-ink-mute">
+          <div className="absolute inset-0 flex items-center justify-center text-ink-mute-text">
             <LionMark size={56} />
           </div>
         )}
@@ -651,7 +651,7 @@ function ProductCard({
         <span
           aria-hidden
           className={`mt-3 lc-mono uppercase text-[12px] tracking-[0.16em] inline-flex items-center gap-1 transition-transform duration-300 group-hover:translate-x-1.5 ${
-            outOfStock ? "text-ink-mute" : "text-gold-deep"
+            outOfStock ? "text-ink-mute-text" : "text-gold-text"
           }`}
         >
           {outOfStock ? t("Avísame", "Notify me") : t("Elegir talla", "Choose size")}
