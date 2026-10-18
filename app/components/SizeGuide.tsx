@@ -1,7 +1,8 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useEffect } from "react";
+import { useRef } from "react";
+import { useDialog } from "../lib/useDialog";
 import { useLang } from "../context/LanguageContext";
 
 interface SizeRow {
@@ -28,11 +29,8 @@ const SIZES: SizeRow[] = [
 export default function SizeGuide({ onClose }: { onClose: () => void }) {
   const { lang, t } = useLang();
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialog(dialogRef, true, onClose);
 
   return (
     <div
@@ -40,6 +38,11 @@ export default function SizeGuide({ onClose }: { onClose: () => void }) {
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="guia-tallas-titulo"
+        tabIndex={-1}
         className="bg-bg w-full sm:max-w-lg max-h-[90svh] overflow-y-auto rounded-t-2xl sm:rounded-sm shadow-2xl animate-fade-in-up"
         onClick={(e) => e.stopPropagation()}
       >
@@ -47,13 +50,13 @@ export default function SizeGuide({ onClose }: { onClose: () => void }) {
         <div className="flex items-start justify-between p-5 sm:p-6 border-b border-rule sticky top-0 bg-bg z-10">
           <div>
             <p className="lc-eyebrow mb-1">{t("Referencia", "Reference")}</p>
-            <h2 className="lc-display text-2xl text-ink">{t("Guía de tallas", "Size guide")}</h2>
+            <h2 id="guia-tallas-titulo" className="lc-display text-2xl text-ink">{t("Guía de tallas", "Size guide")}</h2>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label={t("Cerrar", "Close")}
-            className="text-ink-mute hover:text-ink transition-colors mt-1 -mr-1"
+            className="w-11 h-11 -mr-3 -mt-1 inline-flex items-center justify-center text-ink-soft hover:text-ink transition-colors"
           >
             <X size={18} />
           </button>

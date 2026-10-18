@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -9,6 +10,12 @@ import { LionMark } from "../LogoMark";
 import { formatSoles } from "../../lib/money";
 import { metodosDePagoVisibles } from "../../lib/payment-info";
 import { CULQI_ENABLED } from "../../lib/feature-flags";
+import { useDialog } from "../../lib/useDialog";
+
+/** Tope de stock en la bolsa: el stock que tenía la variante al elegirla. */
+function atMax(item: { quantity: number; variant: { stock_at_pick: number } }): boolean {
+  return item.variant.stock_at_pick > 0 && item.quantity >= item.variant.stock_at_pick;
+}
 
 interface Props {
   open: boolean;
@@ -19,6 +26,8 @@ export default function CartDrawer({ open, onClose }: Props) {
   const { items, count, total, remove, updateQty } = useCart();
   const { t } = useLang();
   const paymentMethods = metodosDePagoVisibles(CULQI_ENABLED).map((m) => t(m.es, m.en)).join(" · ");
+  const panelRef = useRef<HTMLElement>(null);
+  useDialog(panelRef, open, onClose);
 
   return (
     <>
@@ -29,26 +38,32 @@ export default function CartDrawer({ open, onClose }: Props) {
           aria-hidden
         />
       )}
+      {/* Cerrada: inert (sin foco ni lector de pantalla). Abierta: diálogo modal. */}
       <aside
+        ref={panelRef}
         className={`fixed right-0 top-0 h-full w-full max-w-md bg-bg z-50 flex flex-col transform transition-transform duration-300 ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
-        style={{ boxShadow: "var(--lc-shadow-3)" }}
+        style={{ boxShadow: open ? "var(--lc-shadow-3)" : "none" }}
         role="dialog"
+        aria-modal={open ? "true" : undefined}
         aria-label={t("Bolsa", "Bag")}
+        aria-hidden={!open}
+        inert={!open}
+        tabIndex={-1}
       >
         {/* Header */}
         <div className="px-5 sm:px-6 pt-5 pb-4 border-b border-rule">
           <div className="flex items-center justify-between">
-            <span className="lc-mono uppercase text-[10px] tracking-[0.24em] text-ink-mute">
+            <span className="lc-mono uppercase text-[12px] tracking-[0.18em] text-ink-soft">
               {t("Bolsa", "Bag")}
             </span>
             <button
               onClick={onClose}
               aria-label={t("Cerrar", "Close")}
-              className="text-ink-mute hover:text-ink transition-colors"
+              className="w-11 h-11 -mr-3 inline-flex items-center justify-center text-ink-soft hover:text-ink transition-colors"
             >
-              <X size={18} />
+              <X size={20} />
             </button>
           </div>
           <h2 className="lc-display text-3xl text-ink leading-none mt-3">
@@ -75,9 +90,9 @@ export default function CartDrawer({ open, onClose }: Props) {
                   "Every piece, spun in Pima cotton. Find yours."
                 )}
               </p>
-              <a href="#coleccion" onClick={onClose} className="lc-btn lc-btn-outline mt-2">
+              <Link href="/#coleccion" onClick={onClose} className="lc-btn lc-btn-outline mt-2">
                 {t("Ver la colección", "Browse the collection")}
-              </a>
+              </Link>
             </div>
           ) : (
             <ul>
@@ -97,13 +112,10 @@ export default function CartDrawer({ open, onClose }: Props) {
                   </div>
 
                   <div className="flex-1 min-w-0 flex flex-col">
-                    <p className="lc-mono uppercase text-[9px] tracking-[0.22em] text-ink-mute">
-                      {item.product.id}
-                    </p>
                     <h3 className="lc-display text-lg text-ink leading-tight truncate">
                       {item.product.name}
                     </h3>
-                    <p className="text-xs text-ink-soft mt-0.5">
+                    <p className="text-sm text-ink-soft mt-0.5">
                       {[item.variant.color_name, item.variant.size_name].filter(Boolean).join(" · ")}
                     </p>
 
@@ -113,17 +125,19 @@ export default function CartDrawer({ open, onClose }: Props) {
                         <button
                           onClick={() => updateQty(item.variant.id, item.quantity - 1)}
                           aria-label={t("Quitar una unidad", "Remove one")}
-                          className="px-3 py-1.5 text-ink-mute hover:text-ink transition-colors"
+                          className="w-11 h-11 inline-flex items-center justify-center text-ink-soft hover:text-ink transition-colors"
                         >
                           −
                         </button>
-                        <span className="lc-mono text-[13px] text-ink w-7 text-center">
+                        <span className="lc-mono text-[14px] text-ink w-7 text-center" aria-live="polite">
                           {item.quantity}
                         </span>
                         <button
                           onClick={() => updateQty(item.variant.id, item.quantity + 1)}
-                          aria-label={t("Agregar una unidad", "Add one")}
-                          className="px-3 py-1.5 text-ink hover:text-gold-deep transition-colors"
+                          disabled={atMax(item)}
+                          aria-label={atMax(item) ? t("Máximo disponible", "Maximum available") : t("Agregar una unidad", "Add one")}
+                          title={atMax(item) ? t("No hay más unidades disponibles", "No more units available") : undefined}
+                          className="w-11 h-11 inline-flex items-center justify-center text-ink hover:text-gold-deep transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           +
                         </button>
@@ -136,7 +150,7 @@ export default function CartDrawer({ open, onClose }: Props) {
                         return (
                           <div className="flex items-baseline gap-2 whitespace-nowrap">
                             {discounted && (
-                              <span className="lc-mono text-[11px] text-ink-mute line-through">
+                              <span className="lc-mono text-[12px] text-ink-soft line-through">
                                 {formatSoles(base * item.quantity)}
                               </span>
                             )}
@@ -150,7 +164,7 @@ export default function CartDrawer({ open, onClose }: Props) {
 
                     <button
                       onClick={() => remove(item.variant.id)}
-                      className="self-start mt-2 lc-mono uppercase text-[9px] tracking-[0.22em] text-ink-mute hover:text-ink transition-colors"
+                      className="self-start mt-1 min-h-11 lc-mono uppercase text-[12px] tracking-[0.16em] text-ink-soft hover:text-ink underline underline-offset-4 transition-colors"
                     >
                       {t("Eliminar", "Remove")}
                     </button>
@@ -165,7 +179,7 @@ export default function CartDrawer({ open, onClose }: Props) {
         {items.length > 0 && (
           <div className="border-t border-rule px-5 sm:px-6 py-5 flex flex-col gap-4">
             <div className="flex items-baseline justify-between">
-              <span className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft">
+              <span className="lc-mono uppercase text-[12px] tracking-[0.18em] text-ink-soft">
                 {t("Subtotal", "Subtotal")}
               </span>
               <span className="lc-display text-2xl text-ink">{formatSoles(total)}</span>
