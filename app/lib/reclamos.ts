@@ -125,8 +125,9 @@ export function validarReclamo(e: Partial<ReclamoEntrada>): ResultadoValidacion 
   let monto: number | null = null;
   const montoTxt = limpio(e.monto_reclamado).replace(",", ".");
   if (montoTxt) {
+    // Solo números con hasta 2 decimales (sin signos, exponentes ni separadores de miles).
     const n = Number(montoTxt);
-    if (!Number.isFinite(n) || n < 0 || n > 100000) errores.monto_reclamado = "Escribe un monto válido en soles.";
+    if (!/^\d+(\.\d{1,2})?$/.test(montoTxt) || n > 100000) errores.monto_reclamado = "Escribe un monto válido en soles (ej. 89.90).";
     else monto = fromCents(toCents(n));
   }
 
