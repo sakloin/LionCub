@@ -354,3 +354,67 @@ export async function sendPaymentConfirmed(order: EmailOrder, items: EmailOrderI
     );
   }
 }
+
+// ─── Libro de Reclamaciones ──────────────────────────────────────────────
+
+export interface EmailReclamo {
+  codigo: string;
+  fecha: string; // ISO
+  tipo: "reclamo" | "queja";
+  consumidor_nombre: string;
+  consumidor_tipo_documento: string;
+  consumidor_numero_documento: string;
+  consumidor_domicilio: string;
+  consumidor_telefono: string;
+  consumidor_email: string;
+  apoderado_nombre: string | null;
+  bien_tipo: string;
+  bien_descripcion: string;
+  monto_reclamado: number | null;
+  numero_pedido: string | null;
+  detalle: string;
+  pedido_consumidor: string;
+  plazo_dias_habiles: number;
+  proveedor: string;
+}
+
+function reclamoHTML(r: EmailReclamo): string {
+  const fila = (k: string, v: string) => `
+    <tr>
+      <td style="padding:6px 0;color:${COLORS.muted};font-size:13px;vertical-align:top;width:40%;">${escape(k)}</td>
+      <td style="padding:6px 0;color:${COLORS.ink};font-size:14px;white-space:pre-wrap;">${escape(v)}</td>
+    </tr>`;
+  const fecha = new Date(r.fecha).toLocaleString("es-PE", { timeZone: "America/Lima" });
+  return shell(`Hoja de reclamación ${r.codigo}`, `
+    <p style="margin:0 0 6px;font-size:12px;letter-spacing:2px;color:${COLORS.muted};text-transform:uppercase;">Libro de Reclamaciones</p>
+    <h1 style="margin:0 0 4px;font-size:22px;color:${COLORS.ink};font-family:Georgia,serif;">Hoja de reclamación N.° ${escape(r.codigo)}</h1>
+    <p style="margin:0 0 16px;font-size:13px;color:${COLORS.inkMid};">${escape(r.proveedor)} · ${escape(fecha)}</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      ${fila("Tipo", r.tipo === "reclamo" ? "Reclamo (disconformidad con el producto o servicio)" : "Queja (disconformidad con la atención)")}
+      ${fila("Consumidor", r.consumidor_nombre)}
+      ${fila("Documento", `${r.consumidor_tipo_documento} ${r.consumidor_numero_documento}`)}
+      ${fila("Domicilio", r.consumidor_domicilio)}
+      ${fila("Teléfono", r.consumidor_telefono)}
+      ${fila("Correo", r.consumidor_email)}
+      ${r.apoderado_nombre ? fila("Padre, madre o apoderado", r.apoderado_nombre) : ""}
+      ${fila("Bien contratado", `${r.bien_tipo === "producto" ? "Producto" : "Servicio"}: ${r.bien_descripcion}`)}
+      ${r.monto_reclamado != null ? fila("Monto reclamado", formatSoles(r.monto_reclamado)) : ""}
+      ${r.numero_pedido ? fila("N.° de pedido", r.numero_pedido) : ""}
+      ${fila("Detalle", r.detalle)}
+      ${fila("Pedido del consumidor", r.pedido_consumidor)}
+    </table>
+    <p style="margin:18px 0 0;font-size:13px;color:${COLORS.inkMid};line-height:1.5;">
+      Responderemos en un plazo máximo de ${r.plazo_dias_habiles} días hábiles, al correo indicado.
+      La formulación del reclamo no impide acudir a otras vías de solución de controversias ni es
+      requisito previo para interponer una denuncia ante el INDECOPI.
+    </p>`);
+}
+
+/** Copia de la hoja al consumidor (obligatoria) y aviso al admin. Best-effort. */
+export async function sendReclamoRegistrado(r: EmailReclamo): Promise<void> {
+  const html = reclamoHTML(r);
+  await send(r.consumidor_email, `Tu hoja de reclamación N.° ${r.codigo} · Lion Cub`, html, "customer/reclamo");
+  if (ADMIN_EMAIL) {
+    await send(ADMIN_EMAIL, `⚠️ ${r.tipo === "reclamo" ? "Reclamo" : "Queja"} N.° ${r.codigo} · responder en ${r.plazo_dias_habiles} días hábiles`, html, "admin/reclamo");
+  }
+}
