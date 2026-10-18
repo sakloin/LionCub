@@ -60,8 +60,9 @@ export default function PrivacidadPage() {
         </div>
 
         <div>
-          <h2 className="lc-display text-2xl text-ink mb-2">6. Conservación de datos</h2>
-          <p>Conservamos tus datos mientras sea necesario para la relación comercial y durante los plazos legales exigidos por la normativa peruana.</p>
+          <h2 className="lc-display text-2xl text-ink mb-2">6. Conservación de datos y encargados</h2>
+          <p>Conservamos tus datos mientras sea necesario para la relación comercial y durante los plazos legales exigidos por la normativa peruana. Las hojas del Libro de Reclamaciones se conservan como mínimo dos (2) años desde su registro, como exige su reglamento.</p>
+          <p className="mt-3">Para operar la tienda usamos proveedores que tratan datos por encargo nuestro y cuyos servidores están fuera del Perú (transferencia internacional de datos): Supabase (base de datos y archivos), Vercel (alojamiento del sitio), Resend (envío de correos) y, si nos escribes por WhatsApp, Meta (WhatsApp) y los proveedores del asistente automático (Anthropic y OpenAI, que procesan el texto y las notas de voz de la conversación). Solo reciben los datos necesarios para prestar su servicio.</p>
         </div>
 
         <div>

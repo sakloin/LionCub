@@ -40,12 +40,14 @@ export async function POST(req: NextRequest) {
     subtotal: _ignoredSubtotal,
     total: _ignoredTotal,
     shipping_cost: _ignoredShipping,
+    acepta_terminos: aceptaTerminos,
     ...orderData
   } = body as {
     items?: CartItem[];
     subtotal?: unknown;
     total?: unknown;
     shipping_cost?: unknown;
+    acepta_terminos?: unknown;
     [k: string]: unknown;
   };
   void _ignoredSubtotal;
@@ -53,6 +55,15 @@ export async function POST(req: NextRequest) {
   void _ignoredShipping;
 
   // ─── Basic input validation ────────────────────────────────────────────
+  // Aceptación expresa de Términos y Privacidad (Ley 29733). Se valida aquí;
+  // guardarla en `orders` requiere una columna nueva (migración protegida,
+  // ver deuda-tecnica.md DT-17). No se inserta: no es columna de `orders`.
+  if (aceptaTerminos !== true) {
+    return NextResponse.json(
+      { error: "Debes aceptar los Términos y la Política de privacidad." },
+      { status: 400 },
+    );
+  }
   if (!Array.isArray(items) || items.length === 0) {
     return NextResponse.json({ error: "Carrito vacío" }, { status: 400 });
   }

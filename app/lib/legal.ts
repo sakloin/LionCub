@@ -37,5 +37,5 @@ export const PLAZO_RESPUESTA_DIAS_HABILES = 15;
 export const ENLACES_LEGALES = [
   { href: "/terminos", es: "Términos y condiciones", en: "Terms & conditions" },
   { href: "/privacidad", es: "Política de privacidad", en: "Privacy policy" },
-  { href: "/libro-reclamaciones", es: "Libro de Reclamaciones", en: "Complaints Book" },
+  { href: "/libro-reclamaciones", es: "Libro de Reclamaciones", en: "Libro de Reclamaciones" },
 ] as const;

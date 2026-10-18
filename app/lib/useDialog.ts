@@ -9,9 +9,12 @@ const FOCUSABLE =
  * Comportamiento de diálogo accesible para modales y la bolsa:
  * - al abrir, enfoca el primer control del diálogo;
  * - Tab y Shift+Tab quedan dentro del diálogo (trampa de foco);
- * - Escape cierra;
+ * - Escape cierra (escuchado en document mientras está abierto, aunque el
+ *   foco se haya ido fuera); con diálogos anidados solo cierra el de arriba;
  * - al cerrar, devuelve el foco a donde estaba.
  */
+const pila: object[] = [];
+
 export function useDialog<T extends HTMLElement>(
   ref: RefObject<T | null>,
   active: boolean,
@@ -27,6 +30,8 @@ export function useDialog<T extends HTMLElement>(
     const node = ref.current;
     if (!node) return;
     const previous = document.activeElement as HTMLElement | null;
+    const yo = {};
+    pila.push(yo);
 
     const focusables = () =>
       Array.from(node.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
@@ -36,12 +41,18 @@ export function useDialog<T extends HTMLElement>(
     (focusables()[0] ?? node).focus();
 
     function onKey(e: KeyboardEvent) {
+      if (pila[pila.length - 1] !== yo) return; // solo el diálogo de arriba
       if (e.key === "Escape") {
         e.stopPropagation();
         onCloseRef.current();
         return;
       }
       if (e.key !== "Tab") return;
+      if (!node!.contains(document.activeElement)) {
+        e.preventDefault();
+        (focusables()[0] ?? node!).focus();
+        return;
+      }
       const list = focusables();
       if (list.length === 0) {
         e.preventDefault();
@@ -58,9 +69,11 @@ export function useDialog<T extends HTMLElement>(
       }
     }
 
-    node.addEventListener("keydown", onKey);
+    document.addEventListener("keydown", onKey);
     return () => {
-      node.removeEventListener("keydown", onKey);
+      document.removeEventListener("keydown", onKey);
+      const i = pila.indexOf(yo);
+      if (i >= 0) pila.splice(i, 1);
       previous?.focus?.();
     };
   }, [active, ref]);

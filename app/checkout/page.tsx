@@ -266,6 +266,7 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          acepta_terminos: acceptTerms,
           payment_proof_url:  requiresProof ? (proofUrl || null) : null,
           delivery_date:      isShalom ? null : (form.delivery_date || null),
           delivery_time_slot: isShalom ? null : (form.delivery_time_slot || null),
@@ -723,7 +724,7 @@ export default function CheckoutPage() {
                     </label>
                     <p className="text-[12px] text-ink-soft">
                       {t("¿Algún problema con tu compra? ", "Any problem with your order? ")}
-                      <Link href="/libro-reclamaciones" target="_blank" className="underline">{t("Libro de Reclamaciones", "Complaints Book")}</Link>
+                      <Link href="/libro-reclamaciones" target="_blank" className="underline">Libro de Reclamaciones</Link>
                     </p>
                   </div>
 

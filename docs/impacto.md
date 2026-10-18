@@ -52,7 +52,11 @@
 ### GC-08: Libro de Reclamaciones con tabla
 - Precondición: ADR 0002 aplicada.
 - Acción: enviar una hoja con datos ficticios.
-- Criterio: respuesta 201 con código `000000001-AAAA` correlativo; llega copia al correo del consumidor y a `ADMIN_EMAIL`; la fila no se puede leer con la llave pública.
+- Criterio: respuesta 201 con código `000000001-AAAA` correlativo y `copia_enviada`; la pantalla muestra la hoja completa con «Imprimir / guardar PDF»; llega copia al consumidor y a `ADMIN_EMAIL`; la fila no se puede leer ni insertar con la llave pública y `delete` falla (trigger).
+
+### GC-10: Antispam del Libro
+- Acción: enviar el formulario antes de 3 s de abrirlo; luego 4 hojas en la misma hora desde la misma IP o el mismo correo.
+- Criterio: el envío rápido responde 429 «Espera unos segundos»; el 4.º envío responde 429 con canal alterno; sin token responde 400 «Recarga la página». Prueba automática: `npm test`.
 
 ### GC-09: Aceptación de Términos en el checkout
 - Precondición: bolsa con ≥ 1 ítem, en el paso de pago.
