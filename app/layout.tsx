@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "./components/Providers";
+import { SITE_URL } from "./lib/site";
+import { DATOS_LEGALES } from "./lib/legal";
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
@@ -24,8 +26,6 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
-const _sUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
-const SITE_URL  = (_sUrl && !_sUrl.includes("vercel.app")) ? _sUrl : "https://lioncub.pe";
 const SITE_NAME = "Lion Cub Baby Clothing";
 const OG_IMAGE  = `${SITE_URL}/hero/poster-desktop.webp`;
 
@@ -61,14 +61,13 @@ export const metadata: Metadata = {
   publisher: "Lion Cub",
   category: "shopping",
   formatDetection: { email: false, telephone: false, address: false },
+  // Sin hreflang: el inglés se cambia por JS en la misma URL (no hay /en).
   alternates: {
     canonical: "/",
-    languages: { "es-PE": "/", "en-US": "/" },
   },
   openGraph: {
     type: "website",
     locale: "es_PE",
-    alternateLocale: ["en_US"],
     url: SITE_URL,
     siteName: SITE_NAME,
     title: `${SITE_NAME} — Algodón Pima Peruano`,
@@ -131,6 +130,9 @@ const ORGANIZATION_JSONLD = {
     addressRegion: "Lima",
   },
   areaServed: { "@type": "Country", name: "Peru" },
+  // Solo cuando Heber confirme los datos (app/lib/legal.ts).
+  ...(DATOS_LEGALES.razonSocial ? { legalName: DATOS_LEGALES.razonSocial } : {}),
+  ...(DATOS_LEGALES.ruc ? { taxID: DATOS_LEGALES.ruc } : {}),
   sameAs: [
     "https://www.instagram.com/lioncubbabyclothing/",
     "https://www.facebook.com/profile.php?id=61577494893684",

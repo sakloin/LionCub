@@ -13,6 +13,7 @@ import type { Product, Offer } from "../lib/types";
 import { bestOfferFor, effectivePrice } from "../lib/offers";
 import { formatSoles } from "../lib/money";
 import { useDialog } from "../lib/useDialog";
+import { SITE_URL } from "../lib/site";
 
 // ── Categories ────────────────────────────────────────────────────────────
 // Editorial labels for the category strip. The product.category column is the
@@ -693,7 +694,7 @@ export default function Collection({
   // results (price, availability, image) for each piece.
   const jsonLd = useMemo(() => {
     if (products.length === 0) return null;
-    const siteUrl = (typeof window !== "undefined" ? window.location.origin : "https://lioncub.pe");
+    const siteUrl = SITE_URL; // mismo valor en servidor y cliente (sin desajuste al hidratar)
     const itemList = {
       "@context": "https://schema.org",
       "@type": "ItemList",

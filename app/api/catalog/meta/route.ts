@@ -17,6 +17,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/app/lib/supabase-admin";
 import { bestOfferFor, applyOfferCents } from "@/app/lib/offers";
 import type { Offer } from "@/app/lib/types";
+import { SITE_URL } from "@/app/lib/site";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -34,8 +35,7 @@ export async function OPTIONS() {
 const META_CATALOG_ID    = process.env.META_CATALOG_ID ?? "";
 const META_ACCESS_TOKEN  = process.env.WHATSAPP_TOKEN ?? "";
 const CATALOG_SYNC_SECRET = process.env.CATALOG_SYNC_SECRET ?? "";
-const _siteEnv = process.env.NEXT_PUBLIC_SITE_URL ?? "";
-const PUBLIC_SITE = (_siteEnv && !_siteEnv.includes("vercel.app")) ? _siteEnv : "https://lioncub.pe";
+const PUBLIC_SITE = SITE_URL;
 const GRAPH_URL          = "https://graph.facebook.com/v20.0";
 // Imagen de respaldo que sí existe en /public (PNG, Meta no acepta WebP en todos los formatos).
 const FALLBACK_IMAGE     = `${PUBLIC_SITE}/logo-solid.png`;
