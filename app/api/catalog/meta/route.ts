@@ -38,7 +38,7 @@ const CATALOG_SYNC_SECRET = process.env.CATALOG_SYNC_SECRET ?? "";
 const PUBLIC_SITE = SITE_URL;
 const GRAPH_URL          = "https://graph.facebook.com/v20.0";
 // Imagen de respaldo que sí existe en /public (PNG, Meta no acepta WebP en todos los formatos).
-const FALLBACK_IMAGE     = `${PUBLIC_SITE}/logo-solid.png`;
+const FALLBACK_IMAGE     = `${PUBLIC_SITE}/logo-512.png`;
 const BATCH_SIZE         = 100; // Meta allows up to 1000; 100 is safe
 
 // Known catalog IDs from the Leon Real Estate Commerce Manager portfolio.

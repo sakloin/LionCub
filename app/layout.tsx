@@ -101,7 +101,7 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: "/favicon.ico",
-    apple: "/logo-solid.png",
+    apple: "/logo-512.png",
   },
 };
 
@@ -120,7 +120,7 @@ const ORGANIZATION_JSONLD = {
   alternateName: "Lion Cub",
   description: DESCRIPTION_ES,
   url: SITE_URL,
-  logo: `${SITE_URL}/logo-solid.png`,
+  logo: `${SITE_URL}/logo-512.png`,
   image: OG_IMAGE,
   telephone: "+51-920-201-943",
   email: "hola@lioncub.pe",
