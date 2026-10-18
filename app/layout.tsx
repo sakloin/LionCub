@@ -29,10 +29,9 @@ const SITE_URL  = (_sUrl && !_sUrl.includes("vercel.app")) ? _sUrl : "https://li
 const SITE_NAME = "Lion Cub Baby Clothing";
 const OG_IMAGE  = `${SITE_URL}/hero/poster-desktop.webp`;
 
+// Solo en español y ≤ 155 caracteres (Google corta lo demás).
 const DESCRIPTION_ES =
-  "Ropa de bebé en 100% algodón pima peruano. Suave, hipoalergénica y respirable — conjuntos, bodies, baberos y mantas hechos para el primer abrazo y los días que siguen. Envíos a todo Perú.";
-const DESCRIPTION_EN =
-  "Baby clothing made with 100% Peruvian Pima cotton. Soft, hypoallergenic and breathable — sets, bodies, bibs and blankets for the first cuddle and the days that follow. Ships across Peru.";
+  "Ropa de bebé en 100% algodón pima peruano: conjuntos, bodies, baberos y mantas para el primer abrazo. Envíos a todo el Perú.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -40,7 +39,7 @@ export const metadata: Metadata = {
     default: `${SITE_NAME} — Algodón Pima Peruano`,
     template: `%s · ${SITE_NAME}`,
   },
-  description: `${DESCRIPTION_ES} ${DESCRIPTION_EN}`,
+  description: DESCRIPTION_ES,
   keywords: [
     "ropa de bebé",
     "ropa bebé Perú",
@@ -51,7 +50,6 @@ export const metadata: Metadata = {
     "baberos bebé",
     "mantas bebé",
     "ajuar recién nacido",
-    "ropa hipoalergénica bebé",
     "Lion Cub",
     "baby clothing Peru",
     "pima cotton baby",

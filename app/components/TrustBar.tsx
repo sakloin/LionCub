@@ -9,10 +9,10 @@ export default function TrustBar() {
 
   const promises: [string, string][] = [
     [
-      t("Hipoalergénico", "Hypoallergenic"),
+      t("Delicado con su piel", "Gentle on their skin"),
       t(
-        "Libre de químicos agresivos. Para pieles que apenas están conociendo el mundo.",
-        "Free of harsh chemicals. For skin that's only just meeting the world."
+        "Fibra natural de hebra larga, suave al tacto. Para pieles que apenas están conociendo el mundo.",
+        "A natural long-staple fiber, soft to the touch. For skin that's only just meeting the world."
       ),
     ],
     [

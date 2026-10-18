@@ -289,9 +289,8 @@ function TextContent() {
           margin: "0 0 36px",
         }}
       >
-        Ropa para bebé tejida en 100&nbsp;% algodón pima de Piura,
-        hipoalergénica y transpirable — hecha para los primeros abrazos
-        y los días que siguen.
+        Ropa para bebé tejida en 100&nbsp;% algodón pima peruano,
+        hecha para los primeros abrazos y los días que siguen.
       </p>
 
       <a

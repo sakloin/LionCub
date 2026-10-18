@@ -34,16 +34,8 @@ export default function WhyPima() {
         "Doesn't wear out with washing. Quality holds garment after garment, wash after wash.",
     },
     {
-      titleEs: "Hipoalergénico",
-      titleEn: "Hypoallergenic",
-      descEs:
-        "Sin irritantes ni químicos agresivos. Perfecto para la piel más delicada y sensible.",
-      descEn:
-        "Free from irritants and harsh chemicals. Perfect for the most delicate, sensitive skin.",
-    },
-    {
-      titleEs: "Origen certificado",
-      titleEn: "Certified origin",
+      titleEs: "Origen peruano",
+      titleEn: "Peruvian origin",
       descEs:
         "Cultivado en los valles costeros del Perú, donde el Pima crece con condiciones únicas en el mundo.",
       descEn:
@@ -152,9 +144,9 @@ export default function WhyPima() {
             {t("Orgullo peruano", "Peruvian pride")}
           </p>
           <h3 className="lc-display mx-auto mt-5 max-w-3xl text-3xl sm:text-4xl leading-tight tracking-[-0.01em]">
-            {t("Perú produce el ", "Peru produces ")}
-            <em className="lc-display-i text-gold">{t("80%", "80%")}</em>
-            {t(" del algodón Pima a nivel mundial.", " of the world's Pima cotton.")}
+            {t("Algodón ", "")}
+            <em className="lc-display-i text-gold">{t("Pima", "Pima")}</em>
+            {t(" de la costa norte del Perú.", " cotton from Peru's northern coast.")}
           </h3>
           <p className="mx-auto mt-6 max-w-xl text-[14px] leading-relaxed font-light text-bg/70">
             {t(
