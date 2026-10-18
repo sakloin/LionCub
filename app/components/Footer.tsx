@@ -2,8 +2,10 @@
 
 import { useLang } from "../context/LanguageContext";
 import { MessageCircle } from "lucide-react";
+import Link from "next/link";
 import LogoMark from "./LogoMark";
 import data from "../data/productos.json";
+import { DATOS_LEGALES, ENLACES_LEGALES } from "../lib/legal";
 
 const { brand } = data;
 
@@ -11,10 +13,10 @@ export default function Footer() {
   const { t } = useLang();
 
   const explore = [
-    { href: "#coleccion", label: t("Colección", "Collection") },
-    { href: "#por-que-pima", label: t("¿Por qué Pima?", "Why Pima?") },
-    { href: "#nuestra-historia", label: t("Nuestra Historia", "Our Story") },
-    { href: "#contacto", label: t("Contacto", "Contact") },
+    { href: "/#coleccion", label: t("Colección", "Collection") },
+    { href: "/#por-que-pima", label: t("¿Por qué Pima?", "Why Pima?") },
+    { href: "/#nuestra-historia", label: t("Nuestra Historia", "Our Story") },
+    { href: "/#contacto", label: t("Contacto", "Contact") },
   ];
 
   const social = [
@@ -24,9 +26,17 @@ export default function Footer() {
   ];
 
   const colTitle =
-    "lc-mono uppercase text-[10px] tracking-[0.24em] text-bg mb-5";
+    "lc-mono uppercase text-[12px] tracking-[0.2em] text-bg mb-5";
   const colLink =
-    "text-[13px] font-light text-bg/60 hover:text-bg transition-colors";
+    "text-[14px] font-light text-bg/75 hover:text-bg transition-colors py-1";
+  const smallLabel = "lc-mono uppercase text-[12px] tracking-[0.18em] text-bg/70";
+
+  // Identificación del proveedor: solo se muestran los datos confirmados.
+  const legalLines = [
+    DATOS_LEGALES.razonSocial,
+    DATOS_LEGALES.ruc ? `RUC ${DATOS_LEGALES.ruc}` : null,
+    DATOS_LEGALES.domicilio,
+  ].filter((v): v is string => !!v);
 
   return (
     <footer id="contacto" className="bg-bg-ink text-bg">
@@ -34,7 +44,7 @@ export default function Footer() {
         {/* Brand */}
         <div className="lg:col-span-2 flex flex-col gap-5">
           <LogoMark size={28} color="#FDF8F0" />
-          <p className="text-[13px] leading-relaxed font-light text-bg/60 max-w-sm">
+          <p className="text-[14px] leading-relaxed font-light text-bg/75 max-w-sm">
             {brand.story}
           </p>
           <div className="flex gap-3 mt-1">
@@ -45,7 +55,7 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={s.label}
-                className="lc-mono w-8 h-8 rounded-full border border-bg/40 inline-flex items-center justify-center text-[9px] tracking-[0.1em] text-bg hover:border-gold hover:text-gold transition-colors"
+                className="lc-mono w-11 h-11 rounded-full border border-bg/40 inline-flex items-center justify-center text-[12px] tracking-[0.1em] text-bg hover:border-gold hover:text-gold transition-colors"
               >
                 {s.label}
               </a>
@@ -56,7 +66,7 @@ export default function Footer() {
         {/* Explore */}
         <div>
           <div className={colTitle}>{t("Explorar", "Explore")}</div>
-          <div className="flex flex-col gap-2.5">
+          <div className="flex flex-col gap-1.5">
             {explore.map((link) => (
               <a key={link.href} href={link.href} className={colLink}>
                 {link.label}
@@ -68,9 +78,9 @@ export default function Footer() {
         {/* Contact */}
         <div>
           <div className={colTitle}>{t("Contacto", "Contact")}</div>
-          <div className="flex flex-col gap-3 text-[13px] font-light text-bg/60">
+          <div className="flex flex-col gap-3 text-[14px] font-light text-bg/75">
             <div>
-              <div className="lc-mono uppercase text-[9px] tracking-[0.22em] text-bg/40">
+              <div className={smallLabel}>
                 WhatsApp
               </div>
               <a
@@ -83,7 +93,7 @@ export default function Footer() {
               </a>
             </div>
             <div>
-              <div className="lc-mono uppercase text-[9px] tracking-[0.22em] text-bg/40">
+              <div className={smallLabel}>
                 {t("Correo", "Email")}
               </div>
               <a href={`mailto:${brand.email}`} className="hover:text-bg transition-colors">
@@ -91,10 +101,10 @@ export default function Footer() {
               </a>
             </div>
             <div>
-              <div className="lc-mono uppercase text-[9px] tracking-[0.22em] text-bg/40">
+              <div className={smallLabel}>
                 {t("Envíos a", "Ships to")}
               </div>
-              <span>{t("Perú y USA", "Peru & USA")}</span>
+              <span>{t("Todo el Perú", "All of Peru")}</span>
             </div>
           </div>
         </div>
@@ -121,10 +131,35 @@ export default function Footer() {
         </div>
       </div>
 
+      {/* Legal: enlaces obligatorios + identificación del proveedor */}
+      <div className="border-t border-bg/10 py-6">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col gap-4">
+          <nav aria-label={t("Información legal", "Legal information")}>
+            <ul className="flex flex-wrap gap-x-6 gap-y-1">
+              {ENLACES_LEGALES.map((l) => (
+                <li key={l.href}>
+                  <Link
+                    href={l.href}
+                    className="inline-flex items-center min-h-11 text-[14px] font-light text-bg/80 underline underline-offset-4 decoration-bg/30 hover:text-bg hover:decoration-bg transition-colors"
+                  >
+                    {t(l.es, l.en)}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+          {legalLines.length > 0 && (
+            <p className="text-[12px] font-light text-bg/70 leading-relaxed">
+              {legalLines.join(" · ")}
+            </p>
+          )}
+        </div>
+      </div>
+
       {/* Bottom bar */}
       <div className="border-t border-bg/10 py-6">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-2 lc-mono uppercase text-[9px] tracking-[0.22em] text-bg/40 text-center">
-          <span>© 2026 Lion Cub Baby Clothing · Lima, Perú</span>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-2 lc-mono uppercase text-[12px] tracking-[0.18em] text-bg/70 text-center">
+          <span>© 2026 {DATOS_LEGALES.nombreComercial} · Lima, Perú</span>
           <span>{t("Hecho a mano en el Perú", "Handmade in Peru")}</span>
         </div>
       </div>
