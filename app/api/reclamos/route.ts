@@ -8,10 +8,15 @@ export const runtime = "nodejs";
 
 // Mensaje para cuando el Libro virtual aún no puede guardar (tabla pendiente
 // de la ADR 0002, o base caída). Siempre da un canal alterno.
-const CANAL_ALTERNO =
-  `Por ahora no pudimos registrar tu hoja en línea. Escríbenos a ${DATOS_LEGALES.correo} ` +
-  `o por WhatsApp al ${DATOS_LEGALES.whatsapp} con estos mismos datos y la registramos ` +
-  `con su número correlativo. El plazo de respuesta (${PLAZO_RESPUESTA_DIAS_HABILES} días hábiles) corre igual.`;
+// (Se arma con join: la concatenación de plantillas con constantes importadas
+// salía mutilada en el build de producción con Turbopack.)
+const CANAL_ALTERNO = [
+  "Por ahora no pudimos registrar tu hoja en línea.",
+  "Escríbenos a", DATOS_LEGALES.correo,
+  "o por WhatsApp al", DATOS_LEGALES.whatsapp,
+  "con estos mismos datos y la registramos con su número correlativo.",
+  "El plazo de respuesta (" + String(PLAZO_RESPUESTA_DIAS_HABILES) + " días hábiles) corre igual.",
+].join(" ");
 
 export async function POST(req: NextRequest) {
   let body: Partial<ReclamoEntrada> & { sitio_web?: string };
