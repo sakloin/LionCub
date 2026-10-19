@@ -48,7 +48,7 @@
 
 ## Correcciones de la auditoría previa al lanzamiento (2026-10-18)
 Rama `claude/correcciones-auditoria-lanzamiento` (PR en borrador). Fuente: `LionCub-Auditoria-2026-10-18.md` (vault). Estado: 🟡 en revisión (falta veredicto del auditor y decisiones de Heber).
-- [x] **#1** Libro de Reclamaciones virtual: página + `POST /api/reclamos` listas. 🧑 **Falta la tabla**: aprobar ADR 0002 y aplicar la migración (DT-08).
+- [x] **#1** Libro de Reclamaciones virtual: página + `POST /api/reclamos` listas. ADR 0002 aprobada por Heber (2026-10-19); migración `20261018_libro_reclamaciones.sql` en el repo (incluye `orders.acepta_terminos_at`, DT-17). 🧑 **Falta aplicarla en Supabase** (DT-08).
 - [x] **#2** Bloque legal en el pie (Términos, Privacidad, Libro). 🧑 Razón social, RUC y domicilio: `PENDIENTE_HEBER` en `app/lib/legal.ts` (DT-09).
 - [x] **#3** Feed de Meta: enlace a `/#coleccion` e imagen de respaldo que existe.
 - [x] **#4** Sin "USA" en el anuncio ni en el pie.
@@ -57,7 +57,7 @@ Rama `claude/correcciones-auditoria-lanzamiento` (PR en borrador). Fuente: `Lion
 - [x] **#7** Correo único hola@lioncub.pe en Términos y Privacidad; sin domicilio no confirmado.
 - [x] **#8** Checkout: 16 px, foco visible, etiquetas, autocomplete y aceptación de Términos y Privacidad.
 - [x] **#9** Hero por CSS + `<picture>`; sin `priority` en tarjetas. Medir con PSI (DT-15).
-- [x] **#10** Tokens de texto AA en `globals.css` (ADR 0003 propuesta).
+- [x] **#10** Tokens de texto AA en `globals.css`; ADR 0003 aprobada por Heber (2026-10-19) y tokens registrados en IDENTIDAD §2 (DT-13 resuelto).
 - [x] **#11** Áreas táctiles ≥ 44 px.
 - [ ] **#12** Logo: solo se corrigió el enlace a `/`; la proporción espera decisión de Heber (DT-12).
 - [x] **#13** Bolsa inert, modales accesibles, tarjeta `<article>`.

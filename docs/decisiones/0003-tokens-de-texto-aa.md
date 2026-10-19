@@ -1,6 +1,6 @@
 # ADR 0003 — Tokens de texto con contraste AA
 - Fecha: 2026-10-18
-- Estado: **propuesta, pendiente de Heber** (para registrarlos en `design-patterns/IDENTIDAD.md` §2, archivo protegido)
+- Estado: **aprobada por Heber (2026-10-19)**. Registrados en `design-patterns/IDENTIDAD.md` §2 el mismo día.
 - Origen: auditoría previa al lanzamiento (2026-10-18), hallazgo #10
 
 ## Contexto
@@ -22,7 +22,7 @@
 4. Las etiquetas pequeñas suben a 12 px (escala mínima de PRINCIPIOS).
 
 ## Qué necesita Heber
-- Aprobar y agregar estas dos filas a la tabla de IDENTIDAD §2 (rol: "Texto pequeño oro" y "Texto tenue AA"). Si no se aprueba, se revierte el commit "Tokens de texto AA (#10)" y vuelven los colores anteriores.
+- ~~Aprobar y agregar estas dos filas a la tabla de IDENTIDAD §2 (rol: "Texto pequeño oro" y "Texto tenue AA").~~ ✅ Aprobada y registrada (2026-10-19).
 
 ## Fuera de esta ADR
 - #12 (proporción del logo: ícono 2× el texto, "Baby Clothing" ≥ 9-10 px o fuera de la navbar) toca el logo definido en IDENTIDAD §1. No se aplicó; requiere decisión de Heber sobre cuál es el logo oficial (PNG o el SVG `LionMark`).

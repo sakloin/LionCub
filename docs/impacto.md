@@ -12,7 +12,7 @@
 | Pagos | `app/api/payments/culqi/**` | `orders` | Clientes (Culqi) |
 | Admin | `app/admin/**` | todas | Heber |
 | Automatización | `automation/workflows/**` | `contenido_*` | n8n |
-| Legal / Libro de Reclamaciones | `app/lib/legal.ts`, `app/lib/reclamos.ts`, `app/libro-reclamaciones/**`, `app/api/reclamos/route.ts`, `app/terminos`, `app/privacidad`, `Footer.tsx` | `libro_reclamaciones` (ADR 0002, pendiente) | Clientes / Heber |
+| Legal / Libro de Reclamaciones | `app/lib/legal.ts`, `app/lib/reclamos.ts`, `app/libro-reclamaciones/**`, `app/api/reclamos/route.ts`, `app/terminos`, `app/privacidad`, `Footer.tsx` | `libro_reclamaciones` (ADR 0002 aprobada 2026-10-19; migración `20261018_libro_reclamaciones.sql` sin aplicar) | Clientes / Heber |
 
 ## Casos dorados del negocio
 

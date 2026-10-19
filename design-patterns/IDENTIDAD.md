@@ -29,6 +29,10 @@
 | Oro profundo (texto sobre crema) | `--color-gold-deep` | `#A47C3B` |
 | Oro pálido | `--color-gold-pale` | `#EFE0BB` |
 | Pasteles bebé (desaturados) | pink / blue / mint / lav | `#F0D9D2` · `#D9E2EA` · `#DDE6D6` · `#E2DCE5` |
+| Texto pequeño oro (AA, solo texto < 18 px) | `--color-gold-text` | `#86652C` — 5.08:1 sobre crema `#FDF8F0` · 4.58:1 sobre bg-warm `#F5ECDC` |
+| Texto tenue AA (solo texto < 18 px) | `--color-ink-mute-text` | `#756A5E` — 4.99:1 sobre crema `#FDF8F0` · 4.50:1 sobre bg-warm `#F5ECDC` |
+
+✅ **Tokens de texto AA** — ADR 0003, aprobada por Heber el 2026-10-19. `--color-gold` y `--color-gold-deep` siguen para hairlines, superficies, iconos y titulares grandes (≥ 18 px, donde basta 3:1); `--color-ink-mute` queda para usos no textuales o texto grande. En texto pequeño se usan los dos tokens de arriba.
 
 ✅ **Crema canónico: `#FDF8F0` (cálido)** — aprobado por Heber el 2026-10-08. Unifica el fondo público con el admin, mi-cuenta, correos y assets, que ya lo usaban.
 

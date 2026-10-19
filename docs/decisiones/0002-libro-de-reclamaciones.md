@@ -1,6 +1,6 @@
 # ADR 0002 — Libro de Reclamaciones virtual (tabla `libro_reclamaciones`)
 - Fecha: 2026-10-18 (revisada el mismo día tras el RECHAZO del auditor: B1 antispam, B2 solo servidor + inmutabilidad, B3 constancia)
-- Estado: **propuesta, pendiente de Heber** (toca `supabase/migrations/**`, archivo protegido)
+- Estado: **aprobada por Heber (2026-10-19)**. Migración creada en el repo: `supabase/migrations/20261018_libro_reclamaciones.sql` (incluye `orders.acepta_terminos_at` de DT-17 y `revoke truncate`). **Falta aplicarla en Supabase.**
 - Origen: auditoría previa al lanzamiento (2026-10-18), hallazgo #1 (bloqueante legal)
 
 > Numeración: la ADR 0001 (skills del flujo) vive en la rama `claude/skills-del-flujo-v13`. Esta es la 0002 para no chocar con ella.
@@ -19,7 +19,7 @@ Falta la tabla. Las migraciones están protegidas, así que no se creó: **mient
 2. Usar un servicio externo de libro de reclamaciones. Descartada: costo mensual y datos de clientes fuera de nuestra base.
 3. **Tabla propia con RLS, inserción solo por la API de servidor y lectura solo admin.** Elegida.
 
-## Decisión (si Heber la aprueba)
+## Decisión (aprobada por Heber el 2026-10-19)
 Crear `supabase/migrations/20261018_libro_reclamaciones.sql` con este contenido:
 
 ```sql
@@ -140,7 +140,12 @@ Notas:
 - Los datos de la hoja son datos personales: entran en la Política de privacidad (finalidad, conservación ≥ 2 años y encargados fuera del Perú ya agregados).
 - Aparte (no es de esta tabla): la aceptación de Términos del checkout se valida en `/api/orders`, pero guardarla requiere una columna `orders.acepta_terminos_at timestamptz` en otra migración (DT-17).
 
+## Agregados al aprobar (2026-10-19)
+- `revoke truncate ... from public, anon, authenticated, service_role` (menor del auditor: el trigger no corre en `TRUNCATE`).
+- `alter table public.orders add column if not exists acepta_terminos_at timestamptz` (DT-17); `/api/orders` la llena con la hora del servidor y, si la columna aún no existe, guarda el pedido sin ella.
+- Un bloque inicial que detiene la migración si no existe `public.is_admin()`: se usa en migraciones anteriores, pero ninguna migración del repo la crea.
+
 ## Qué necesita Heber
-1. Aprobar esta ADR.
-2. Agregar `supabase/migrations/20261018_libro_reclamaciones.sql` a `.claude/desbloqueo` (archivo por archivo), aplicar la migración en Supabase y borrar el desbloqueo.
+1. ~~Aprobar esta ADR.~~ ✅ Aprobada (2026-10-19).
+2. Aplicar `supabase/migrations/20261018_libro_reclamaciones.sql` en Supabase (ver la descripción del PR #109).
 3. Confirmar razón social, RUC y domicilio en `app/lib/legal.ts` para que aparezcan en la hoja y en el pie.

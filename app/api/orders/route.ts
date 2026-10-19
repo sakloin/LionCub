@@ -55,9 +55,9 @@ export async function POST(req: NextRequest) {
   void _ignoredShipping;
 
   // ─── Basic input validation ────────────────────────────────────────────
-  // Aceptación expresa de Términos y Privacidad (Ley 29733). Se valida aquí;
-  // guardarla en `orders` requiere una columna nueva (migración protegida,
-  // ver deuda-tecnica.md DT-17). No se inserta: no es columna de `orders`.
+  // Aceptación expresa de Términos y Privacidad (Ley 29733). Se valida aquí y
+  // se guarda como `orders.acepta_terminos_at` con la hora del servidor
+  // (migración 20261018_libro_reclamaciones.sql, DT-17).
   if (aceptaTerminos !== true) {
     return NextResponse.json(
       { error: "Debes aceptar los Términos y la Política de privacidad." },
@@ -232,18 +232,29 @@ export async function POST(req: NextRequest) {
   }
 
   // ─── Insert the order; roll back stock if it fails ────────────────────
-  const { data: order, error } = await supabaseAdmin
-    .from("orders")
-    .insert({
-      ...orderData,
-      subtotal:      fromCents(subtotalCents),
-      total:         fromCents(totalCents),
-      shipping_cost: fromCents(shippingCents),
-      payment_status: "pendiente",
-      order_status:   "nuevo",
-    })
-    .select()
-    .single();
+  // `acepta_terminos_at` va después del spread: el cliente no puede fijarlo.
+  const orderRow: Record<string, unknown> = {
+    ...orderData,
+    subtotal:      fromCents(subtotalCents),
+    total:         fromCents(totalCents),
+    shipping_cost: fromCents(shippingCents),
+    payment_status: "pendiente",
+    order_status:   "nuevo",
+    acepta_terminos_at: new Date().toISOString(),
+  };
+  const insertOrder = (row: Record<string, unknown>) =>
+    supabaseAdmin.from("orders").insert(row).select().single();
+
+  let { data: order, error } = await insertOrder(orderRow);
+
+  // Si la migración aún no está aplicada, PostgREST no conoce la columna
+  // (PGRST204). No se bloquea la compra: se reintenta sin ella (DT-17).
+  if (error && error.code === "PGRST204" && error.message?.includes("acepta_terminos_at")) {
+    console.warn("[orders] falta la columna orders.acepta_terminos_at; se guarda el pedido sin ella");
+    const { acepta_terminos_at: _sinColumna, ...rowSinAceptacion } = orderRow;
+    void _sinColumna;
+    ({ data: order, error } = await insertOrder(rowSinAceptacion));
+  }
 
   if (error || !order) {
     await releaseReserved();
