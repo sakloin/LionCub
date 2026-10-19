@@ -58,13 +58,13 @@ Capturas «antes» con datos ficticios (servidor simulado, fuera del repo). Hall
 Lecturas nuevas (solo `select`, sin escrituras): en el tablero, pedidos desde el inicio del mes o 13 días atrás (lo que sea antes), pedidos abiertos (`nuevo`/`procesando`) de cualquier fecha y conteo de `waitlist` pendiente; en el menú, conteo de pedidos `nuevo`.
 
 ## 6. Criterios de terminado
-- [ ] `npx tsc --noEmit` sin errores nuevos; `npm run build` OK con variables ficticias; `eslint` sin errores nuevos en los archivos tocados.
-- [ ] Móvil 390 px: sin desborde horizontal en Tablero, Pedidos y Productos.
-- [ ] Todo control interactivo nuevo ≥ 44×44 px y con foco visible; textos con contraste ≥ 4.5:1 (secundario = `--color-ink-soft`).
-- [ ] Confirmar pago, marcar enviado, comprobante inválido y cancelar piden confirmación; los cambios sin notificación ofrecen «Deshacer».
-- [ ] Ningún «Cargando…» bloqueante en Tablero, Pedidos y Productos (skeleton).
-- [ ] Estados siempre con color + ícono + texto.
-- [ ] Capturas antes/después (móvil y escritorio) con datos ficticios.
+- [x] `npx tsc --noEmit` sin errores nuevos; `npm run build` OK con variables ficticias; `eslint` sin errores nuevos en los archivos tocados.
+- [x] Móvil 390 px: sin desborde horizontal en Tablero, Pedidos y Productos.
+- [x] Todo control interactivo nuevo ≥ 44×44 px y con foco visible; textos con contraste ≥ 4.5:1 (secundario = `--color-ink-soft`).
+- [x] Confirmar pago, marcar enviado, comprobante inválido y cancelar piden confirmación; los cambios sin notificación ofrecen «Deshacer».
+- [x] Ningún «Cargando…» bloqueante en Tablero, Pedidos y Productos (skeleton).
+- [x] Estados siempre con color + ícono + texto.
+- [x] Capturas antes/después (móvil y escritorio) con datos ficticios.
 - [ ] Veredicto del auditor (APROBADO) antes de integrar.
 
 ## 7. Casos dorados
