@@ -212,7 +212,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <div className="flex flex-col items-center text-center gap-3">
             <Logo size={64} />
             <div>
-              <p className="lc-eyebrow">Lion Cub · Admin</p>
+              <p className="lc-eyebrow lc-eyebrow-ink">Lion Cub · Admin</p>
               <h1 id="login-title" className="lc-display text-3xl text-ink mt-1">Panel de administración</h1>
             </div>
           </div>
@@ -272,7 +272,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <Logo size={36} />
           <div className="min-w-0">
             <p className="lc-display text-xl leading-none text-ink">Lion Cub</p>
-            <p className="lc-eyebrow mt-1">Panel</p>
+            <p className="lc-eyebrow lc-eyebrow-ink mt-1">Panel</p>
           </div>
           <button onClick={closeSidebar} className={cx(btn.icon, "ml-auto md:hidden")} aria-label="Cerrar menú">
             <X size={20} />
@@ -320,10 +320,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
         <div className="border-t border-rule p-3 flex flex-col gap-1">
           {userEmail && <p className="px-3 py-1 text-xs text-ink-soft truncate" title={userEmail}>{userEmail}</p>}
-          <a href="/" target="_blank" rel="noopener noreferrer" className={cx(btn.ghost, "justify-start")}>
+          <a href="/" target="_blank" rel="noopener noreferrer" className={cx(btn.ghost, "justify-start!")}>
             <ExternalLink size={16} aria-hidden /> Ver tienda
           </a>
-          <button onClick={logout} className={cx(btn.ghost, "justify-start")}>
+          <button onClick={logout} className={cx(btn.ghost, "justify-start!")}>
             <LogOut size={16} aria-hidden /> Salir
           </button>
         </div>
