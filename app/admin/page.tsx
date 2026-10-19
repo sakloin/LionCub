@@ -34,8 +34,9 @@ async function getStats(): Promise<DashboardStats> {
     // product_variants. Lo embebemos via PostgREST y lo sumamos abajo.
     supabase.from("products").select("id,name,price,cost,category,active,variants:product_variants(stock,active)"),
     supabase.from("purchases").select("total_cost,purchased_at").gte("purchased_at", startOfMonth.slice(0,10)),
-    // Pedidos abiertos de cualquier fecha (lo que hay que atender hoy).
-    supabase.from("orders").select("id,order_status,payment_status").in("order_status", ["nuevo", "procesando", "enviado"]),
+    // Pedidos abiertos de cualquier fecha: nuevo/procesando (por atender) y
+    // enviado (en camino, aún puede faltar confirmar el pago). Spec §5.
+    supabase.from("orders").select("id,order_status,payment_status,payment_method").in("order_status", ["nuevo", "procesando", "enviado"]),
     supabase.from("waitlist").select("id", { count: "exact", head: true }).eq("notified", false),
   ]);
 
@@ -88,7 +89,7 @@ async function getStats(): Promise<DashboardStats> {
   // Low stock
   const lowStock = products.filter(p => p.stock <= 3 && p.active).sort((a, b) => a.stock - b.stock);
 
-  const open = (openRes.data ?? []) as Array<{ order_status: string; payment_status: string }>;
+  const open = (openRes.data ?? []) as Array<{ order_status: string; payment_status: string; payment_method: string }>;
   const openByStatus = { nuevo: 0, procesando: 0, enviado: 0 };
   open.forEach(o => { if (o.order_status in openByStatus) openByStatus[o.order_status as keyof typeof openByStatus] += 1; });
 
@@ -106,7 +107,9 @@ async function getStats(): Promise<DashboardStats> {
     prevWeekRevenue: prev7.reduce((s, k) => s + salesByDayMap[k], 0),
     weekOrders: last7.reduce((s, k) => s + ordersByDayMap[k], 0),
     openByStatus,
-    paymentsToVerify: open.filter(o => o.payment_status === "pendiente" && o.order_status !== "enviado").length,
+    // Misma regla que la acción «Confirmar pago» en Pedidos: contra entrega
+    // se cobra al entregar, no hay comprobante que verificar antes.
+    paymentsToVerify: open.filter(o => o.payment_status === "pendiente" && o.payment_method !== "contraentrega").length,
     waitlistPending: waitRes.count ?? 0,
     salesByDay: dayKeys.map(k => ({
       day: `${k.slice(8, 10)}/${k.slice(5, 7)}`,

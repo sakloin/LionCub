@@ -55,7 +55,10 @@ Capturas «antes» con datos ficticios (servidor simulado, fuera del repo). Hall
 - Archivos protegidos: `supabase/migrations/**`, `app/api/payments/**`, `.env*`, `IDENTIDAD.md`, `PRINCIPIOS.md`.
 - Sin dependencias nuevas.
 
-Lecturas nuevas (solo `select`, sin escrituras): en el tablero, pedidos desde el inicio del mes o 13 días atrás (lo que sea antes), pedidos abiertos (`nuevo`/`procesando`) de cualquier fecha y conteo de `waitlist` pendiente; en el menú, conteo de pedidos `nuevo`.
+Lecturas nuevas (solo `select`, sin escrituras): en el tablero, pedidos desde el inicio del mes o 13 días atrás (lo que sea antes), pedidos abiertos (`nuevo`, `procesando` y `enviado`) de cualquier fecha y conteo de `waitlist` pendiente; en el menú, conteo de pedidos `nuevo`.
+- **Decisión (revisión del auditor, 2026-10-19):** «enviado» sí cuenta como pedido abierto: aparece en «Pedidos en curso» y puede tener el pago por confirmar. «Por atender» suma solo `nuevo` + `procesando`.
+- «Pagos por verificar» = pedidos abiertos con pago `pendiente` y método distinto de `contraentrega` (misma regla que la acción «Confirmar pago» de Pedidos).
+- «Deshacer» nunca se ofrece si el cambio o su reversa pasan por `pagado` (correo al cliente); la reversa escribe directo, sin notificar, y solo si el pedido sigue con el valor que se puso (`.eq(campo, valor)`).
 
 ## 6. Criterios de terminado
 - [x] `npx tsc --noEmit` sin errores nuevos; `npm run build` OK con variables ficticias; `eslint` sin errores nuevos en los archivos tocados.

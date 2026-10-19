@@ -168,6 +168,46 @@ export function ErrorState({ title, detail, onRetry }: { title: string; detail?:
   );
 }
 
+/* ── Trampa de foco para capas modales (diálogo, cajón) ───────────────────── */
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Mientras `active`: lleva el foco dentro de `ref`, hace que Tab / Shift+Tab
+ * circulen solo dentro, Escape llama a `onEscape` y, al cerrar, devuelve el
+ * foco a donde estaba. `onEscape` se guarda en una ref para que un cambio de
+ * función (o de `busy`) no vuelva a ejecutar el efecto ni a mover el foco.
+ */
+export function useFocusTrap(
+  ref: React.RefObject<HTMLElement | null>,
+  active: boolean,
+  opts: { onEscape?: () => void; initialFocus?: React.RefObject<HTMLElement | null> } = {},
+) {
+  const escRef = useRef(opts.onEscape);
+  useEffect(() => { escRef.current = opts.onEscape; });
+  const initialFocus = opts.initialFocus;
+  useEffect(() => {
+    if (!active) return;
+    const root = ref.current;
+    const prev = document.activeElement as HTMLElement | null;
+    const items = () => Array.from(root?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []).filter(el => el.offsetParent !== null);
+    (initialFocus?.current ?? items()[0])?.focus();
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") { escRef.current?.(); return; }
+      if (e.key !== "Tab" || !root) return;
+      const list = items();
+      if (list.length === 0) { e.preventDefault(); return; }
+      const first = list[0];
+      const last = list[list.length - 1];
+      const cur = document.activeElement;
+      const inside = !!cur && root.contains(cur);
+      if (e.shiftKey && (cur === first || !inside)) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (cur === last || !inside)) { e.preventDefault(); first.focus(); }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("keydown", onKey); prev?.focus?.(); };
+  }, [active, ref, initialFocus]);
+}
+
 /* ── Diálogo de confirmación accesible ───────────────────────────────────── */
 export function ConfirmDialog({
   open, title, description, confirmLabel, cancelLabel = "Cancelar", tone = "default", busy, onConfirm, onCancel,
@@ -176,24 +216,18 @@ export function ConfirmDialog({
   tone?: "default" | "danger"; busy?: boolean; onConfirm: () => void; onCancel: () => void;
 }) {
   const titleId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.activeElement as HTMLElement | null;
-    // En acciones destructivas el foco inicial va a «Cancelar».
-    (tone === "danger" ? cancelRef : confirmRef).current?.focus();
-    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onCancel(); }
-    window.addEventListener("keydown", onKey);
-    return () => { window.removeEventListener("keydown", onKey); prev?.focus?.(); };
-  }, [open, tone, onCancel]);
+  // En acciones destructivas el foco inicial va a «Cancelar».
+  useFocusTrap(panelRef, open, { onEscape: onCancel, initialFocus: tone === "danger" ? cancelRef : confirmRef });
 
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4">
       <div className="absolute inset-0 bg-ink/40" onClick={onCancel} aria-hidden />
       <div
+        ref={panelRef}
         role="dialog" aria-modal="true" aria-labelledby={titleId}
         className="relative bg-bg-card rounded-2xl shadow-[var(--lc-shadow-3)] w-full max-w-sm p-6 flex flex-col gap-4 lc-admin-pop"
       >
@@ -232,12 +266,18 @@ export const notify = {
 };
 
 /* ── Contador que sube al cargar (respeta prefers-reduced-motion) ────────── */
+function prefersReducedMotion() {
+  return typeof window === "undefined" || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 export function useCountUp(target: number, duration = 600): number {
-  // progreso 0→1; arranca en 1 para que el HTML del servidor ya traiga la cifra real.
-  const [progress, setProgress] = useState(1);
+  // Progreso 0→1. El tablero solo se monta en el cliente (AdminShell espera la
+  // sesión), así que arrancar en 0 no genera desajuste de hidratación ni
+  // parpadeo; con reduce-motion (o en servidor) se muestra la cifra final.
+  const [progress, setProgress] = useState(() => (prefersReducedMotion() ? 1 : 0));
   useEffect(() => {
     if (!Number.isFinite(target) || target === 0) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (prefersReducedMotion()) return;
     let raf = 0;
     let start = 0;
     const tick = (now: number) => {

@@ -240,19 +240,46 @@ export default function PedidosAdmin() {
       if (dbErr) throw dbErr;
       setOrders(prev => prev.map(o => o.id === id ? { ...o, [field]: value } : o));
       setExpandedId(null);
-      // Deshacer solo cuando el cambio no notifica al cliente (pagado envía correo).
-      const canUndo = prevValue !== undefined && !(field === "payment_status" && value === "pagado");
+      // Deshacer solo cuando ni el cambio ni su reversa tocan «pagado»
+      // (pagado dispara el correo al cliente; no se ofrece deshacer ahí).
+      const touchesPaid = field === "payment_status" && (value === "pagado" || prevValue === "pagado");
+      const canUndo = prevValue !== undefined && !touchesPaid;
       const label = field === "order_status" ? ORDER_STATUS[value]?.label : PAY_STATUS[value]?.label;
       showToast(
         label ? `Pedido #${shortId(id)}: ${label.toLowerCase()}` : "Pedido actualizado",
         true,
-        canUndo ? () => { void updateStatus(id, field, prevValue!); } : undefined,
+        canUndo ? () => { void undoStatus(id, field, value, prevValue!); } : undefined,
       );
       if (field === "payment_status" && value === "pagado") {
         void fireNotifyPaidEmail(id);
       }
     } catch (e: any) {
       showToast(e?.message ?? "Error al actualizar", false);
+    }
+  }
+
+  /**
+   * Revierte un cambio de estado SIN notificar a nadie. Solo escribe si el
+   * pedido sigue con el valor que puso este admin (`expected`), para no pisar
+   * un cambio hecho mientras tanto desde otra pestaña o por el webhook de pago.
+   */
+  async function undoStatus(id: string, field: "order_status" | "payment_status", expected: string, restore: string) {
+    try {
+      const { data, error: dbErr } = await supabase
+        .from("orders")
+        .update({ [field]: restore })
+        .eq("id", id)
+        .eq(field, expected)
+        .select("id");
+      if (dbErr) throw dbErr;
+      if (!data || data.length === 0) {
+        showToast("No se deshizo: el pedido cambió mientras tanto. Actualiza la lista.", false);
+        return;
+      }
+      setOrders(prev => prev.map(o => o.id === id ? { ...o, [field]: restore } : o));
+      showToast(`Cambio deshecho en el pedido #${shortId(id)}`);
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : "No se pudo deshacer", false);
     }
   }
 

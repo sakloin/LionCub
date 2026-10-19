@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { supabase } from "../../lib/supabase";
-import { ADMIN_TOASTER, Skeleton, btn, cx, focusRing } from "./ui";
+import { ADMIN_TOASTER, Skeleton, btn, cx, focusRing, useFocusTrap } from "./ui";
 
 interface NavItem { href: string; label: string; icon: LucideIcon; badgeKey?: "pedidosNuevos" }
 interface NavGroup { title: string; items: NavItem[] }
@@ -87,7 +87,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const [submitting, setSubmitting] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [badges, setBadges] = useState<{ pedidosNuevos: number }>({ pedidosNuevos: 0 });
-  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
   const firstLinkRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
@@ -121,18 +121,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     return () => { cancelled = true; };
   }, [authed, pathname]);
 
-  // Cajón móvil: Escape cierra y el foco vuelve al botón de menú.
-  const closeSidebar = useCallback(() => {
-    setSidebarOpen(false);
-    menuButtonRef.current?.focus();
-  }, []);
-  useEffect(() => {
-    if (!sidebarOpen) return;
-    firstLinkRef.current?.focus();
-    function onKey(e: KeyboardEvent) { if (e.key === "Escape") closeSidebar(); }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [sidebarOpen, closeSidebar]);
+  // Cajón móvil: foco atrapado dentro mientras está abierto, Escape cierra y
+  // el foco vuelve al botón que lo abrió.
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+  useFocusTrap(sidebarRef, sidebarOpen, { onEscape: closeSidebar, initialFocus: firstLinkRef });
 
   async function login(e: React.FormEvent) {
     e.preventDefault();
@@ -170,7 +162,6 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     <Toaster
       id={ADMIN_TOASTER}
       position="top-right"
-      closeButton
       toastOptions={{
         style: {
           fontFamily: "var(--font-body)",
@@ -181,7 +172,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           borderRadius: "14px",
           boxShadow: "var(--lc-shadow-2)",
         },
-        actionButtonStyle: { background: "var(--color-ink)", color: "var(--color-bg)", minHeight: 32, padding: "0 12px" },
+        // «Deshacer» con objetivo táctil de 44 px.
+        actionButtonStyle: { background: "var(--color-ink)", color: "var(--color-bg)", minHeight: 44, minWidth: 44, padding: "0 16px", fontSize: 14 },
       }}
     />
   );
@@ -259,11 +251,12 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
       {/* Menú lateral (cajón en móvil) */}
       <aside
+        ref={sidebarRef}
         id="admin-sidebar"
         aria-label="Menú del panel"
         className={cx(
           "fixed inset-y-0 left-0 z-50 w-72 md:w-64 bg-bg-card border-r border-rule flex flex-col",
-          "transition-[transform,visibility] duration-300 ease-[var(--lc-ease-soft)]",
+          "transition-[transform,visibility] duration-300 ease-[var(--lc-ease-soft)] motion-reduce:transition-none",
           sidebarOpen ? "translate-x-0 visible shadow-[var(--lc-shadow-3)]" : "-translate-x-full invisible",
           "md:translate-x-0 md:visible md:shadow-none",
         )}
@@ -337,7 +330,6 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         {/* Barra superior móvil: única capa con desenfoque (≤ 12 px, respaldo sólido) */}
         <header className="sticky top-0 z-30 md:hidden h-14 px-2 flex items-center gap-2 border-b border-rule bg-bg supports-[backdrop-filter]:bg-bg/80 supports-[backdrop-filter]:backdrop-blur-md">
           <button
-            ref={menuButtonRef}
             onClick={() => setSidebarOpen(true)}
             className={btn.icon}
             aria-label="Abrir menú"

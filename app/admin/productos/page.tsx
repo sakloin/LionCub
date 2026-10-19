@@ -1510,7 +1510,7 @@ export default function ProductosAdmin() {
           <div role="dialog" aria-modal="true" aria-label={deleteHasSales ? "No se puede eliminar" : "Eliminar producto"} className="bg-bg-card rounded-2xl shadow-[var(--lc-shadow-3)] p-6 w-full max-w-sm flex flex-col gap-4 lc-admin-pop">
             {deleteHasSales ? (
               <>
-                <div className="flex items-center gap-3 text-orange-600">
+                <div className="flex items-center gap-3 text-gold-deep">
                   <AlertTriangle size={22} />
                   <h2 className="font-semibold text-ink text-lg">No se puede eliminar</h2>
                 </div>
@@ -1520,7 +1520,7 @@ export default function ProductosAdmin() {
                 <p className="text-sm text-ink-soft">
                   Si ya no quieres venderlo, puedes <strong>desactivarlo</strong> para ocultarlo de la tienda sin perder el historial de pedidos.
                 </p>
-                {deleteError && <p className="text-xs text-red-600 font-mono break-all">{deleteError}</p>}
+                {deleteError && <p className="text-xs text-red-700 font-mono break-all">{deleteError}</p>}
                 <button
                   onClick={() => { setDeleteTarget(null); setDeleteError(null); }}
                   autoFocus
@@ -1531,14 +1531,14 @@ export default function ProductosAdmin() {
               </>
             ) : (
               <>
-                <div className="flex items-center gap-3 text-red-600">
+                <div className="flex items-center gap-3 text-red-700">
                   <Trash2 size={22} />
                   <h2 className="font-semibold text-ink text-lg">Eliminar producto</h2>
                 </div>
                 <p className="text-sm text-ink-soft">
                   ¿Eliminar <strong>{deleteTarget.name}</strong>? Esta acción no se puede deshacer.
                 </p>
-                {deleteError && <p className="text-xs text-red-600 font-mono break-all">{deleteError}</p>}
+                {deleteError && <p className="text-xs text-red-700 font-mono break-all">{deleteError}</p>}
                 <div className="flex gap-3">
                   <button
                     onClick={() => { setDeleteTarget(null); setDeleteError(null); }}
