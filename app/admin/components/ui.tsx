@@ -89,8 +89,14 @@ export function StatusBadge({ meta, size = "md" }: { meta?: StatusMeta; size?: "
 export function FilterChip({
   active, onClick, children, count, icon: Icon,
 }: { active: boolean; onClick: () => void; children: React.ReactNode; count?: number; icon?: LucideIcon }) {
+  const ref = useRef<HTMLButtonElement>(null);
+  // En móvil los chips se desplazan: el activo siempre queda a la vista.
+  useEffect(() => {
+    if (active) ref.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [active]);
   return (
     <button
+      ref={ref}
       type="button"
       onClick={onClick}
       aria-pressed={active}
