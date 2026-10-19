@@ -20,6 +20,7 @@
 | 3 | Jerarquía y contenido | ⬜ |
 | 4 | Congelamiento + velocidad (LCP < 2.5 s móvil) + prueba de compra real | ⬜ |
 | 5 | Lanzamiento | ⬜ |
+| A1 | Rediseño del panel admin (navegación, tablero, pedidos, productos) — spec `docs/requisitos/admin-rediseno-2026-10-19.md` | 🔵 en curso (rama `claude/admin-rediseno`) |
 
 ## Fase 2 — Críticos de compra
 - [x] **2.1 Resiliencia de la colección** (`app/components/Collection.tsx`): `try/catch/finally` en la carga para que un fallo del fetch NO deje "Cargando…" eterno; cae al estado vacío. _(hecho en rama; criterio: con la base caída, la sección no se cuelga)._
@@ -45,6 +46,14 @@
 - [x] `SizeGuide.tsx` — tabla con 8 tallas RN→2T, peso, altura, nota sobre holgura Pima
 - [x] `AnnouncementBar` dismissible — botón X + `localStorage` para persistir la decisión
 - [x] DT-01 y DT-02 verificados como ya resueltos en código; actualizados en `deuda-tecnica.md`
+
+## Fase A1 — Rediseño del panel admin (2026-10-19)
+> Pedido de Heber: admin «rústico» → más interactivo, con las mejoras de los videos. Solo UI/UX; sin cambios de lógica, auth ni esquema.
+- [ ] **A1.1** Navegación agrupada (`AdminShell`): íconos, grupos, activo accesible, cajón + barra inferior en móvil, login accesible, toaster propio del admin.
+- [ ] **A1.2** Tablero: KPI de hoy/7 días, pedidos por estado, stock bajo, lista de espera, acciones rápidas, saludo con contexto, contadores, skeleton.
+- [ ] **A1.3** Pedidos: búsqueda, filtros con conteo, estados color+ícono+texto, acción principal por pedido, confirmación y deshacer.
+- [ ] **A1.4** Productos (lista): filtros, stock con texto, interruptor accesible con deshacer, móvil sin desborde, skeleton.
+- [ ] **A1.5** Auditor: veredicto APROBADO antes de integrar. Pendientes en `deuda-tecnica.md` (DT-07…).
 
 ## Notas
 - El **inglés va al lanzamiento** — selector EN/ES visible. Aprobado por Heber 2026-10-11.
