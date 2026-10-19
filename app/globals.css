@@ -279,3 +279,22 @@ body {
   .lc-pill-gold { border-color: var(--color-gold); color: var(--color-gold-deep); }
   .lc-pill-ink  { border-color: var(--color-ink);  color: var(--color-ink); }
 }
+
+/* ── Panel admin: microinteracciones (solo transform/opacity; respetan
+   prefers-reduced-motion vía los tokens --lc-dur-*) ───────────────────── */
+@keyframes lc-admin-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+.lc-admin-in {
+  animation: lc-admin-in var(--lc-dur-sm) var(--lc-ease-soft) both;
+  animation-delay: calc(40ms * var(--i, 0));
+}
+@keyframes lc-admin-pop {
+  from { opacity: 0; transform: translateY(8px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+.lc-admin-pop { animation: lc-admin-pop var(--lc-dur-xs) var(--lc-ease-soft) both; }
+@media (prefers-reduced-motion: reduce) {
+  .lc-admin-in, .lc-admin-pop { animation: none; }
+}

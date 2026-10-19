@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={nunito.variable}>
-      <body className="bg-[#F8F5F0] min-h-screen">
+      <body className="bg-bg text-ink min-h-screen">
         <AdminShell>{children}</AdminShell>
       </body>
     </html>
