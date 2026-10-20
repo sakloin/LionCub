@@ -8,7 +8,7 @@ import Link from "next/link";
 import { MessageCircle, Upload, FileText, RefreshCw } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { LionMark } from "../components/LogoMark";
-import { PAYMENT_INFO, PROOF_REQUIRED, type PaymentMethod } from "../lib/payment-info";
+import { PAYMENT_INFO, PROOF_REQUIRED, NOTA_COBRO_TERCEROS, type PaymentMethod } from "../lib/payment-info";
 import { CULQI_ENABLED } from "../lib/feature-flags";
 import { toCents, fromCents, formatSoles } from "../lib/money";
 
@@ -50,6 +50,7 @@ function QrPanel({ info, label }: { info: { qrImage: string; phone: string; hold
         <p className="text-ink-soft">Número · <strong className="text-ink font-semibold">{info.phone}</strong></p>
         <p className="text-ink-soft">Titular · <strong className="text-ink font-semibold">{info.holder}</strong></p>
         <p className="text-ink-mute-text text-xs mt-1">Escanea el QR o yapea al número. Después sube tu comprobante.</p>
+        <p className="text-ink-mute-text text-xs border-t border-rule pt-2 mt-1">{NOTA_COBRO_TERCEROS}</p>
       </div>
     </div>
   );
@@ -73,6 +74,7 @@ function BankPanel() {
         </div>
       ))}
       <p className="text-ink-mute-text text-xs mt-1">Realiza la transferencia y sube tu comprobante.</p>
+      <p className="text-ink-mute-text text-xs border-t border-rule pt-2 mt-1">{NOTA_COBRO_TERCEROS}</p>
     </div>
   );
 }
@@ -430,8 +432,7 @@ export default function CheckoutPage() {
   ];
 
   const paymentOptions: { value: PaymentMethod; label: string; desc: string; disabled?: boolean }[] = [
-    { value: "yape",          label: "Yape",                       desc: t("QR instantáneo", "Instant QR") },
-    { value: "plin",          label: "Plin",                       desc: t("QR instantáneo", "Instant QR") },
+    { value: "yape",          label: "Yape / Plin",                desc: t("QR instantáneo — acepta ambas", "Instant QR — both accepted") },
     { value: "transferencia", label: t("Transferencia bancaria", "Bank transfer"), desc: t("Depósito o transferencia a nuestra cuenta", "Deposit or transfer to our account") },
     { value: "contraentrega", label: t("Contra entrega", "Cash on delivery"),      desc: isShalom ? t("Solo con entrega a domicilio", "Home delivery only") : t("Solo Lima Metropolitana (domicilio)", "Metro Lima only (home delivery)"), disabled: isShalom },
     // Tarjeta solo con Culqi activo; si está apagado no se anuncia (misma lista
@@ -629,8 +630,7 @@ export default function CheckoutPage() {
                   </div>
 
                   {/* Payment method details */}
-                  {form.payment_method === "yape"         && <QrPanel info={PAYMENT_INFO.yape} label="Yape" />}
-                  {form.payment_method === "plin"         && <QrPanel info={PAYMENT_INFO.plin} label="Plin" />}
+                  {form.payment_method === "yape"         && <QrPanel info={PAYMENT_INFO.yape} label="Yape / Plin" />}
                   {form.payment_method === "transferencia" && <BankPanel />}
 
                   {/* Proof uploader */}

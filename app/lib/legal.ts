@@ -22,9 +22,9 @@ export const DATOS_LEGALES: {
   whatsappUrl: string;
 } = {
   nombreComercial: "Lion Cub Baby Clothing",
-  razonSocial: PENDIENTE_HEBER,
-  ruc: PENDIENTE_HEBER,
-  domicilio: PENDIENTE_HEBER,
+  razonSocial: "TREJO LEON SILVIA HULDA",
+  ruc: "10101500981",
+  domicilio: PENDIENTE_HEBER, // pendiente: confirmar domicilio fiscal con Heber
   correo: "hola@lioncub.pe",
   whatsapp: "+51 920 201 943",
   whatsappUrl: "https://wa.me/51920201943",
