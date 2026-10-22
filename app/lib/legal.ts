@@ -24,7 +24,7 @@ export const DATOS_LEGALES: {
   nombreComercial: "Lion Cub Baby Clothing",
   razonSocial: "TREJO LEON SILVIA HULDA",
   ruc: "10101500981",
-  domicilio: PENDIENTE_HEBER, // pendiente: confirmar domicilio fiscal con Heber
+  domicilio: "Juvenal Denegri 241, La Victoria, Lima, Lima",
   correo: "hola@lioncub.pe",
   whatsapp: "+51 920 201 943",
   whatsappUrl: "https://wa.me/51920201943",
