@@ -1,7 +1,7 @@
 # V2 — Tokens de diseño «Sistema Visual» (propuesta)
 
 > 🤖 Generado por Claude en la fase spec del sistema visual v2.
-> **Estado:** pendiente aprobación de Heber — NO implementar hasta OK.
+> **Estado:** ✅ **Paleta B aprobada por Heber (2026-10-22).** Implementación tras el lanzamiento del 25-oct.
 
 ---
 
