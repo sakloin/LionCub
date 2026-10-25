@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { X, Ruler, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { useLang } from "../context/LanguageContext";
@@ -12,6 +12,8 @@ import { supabase } from "../lib/supabase";
 import type { Product, Offer } from "../lib/types";
 import { bestOfferFor, effectivePrice } from "../lib/offers";
 import { formatSoles } from "../lib/money";
+import { useDialog } from "../lib/useDialog";
+import { SITE_URL } from "../lib/site";
 
 // ── Categories ────────────────────────────────────────────────────────────
 // Editorial labels for the category strip. The product.category column is the
@@ -128,11 +130,8 @@ function SelectionSheet({ product, offer, onClose }: { product: Product; offer: 
 
   const selectedVariant = buyable.find(v => v.size_id === sizeId && v.color_id === colorId) ?? null;
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialog(dialogRef, true, onClose);
 
   function handleAdd() {
     if (!selectedVariant) return;
@@ -155,6 +154,11 @@ function SelectionSheet({ product, offer, onClose }: { product: Product; offer: 
         onClick={onClose}
       >
         <div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="sel-title"
+          tabIndex={-1}
           className="bg-bg w-full sm:max-w-md max-h-[92svh] overflow-y-auto rounded-t-2xl sm:rounded-sm shadow-2xl animate-fade-in-up"
           onClick={(e) => e.stopPropagation()}
         >
@@ -174,7 +178,7 @@ function SelectionSheet({ product, offer, onClose }: { product: Product; offer: 
                   type="button"
                   onClick={(e) => { e.stopPropagation(); prevImg(); }}
                   aria-label={t("Imagen anterior", "Previous image")}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-bg/70 hover:bg-bg text-ink rounded-full p-1.5 transition-colors"
+                  className="absolute left-1 top-1/2 -translate-y-1/2 w-11 h-11 inline-flex items-center justify-center bg-bg/70 hover:bg-bg text-ink rounded-full transition-colors"
                 >
                   <ChevronLeft size={16} />
                 </button>
@@ -182,25 +186,28 @@ function SelectionSheet({ product, offer, onClose }: { product: Product; offer: 
                   type="button"
                   onClick={(e) => { e.stopPropagation(); nextImg(); }}
                   aria-label={t("Siguiente imagen", "Next image")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-bg/70 hover:bg-bg text-ink rounded-full p-1.5 transition-colors"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 w-11 h-11 inline-flex items-center justify-center bg-bg/70 hover:bg-bg text-ink rounded-full transition-colors"
                 >
                   <ChevronRight size={16} />
                 </button>
-                <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+                <div className="absolute bottom-0 left-0 right-0 flex justify-center">
                   {galleryUrls.map((_, i) => (
                     <button
                       key={i}
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setGalleryIdx(i); }}
                       aria-label={`${t("Imagen", "Image")} ${i + 1}`}
-                      className={`w-1.5 h-1.5 rounded-full transition-colors ${i === galleryIdx ? "bg-bg" : "bg-bg/50"}`}
-                    />
+                      aria-current={i === galleryIdx ? "true" : undefined}
+                      className="w-11 h-11 inline-flex items-center justify-center"
+                    >
+                      <span aria-hidden className={`block w-2 h-2 rounded-full transition-colors ${i === galleryIdx ? "bg-bg" : "bg-bg/50"}`} />
+                    </button>
                   ))}
                 </div>
               </>
             )}
             {offer && (
-              <span className="absolute top-3 left-3 lc-mono uppercase text-[9px] tracking-[0.2em] text-gold-deep bg-bg/90 px-2.5 py-1">
+              <span className="absolute top-3 left-3 lc-mono uppercase text-[12px] tracking-[0.16em] text-ink bg-bg/90 px-2.5 py-1">
                 −{Math.round(offer.discount_percent)}%
               </span>
             )}
@@ -208,20 +215,20 @@ function SelectionSheet({ product, offer, onClose }: { product: Product; offer: 
               type="button"
               onClick={onClose}
               aria-label={t("Cerrar", "Close")}
-              className="absolute top-3 right-3 bg-bg/70 hover:bg-bg text-ink rounded-full p-1.5 transition-colors"
+              className="absolute top-2 right-2 w-11 h-11 inline-flex items-center justify-center bg-bg/70 hover:bg-bg text-ink rounded-full transition-colors"
             >
-              <X size={16} />
+              <X size={18} />
             </button>
           </div>
 
           {/* Product info */}
           <div className="px-5 sm:px-6 pt-4 pb-1">
             {product.gender && product.gender !== "Unisex" && (
-              <p className="lc-mono uppercase text-[9px] tracking-[0.24em] text-ink-mute">
+              <p className="lc-mono uppercase text-[9px] tracking-[0.24em] text-ink-mute-text">
                 {product.gender}
               </p>
             )}
-            <h3 className="lc-display text-xl text-ink leading-tight mt-0.5">{product.name}</h3>
+            <h2 id="sel-title" className="lc-display text-xl text-ink leading-tight mt-0.5">{product.name}</h2>
             <p className="lc-display-i text-sm text-ink-soft">{product.tagline}</p>
           </div>
 
@@ -239,9 +246,9 @@ function SelectionSheet({ product, offer, onClose }: { product: Product; offer: 
                   <button
                     type="button"
                     onClick={() => setSizeGuideOpen(true)}
-                    className="flex items-center gap-1 lc-mono uppercase text-[9px] tracking-[0.18em] text-gold-deep hover:text-ink transition-colors"
+                    className="flex items-center gap-1.5 min-h-11 lc-mono uppercase text-[12px] tracking-[0.14em] text-ink hover:text-gold-deep underline underline-offset-4 decoration-gold transition-colors"
                   >
-                    <Ruler size={11} />
+                    <Ruler size={14} aria-hidden />
                     {t("Guía de tallas", "Size guide")}
                   </button>
                 </div>
@@ -251,7 +258,8 @@ function SelectionSheet({ product, offer, onClose }: { product: Product; offer: 
                       key={s.id}
                       type="button"
                       onClick={() => setSizeId(s.id)}
-                      className={`min-w-[3rem] text-center py-3 px-4 lc-mono uppercase text-[11px] tracking-[0.16em] border transition-colors ${
+                      aria-pressed={sizeId === s.id}
+                      className={`min-w-[3rem] min-h-11 text-center py-3 px-4 lc-mono uppercase text-[11px] tracking-[0.16em] border transition-colors ${
                         sizeId === s.id
                           ? "border-ink bg-ink text-bg"
                           : "border-rule text-ink-soft hover:border-ink"
@@ -273,23 +281,24 @@ function SelectionSheet({ product, offer, onClose }: { product: Product; offer: 
                     {colorsForSize.find(c => c.id === colorId)?.name ?? t("Elige", "Pick")}
                   </span>
                 </p>
-                <div className="flex flex-wrap gap-3.5">
+                <div className="flex flex-wrap gap-1 -ml-2.5">
                   {colorsForSize.map((c) => (
                     <button
                       key={c.id}
                       type="button"
                       onClick={() => setColorId(c.id)}
                       aria-label={c.name}
+                      aria-pressed={colorId === c.id}
                       title={c.name}
-                      className="rounded-full"
-                      style={{
-                        boxShadow:
-                          colorId === c.id
-                            ? "0 0 0 1px var(--color-ink), 0 0 0 4px var(--color-bg)"
-                            : "none",
-                      }}
+                      className="rounded-full w-11 h-11 inline-flex items-center justify-center"
                     >
-                      <span className="lc-sw lc-sw-lg" style={{ background: swatchBg(c.hex) }} />
+                      <span
+                        className="lc-sw lc-sw-lg"
+                        style={{
+                          background: swatchBg(c.hex),
+                          boxShadow: colorId === c.id ? "0 0 0 2px var(--color-bg), 0 0 0 3px var(--color-ink)" : "none",
+                        }}
+                      />
                     </button>
                   ))}
                 </div>
@@ -298,7 +307,7 @@ function SelectionSheet({ product, offer, onClose }: { product: Product; offer: 
 
             {/* Stock */}
             {selectedVariant && (
-              <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute">
+              <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute-text">
                 {selectedVariant.stock === 1
                   ? t("1 unidad disponible", "1 unit available")
                   : `${selectedVariant.stock} ${t("unidades disponibles", "units available")}`}
@@ -307,18 +316,17 @@ function SelectionSheet({ product, offer, onClose }: { product: Product; offer: 
 
             {/* Price */}
             <div className="flex items-baseline justify-between pt-1">
-              <span className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute">
+              <span className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute-text">
                 {product.material}
               </span>
               <div className="flex items-baseline gap-2">
                 {offer && (
-                  <span className="lc-mono text-xs text-ink-mute line-through">
+                  <span className="lc-mono text-xs text-ink-mute-text line-through">
                     {formatSoles(basePrice)}
                   </span>
                 )}
                 <span className="lc-display text-2xl text-ink">
-                  <span className="lc-mono text-xs text-ink-mute mr-1">S/</span>
-                  {displayPrice.toFixed(2)}
+                  {formatSoles(displayPrice)}
                 </span>
               </div>
             </div>
@@ -357,11 +365,8 @@ function WaitlistModal({ product, onClose }: { product: Product; onClose: () => 
   const sizes  = [...new Set((product.variants ?? []).map(v => v.size?.name).filter(Boolean) as string[])];
   const colors = [...new Set((product.variants ?? []).map(v => v.color?.name).filter(Boolean) as string[])];
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialog(dialogRef, true, onClose);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -409,6 +414,11 @@ function WaitlistModal({ product, onClose }: { product: Product; onClose: () => 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/40" onClick={onClose}>
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("Lista de espera", "Waitlist")}
+        tabIndex={-1}
         className="bg-bg w-full sm:max-w-md rounded-t-2xl sm:rounded-sm shadow-2xl animate-fade-in-up"
         onClick={(e) => e.stopPropagation()}
       >
@@ -440,17 +450,19 @@ function WaitlistModal({ product, onClose }: { product: Product; onClose: () => 
                 type="button"
                 onClick={onClose}
                 aria-label={t("Cerrar", "Close")}
-                className="text-ink-mute hover:text-ink transition-colors mt-1"
+                className="w-11 h-11 -mr-2 -mt-1 inline-flex items-center justify-center text-ink-soft hover:text-ink transition-colors shrink-0"
               >
                 <X size={18} />
               </button>
             </div>
 
             <div>
-              <label className="block lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-1">
+              <label htmlFor="wl-name" className="block lc-mono uppercase text-[12px] tracking-[0.18em] text-ink-soft mb-1">
                 {t("Nombre", "Name")} *
               </label>
               <input
+                id="wl-name"
+                autoComplete="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder={t("Tu nombre", "Your name")}
@@ -459,10 +471,11 @@ function WaitlistModal({ product, onClose }: { product: Product; onClose: () => 
             </div>
 
             <div>
-              <label className="block lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-1">
+              <label htmlFor="wl-contact" className="block lc-mono uppercase text-[12px] tracking-[0.18em] text-ink-soft mb-1">
                 {t("Correo o teléfono", "Email or phone")} *
               </label>
               <input
+                id="wl-contact"
                 value={contact}
                 onChange={(e) => setContact(e.target.value)}
                 placeholder="correo@ejemplo.com · 987654321"
@@ -472,10 +485,10 @@ function WaitlistModal({ product, onClose }: { product: Product; onClose: () => 
 
             {sizes.length > 0 && (
               <div>
-                <label className="block lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-1">
+                <label htmlFor="wl-size" className="block lc-mono uppercase text-[12px] tracking-[0.18em] text-ink-soft mb-1">
                   {t("Talla de interés", "Size of interest")}
                 </label>
-                <select value={size} onChange={(e) => setSize(e.target.value)} className="lc-input">
+                <select id="wl-size" value={size} onChange={(e) => setSize(e.target.value)} className="lc-input">
                   <option value="">{t("Sin preferencia", "No preference")}</option>
                   {sizes.map((s) => (
                     <option key={s} value={s}>
@@ -488,10 +501,10 @@ function WaitlistModal({ product, onClose }: { product: Product; onClose: () => 
 
             {colors.length > 0 && (
               <div>
-                <label className="block lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-1">
+                <label htmlFor="wl-color" className="block lc-mono uppercase text-[12px] tracking-[0.18em] text-ink-soft mb-1">
                   {t("Color de interés", "Color of interest")}
                 </label>
-                <select value={color} onChange={(e) => setColor(e.target.value)} className="lc-input">
+                <select id="wl-color" value={color} onChange={(e) => setColor(e.target.value)} className="lc-input">
                   <option value="">{t("Sin preferencia", "No preference")}</option>
                   {colors.map((c) => (
                     <option key={c} value={c}>
@@ -527,13 +540,11 @@ function ProductCard({
   offer,
   onSelect,
   onWaitlist,
-  priority = false,
 }: {
   product: Product;
   offer: Offer | null;
   onSelect: () => void;
   onWaitlist: () => void;
-  priority?: boolean;
 }) {
   const { t } = useLang();
   const [imgError, setImgError] = useState(false);
@@ -548,7 +559,9 @@ function ProductCard({
   const hoverUrl   = imgs.find(i => i.is_hover)?.url ?? null;
 
   return (
-    <button type="button" onClick={outOfStock ? onWaitlist : onSelect} className="group text-left flex flex-col">
+    // Tarjeta = <article>; el botón real es el nombre, estirado sobre toda la
+    // tarjeta (::after) para que se pueda tocar en cualquier parte.
+    <article className="group relative text-left flex flex-col has-[button:focus-visible]:outline-2 has-[button:focus-visible]:outline-offset-4 has-[button:focus-visible]:outline-ink">
       {/* Image plate */}
       <div className="relative lc-plate aspect-[4/5] rounded-sm bg-pink-soft overflow-hidden transition-shadow duration-500 group-hover:[box-shadow:var(--lc-shadow-3)]">
         {!imgError && primaryUrl ? (
@@ -557,7 +570,6 @@ function ProductCard({
               src={primaryUrl}
               alt={product.name}
               fill
-              priority={priority}
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               className={`object-cover transition-[opacity,transform] duration-[600ms] ease-in-out ${
                 hoverUrl ? "md:group-hover:opacity-0 md:group-hover:scale-[1.03]" : "md:group-hover:scale-[1.03]"
@@ -577,7 +589,7 @@ function ProductCard({
             )}
           </>
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-ink-mute">
+          <div className="absolute inset-0 flex items-center justify-center text-ink-mute-text">
             <LionMark size={56} />
           </div>
         )}
@@ -591,7 +603,7 @@ function ProductCard({
         )}
 
         {offer && !outOfStock && (
-          <span className="absolute top-3 left-3 lc-mono uppercase text-[9px] tracking-[0.2em] text-gold-deep bg-bg/90 px-2.5 py-1">
+          <span className="absolute top-3 left-3 lc-mono uppercase text-[12px] tracking-[0.16em] text-ink bg-bg/90 px-2.5 py-1">
             −{Math.round(offer.discount_percent)}%
           </span>
         )}
@@ -600,12 +612,21 @@ function ProductCard({
       {/* Info */}
       <div className="pt-4 flex flex-col">
         {product.gender !== "Unisex" && (
-          <p className="lc-mono uppercase text-[9px] tracking-[0.24em] text-ink-mute mb-1">
+          <p className="lc-mono uppercase text-[12px] tracking-[0.18em] text-ink-soft mb-1">
             {product.gender}
           </p>
         )}
-        <h3 className="lc-display text-lg text-ink leading-tight">{product.name}</h3>
-        <p className="lc-display-i text-[13px] text-ink-soft mt-0.5">{product.tagline}</p>
+        <h3 className="lc-display text-lg text-ink leading-tight">
+          <button
+            type="button"
+            onClick={outOfStock ? onWaitlist : onSelect}
+            aria-label={`${product.name}. ${outOfStock ? t("Agotado: avísame cuando llegue", "Sold out: notify me") : t("Elegir talla", "Choose size")}`}
+            className="text-left after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+          >
+            {product.name}
+          </button>
+        </h3>
+        <p className="lc-display-i text-[14px] text-ink-soft mt-0.5">{product.tagline}</p>
 
         <div className="flex items-center justify-between mt-2.5">
           <div className="flex gap-1.5">
@@ -615,27 +636,29 @@ function ProductCard({
           </div>
           <div className="flex items-baseline gap-1.5">
             {offer && (
-              <span className="lc-mono text-[10px] text-ink-mute line-through">
-                {product.price}
+              <span className="lc-mono text-[12px] text-ink-soft line-through">
+                <span className="sr-only">{t("Antes", "Was")} </span>
+                {formatSoles(product.price)}
               </span>
             )}
             <span className="lc-display text-base text-ink">
-              <span className="lc-mono text-[10px] text-ink-mute mr-1">S/</span>
-              {effectivePrice(product.price, offer).toFixed(2)}
+              {offer && <span className="sr-only">{t("Ahora", "Now")} </span>}
+              {formatSoles(effectivePrice(product.price, offer))}
             </span>
           </div>
         </div>
 
         <span
-          className={`mt-3 lc-mono uppercase text-[10px] tracking-[0.2em] inline-flex items-center gap-1 transition-transform duration-300 group-hover:translate-x-1.5 ${
-            outOfStock ? "text-ink-mute" : "text-gold-deep"
+          aria-hidden
+          className={`mt-3 lc-mono uppercase text-[12px] tracking-[0.16em] inline-flex items-center gap-1 transition-transform duration-300 group-hover:translate-x-1.5 ${
+            outOfStock ? "text-ink-mute-text" : "text-gold-text"
           }`}
         >
           {outOfStock ? t("Avísame", "Notify me") : t("Elegir talla", "Choose size")}
           <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
         </span>
       </div>
-    </button>
+    </article>
   );
 }
 
@@ -671,7 +694,7 @@ export default function Collection({
   // results (price, availability, image) for each piece.
   const jsonLd = useMemo(() => {
     if (products.length === 0) return null;
-    const siteUrl = (typeof window !== "undefined" ? window.location.origin : "https://lioncub.pe");
+    const siteUrl = SITE_URL; // mismo valor en servidor y cliente (sin desajuste al hidratar)
     const itemList = {
       "@context": "https://schema.org",
       "@type": "ItemList",
@@ -752,7 +775,8 @@ export default function Collection({
           <div className="flex flex-wrap justify-center gap-2.5 mb-14">
             <button
               onClick={() => setActiveCategory("all")}
-              className={`lc-pill transition-colors ${
+              aria-pressed={activeCategory === "all"}
+              className={`lc-pill min-h-11 text-[12px] transition-colors ${
                 activeCategory === "all" ? "border-ink bg-ink text-bg" : "hover:border-ink hover:text-ink"
               }`}
             >
@@ -765,7 +789,8 @@ export default function Collection({
                 <button
                   key={cat.id}
                   onClick={() => setActiveCategory(cat.id)}
-                  className={`lc-pill transition-colors ${
+                  aria-pressed={activeCategory === cat.id}
+                  className={`lc-pill min-h-11 text-[12px] transition-colors ${
                     activeCategory === cat.id
                       ? "border-ink bg-ink text-bg"
                       : "hover:border-ink hover:text-ink"
@@ -794,9 +819,8 @@ export default function Collection({
           </div>
         )}
 
-        {/* Groups — first 4 cards get priority to improve LCP */}
+        {/* Groups — sin priority en tarjetas: el LCP es el hero (no competir con su descarga) */}
         {(() => {
-          let cardIndex = 0;
           return grouped.map((group) => (
             <div key={group.id} className="mb-16 last:mb-0">
               <div className="flex items-end gap-4 mb-8 pb-4 border-b border-rule">
@@ -820,20 +844,15 @@ export default function Collection({
               </div>
 
               <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-10 sm:gap-x-6 sm:gap-y-12">
-                {group.items.map((product) => {
-                  const eager = cardIndex < 4;
-                  cardIndex++;
-                  return (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      offer={offerFor(product.id)}
-                      onSelect={() => setSelectProduct(product)}
-                      onWaitlist={() => setWaitlistProduct(product)}
-                      priority={eager}
-                    />
-                  );
-                })}
+                {group.items.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    offer={offerFor(product.id)}
+                    onSelect={() => setSelectProduct(product)}
+                    onWaitlist={() => setWaitlistProduct(product)}
+                  />
+                ))}
               </div>
             </div>
           ));

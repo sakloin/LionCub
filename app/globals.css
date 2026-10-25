@@ -31,6 +31,11 @@
   --color-gold-deep: #A47C3B;
   --color-gold-pale: #EFE0BB;
 
+  /* Texto pequeño que debe pasar AA (4.5:1). Propuesta ADR 0003: no cambian
+     los tokens de superficie; solo se usan para texto < 18 px. */
+  --color-gold-text:      #86652C; /* 5.08 sobre crema · 4.58 sobre bg-warm */
+  --color-ink-mute-text:  #756A5E; /* 4.99 sobre crema · 4.50 sobre bg-warm */
+
   /* pastels (very desaturated) */
   --color-pink:      #F0D9D2;
   --color-pink-soft: #F7E8E3;
@@ -106,6 +111,12 @@
   scroll-behavior: smooth;
 }
 
+/* Foco visible para teclado en todo el sitio (PRINCIPIOS: accesibilidad). */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -167,10 +178,10 @@ body {
   /* Eyebrow */
   .lc-eyebrow {
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: 12px;
     letter-spacing: 0.28em;
     text-transform: uppercase;
-    color: var(--color-gold-deep);
+    color: var(--color-gold-text);
     font-weight: 400;
   }
   .lc-eyebrow-ink { color: var(--color-ink-soft); }
@@ -224,9 +235,10 @@ body {
   .lc-btn-whatsapp svg { width: 14px; height: 14px; }
 
   /* Inputs */
+  /* 16 px mínimo: con menos, iOS hace zoom al enfocar el campo. */
   .lc-input {
     font-family: var(--font-body);
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 300;
     background: transparent;
     border: 0;
@@ -235,7 +247,8 @@ body {
     width: 100%;
     color: var(--color-ink);
   }
-  .lc-input:focus { outline: 0; border-bottom-color: var(--color-ink); }
+  .lc-input:focus { outline: 0; border-bottom-color: var(--color-ink); box-shadow: 0 1px 0 0 var(--color-ink); }
+  .lc-input:focus-visible { outline: 2px solid var(--color-ink); outline-offset: 4px; }
 
   /* Card */
   .lc-card { background: var(--color-bg-card); border-radius: 8px; }
@@ -276,6 +289,115 @@ body {
     border-radius: 999px;
     background: var(--color-bg);
   }
-  .lc-pill-gold { border-color: var(--color-gold); color: var(--color-gold-deep); }
+  .lc-pill-gold { border-color: var(--color-gold); color: var(--color-gold-text); }
+
+  /* ── Hero vitrina (layout por CSS: el servidor ya sirve el móvil correcto) ── */
+  .lc-hero {
+    position: relative;
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    background: var(--background);
+    overflow: hidden;
+  }
+  .lc-hero-media {
+    order: 0;
+    position: relative;
+    flex: none;
+    height: 60svh;
+    overflow: hidden;
+  }
+  .lc-hero-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+    mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+  }
+  .lc-hero-img-kb {
+    animation-name: lc-ken-burns;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+  }
+  .lc-hero-blur { display: none; }
+  .lc-hero-text {
+    order: 1;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 24px 48px;
+    z-index: 2;
+    background: var(--background);
+  }
+  .lc-hero-dots {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    z-index: 3;
+  }
+  .lc-hero-dot {
+    width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+  }
+  .lc-hero-dot-mark {
+    display: block;
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.6);
+    box-shadow: 0 0 0 1px rgba(26,20,16,0.25);
+    transition: all 300ms ease;
+  }
+  .lc-hero-dot-mark.is-on { width: 20px; background: #fff; }
+
+  @media (min-width: 768px) {
+    .lc-hero { flex-direction: row; align-items: center; }
+    .lc-hero-media {
+      order: 1;
+      flex: 1;
+      height: min(88vh, 720px);
+      align-self: center;
+    }
+    .lc-hero-img {
+      -webkit-mask-image: linear-gradient(to left, black 55%, transparent 100%);
+      mask-image: linear-gradient(to left, black 55%, transparent 100%);
+    }
+    .lc-hero-blur { display: block; position: absolute; inset: 0; overflow: hidden; }
+    .lc-hero-blur-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: blur(20px);
+      transform: scale(1.08);
+      -webkit-mask-image: linear-gradient(to right, black 0%, black 20%, transparent 62%);
+      mask-image: linear-gradient(to right, black 0%, black 20%, transparent 62%);
+    }
+    .lc-hero-text {
+      order: 0;
+      flex: 0 0 42%;
+      padding: 0 6% 0 8%;
+      background: transparent;
+    }
+    .lc-hero-dots { left: auto; right: 8px; transform: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lc-hero-img-kb { animation: none; }
+  }
   .lc-pill-ink  { border-color: var(--color-ink);  color: var(--color-ink); }
 }

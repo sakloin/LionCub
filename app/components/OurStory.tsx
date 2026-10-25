@@ -36,7 +36,7 @@ export default function OurStory() {
               style={{ boxShadow: "var(--lc-shadow-2)" }}
             >
               <div className="lc-display text-3xl text-ink">200+</div>
-              <div className="lc-mono uppercase text-[9px] tracking-[0.2em] text-ink-mute mt-1">
+              <div className="lc-mono uppercase text-[9px] tracking-[0.2em] text-ink-mute-text mt-1">
                 {t("familias acompañadas", "families served")}
               </div>
             </div>
@@ -78,7 +78,7 @@ export default function OurStory() {
               {values.map(([label, sub]) => (
                 <div key={label} className="pt-4 border-t border-rule">
                   <div className="lc-display-i text-lg text-ink">{label}</div>
-                  <div className="lc-mono uppercase text-[9px] tracking-[0.2em] text-ink-mute mt-1">
+                  <div className="lc-mono uppercase text-[9px] tracking-[0.2em] text-ink-mute-text mt-1">
                     {sub}
                   </div>
                 </div>

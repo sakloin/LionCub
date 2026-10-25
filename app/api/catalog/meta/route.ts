@@ -17,6 +17,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/app/lib/supabase-admin";
 import { bestOfferFor, applyOfferCents } from "@/app/lib/offers";
 import type { Offer } from "@/app/lib/types";
+import { SITE_URL } from "@/app/lib/site";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -34,9 +35,10 @@ export async function OPTIONS() {
 const META_CATALOG_ID    = process.env.META_CATALOG_ID ?? "";
 const META_ACCESS_TOKEN  = process.env.WHATSAPP_TOKEN ?? "";
 const CATALOG_SYNC_SECRET = process.env.CATALOG_SYNC_SECRET ?? "";
-const _siteEnv = process.env.NEXT_PUBLIC_SITE_URL ?? "";
-const PUBLIC_SITE = (_siteEnv && !_siteEnv.includes("vercel.app")) ? _siteEnv : "https://lioncub.pe";
+const PUBLIC_SITE = SITE_URL;
 const GRAPH_URL          = "https://graph.facebook.com/v20.0";
+// Imagen de respaldo que sí existe en /public (PNG, Meta no acepta WebP en todos los formatos).
+const FALLBACK_IMAGE     = `${PUBLIC_SITE}/logo-512.png`;
 const BATCH_SIZE         = 100; // Meta allows up to 1000; 100 is safe
 
 // Known catalog IDs from the Leon Real Estate Commerce Manager portfolio.
@@ -98,7 +100,7 @@ async function buildCatalogItems(): Promise<CatalogItem[]> {
       ? rawImg
       : rawImg.startsWith("/")
         ? `${PUBLIC_SITE}${rawImg}`
-        : `${PUBLIC_SITE}/og-image.jpg`;
+        : FALLBACK_IMAGE;
 
     items.push({
       id: p.id,
@@ -108,7 +110,9 @@ async function buildCatalogItems(): Promise<CatalogItem[]> {
       condition: "new",
       price: priceCents,
       currency: "PEN",
-      link: `${PUBLIC_SITE}/productos/${p.id}`,
+      // Aún no hay ficha por producto (/productos/[id] daba 404): se envía a la
+      // colección hasta que exista. Ver deuda-tecnica.md (DT-07).
+      link: `${PUBLIC_SITE}/#coleccion`,
       image_link: imageLink,
       brand: "Lion Cub",
       google_product_category: "Apparel & Accessories > Clothing > Baby & Toddler Clothing",
