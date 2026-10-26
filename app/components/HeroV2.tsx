@@ -16,15 +16,17 @@ type Letter = {
   fallback: string;        // color sólido (reduced motion)
 };
 
+// bgSize controla el zoom individual de cada letra
+// bgPos define qué parte de la imagen aparece dentro de la letra
 const LETTERS: Letter[] = [
-  { char: "L", img: "/hero/planos/desktop/K01.webp", imgFocal: "60% 55%", fallback: "#C08A4A" },
-  { char: "I", img: "/hero/planos/desktop/K02.webp", imgFocal: "50% 50%", fallback: "#C8965A" },
-  { char: "O", img: "/hero/planos/desktop/K03.webp", imgFocal: "50% 50%", fallback: "#8B9E7A" },
-  { char: "N", img: "/hero/planos/desktop/K04.webp", imgFocal: "50% 30%", fallback: "#C08A4A" },
+  { char: "L", img: "/hero/planos/desktop/K01.webp", imgFocal: "58% 52%", fallback: "#C08A4A" },
+  { char: "I", img: "/hero/planos/desktop/K02.webp", imgFocal: "48% 42%", fallback: "#C8965A" },
+  { char: "O", img: "/hero/planos/desktop/K03.webp", imgFocal: "50% 45%", fallback: "#8B9E7A" },
+  { char: "N", img: "/hero/planos/desktop/K04.webp", imgFocal: "45% 28%", fallback: "#C08A4A" },
   { char: " ", img: "", imgFocal: "", fallback: "" },
-  { char: "C", img: "/hero/planos/desktop/K05.webp", imgFocal: "50% 40%", fallback: "#E2765A" },
-  { char: "U", img: "/hero/planos/desktop/K06.webp", imgFocal: "50% 40%", fallback: "#9BBBC8" },
-  { char: "B", img: "/hero/planos/desktop/K01.webp", imgFocal: "40% 70%", fallback: "#A47C3B" },
+  { char: "C", img: "/hero/planos/desktop/K05.webp", imgFocal: "50% 38%", fallback: "#E2765A" },
+  { char: "U", img: "/hero/planos/desktop/K06.webp", imgFocal: "52% 38%", fallback: "#9BBBC8" },
+  { char: "B", img: "/hero/planos/desktop/K01.webp", imgFocal: "38% 65%", fallback: "#A47C3B" },
 ];
 
 const DOODLES = {
@@ -155,17 +157,28 @@ export default function HeroV2() {
           if (l.char === " ") {
             return <span key={i} style={{ width: "0.28em", display: "inline-block" }} aria-hidden />;
           }
+          // Zoom individual por letra (backgroundSize) para que el sujeto sea reconocible
+          const bgSizes: Record<string, string> = {
+            L: "175% 175%",
+            I: "320% 320%",
+            O: "155% 155%",
+            N: "195% 195%",
+            C: "175% 175%",
+            U: "225% 225%",
+            B: "165% 165%",
+          };
+
           const style: React.CSSProperties = {
             fontFamily: "var(--font-wordmark)",
             fontWeight: 700,
-            fontSize: "clamp(68px, 15vw, 176px)",
+            fontSize: "clamp(80px, 18vw, 196px)",
             lineHeight: 0.88,
             display: "inline-block",
             ...(reduced || !l.img
               ? { color: l.fallback }
               : {
                   backgroundImage: `url(${l.img})`,
-                  backgroundSize: "200% 200%",
+                  backgroundSize: bgSizes[l.char] ?? "200% 200%",
                   backgroundPosition: l.imgFocal,
                   backgroundRepeat: "no-repeat",
                   WebkitBackgroundClip: "text",
