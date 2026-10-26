@@ -3,9 +3,9 @@
   "rama": "claude/sistema-visual-v2",
   "pr": "#111 DRAFT",
   "avance_pct": 93,
-  "ultimo_commit": "pendiente",
+  "ultimo_commit": "e8c650a",
   "ultimo_deploy": "lioncub-git-claude-sistema-visual-v2-sakloins-projects.vercel.app",
-  "estado_deploy": "PENDING",
+  "estado_deploy": "LIVE",
   "notas": [
     "Hero N: LC-001 (conjunto animal print, sin bebé)",
     "Hero B: K04 pendiente reemplazo — prompt preparado",
