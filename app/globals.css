@@ -49,6 +49,18 @@
   --font-display: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
   --font-body:    var(--font-inter, var(--font-nunito)), "Inter", system-ui, -apple-system, sans-serif;
   --font-mono:    var(--font-jetbrains), "JetBrains Mono", "IBM Plex Mono", monospace;
+
+  /* v2 typography */
+  --font-wordmark: var(--font-fredoka), "Fredoka", sans-serif;
+  --font-title:    var(--font-figtree), "Figtree", system-ui, sans-serif;
+
+  /* v2 paleta B (aprobada 2026-10-22) */
+  --color-v2-bg:     #FBF7F2;
+  --color-v2-wave:   #E9D7B8;
+  --color-v2-sage:   #D5D2BA;
+  --color-v2-amber:  #C08A4A;
+  --color-v2-cta:    #E2765A;
+  --color-v2-doodle: #8B9E7A;
 }
 
 :root {

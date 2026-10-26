@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, Inter, JetBrains_Mono } from "next/font/google";
+import { Cormorant_Garamond, Inter, JetBrains_Mono, Fredoka, Figtree } from "next/font/google";
 import "./globals.css";
 import Providers from "./components/Providers";
 import { SITE_URL } from "./lib/site";
@@ -23,6 +23,20 @@ const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains",
   subsets: ["latin"],
   weight: ["400"],
+  display: "swap",
+});
+
+const fredoka = Fredoka({
+  variable: "--font-fredoka",
+  subsets: ["latin"],
+  weight: ["700"],
+  display: "swap",
+});
+
+const figtree = Figtree({
+  variable: "--font-figtree",
+  subsets: ["latin"],
+  weight: ["400", "700"],
   display: "swap",
 });
 
@@ -148,7 +162,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${cormorant.variable} ${inter.variable} ${jetbrainsMono.variable}`}
+      className={`${cormorant.variable} ${inter.variable} ${jetbrainsMono.variable} ${fredoka.variable} ${figtree.variable}`}
     >
       <body className="min-h-full flex flex-col antialiased bg-bg text-ink">
           <script
