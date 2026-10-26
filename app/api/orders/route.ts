@@ -40,12 +40,14 @@ export async function POST(req: NextRequest) {
     subtotal: _ignoredSubtotal,
     total: _ignoredTotal,
     shipping_cost: _ignoredShipping,
+    acepta_terminos: aceptaTerminos,
     ...orderData
   } = body as {
     items?: CartItem[];
     subtotal?: unknown;
     total?: unknown;
     shipping_cost?: unknown;
+    acepta_terminos?: unknown;
     [k: string]: unknown;
   };
   void _ignoredSubtotal;
@@ -53,6 +55,15 @@ export async function POST(req: NextRequest) {
   void _ignoredShipping;
 
   // ─── Basic input validation ────────────────────────────────────────────
+  // Aceptación expresa de Términos y Privacidad (Ley 29733). Se valida aquí y
+  // se guarda como `orders.acepta_terminos_at` con la hora del servidor
+  // (migración 20261018_libro_reclamaciones.sql, DT-17).
+  if (aceptaTerminos !== true) {
+    return NextResponse.json(
+      { error: "Debes aceptar los Términos y la Política de privacidad." },
+      { status: 400 },
+    );
+  }
   if (!Array.isArray(items) || items.length === 0) {
     return NextResponse.json({ error: "Carrito vacío" }, { status: 400 });
   }
@@ -221,18 +232,29 @@ export async function POST(req: NextRequest) {
   }
 
   // ─── Insert the order; roll back stock if it fails ────────────────────
-  const { data: order, error } = await supabaseAdmin
-    .from("orders")
-    .insert({
-      ...orderData,
-      subtotal:      fromCents(subtotalCents),
-      total:         fromCents(totalCents),
-      shipping_cost: fromCents(shippingCents),
-      payment_status: "pendiente",
-      order_status:   "nuevo",
-    })
-    .select()
-    .single();
+  // `acepta_terminos_at` va después del spread: el cliente no puede fijarlo.
+  const orderRow: Record<string, unknown> = {
+    ...orderData,
+    subtotal:      fromCents(subtotalCents),
+    total:         fromCents(totalCents),
+    shipping_cost: fromCents(shippingCents),
+    payment_status: "pendiente",
+    order_status:   "nuevo",
+    acepta_terminos_at: new Date().toISOString(),
+  };
+  const insertOrder = (row: Record<string, unknown>) =>
+    supabaseAdmin.from("orders").insert(row).select().single();
+
+  let { data: order, error } = await insertOrder(orderRow);
+
+  // Si la migración aún no está aplicada, PostgREST no conoce la columna
+  // (PGRST204). No se bloquea la compra: se reintenta sin ella (DT-17).
+  if (error && error.code === "PGRST204" && error.message?.includes("acepta_terminos_at")) {
+    console.warn("[orders] falta la columna orders.acepta_terminos_at; se guarda el pedido sin ella");
+    const { acepta_terminos_at: _sinColumna, ...rowSinAceptacion } = orderRow;
+    void _sinColumna;
+    ({ data: order, error } = await insertOrder(rowSinAceptacion));
+  }
 
   if (error || !order) {
     await releaseReserved();

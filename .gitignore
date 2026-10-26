@@ -43,3 +43,6 @@ next-env.d.ts
 
 # Panel de control Claude Code
 .claude/estado-panel.json
+
+# pruebas unitarias compiladas
+/.test-build/

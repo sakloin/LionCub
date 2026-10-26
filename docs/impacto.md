@@ -12,6 +12,7 @@
 | Pagos | `app/api/payments/culqi/**` | `orders` | Clientes (Culqi) |
 | Admin | `app/admin/**` | todas | Heber |
 | Automatización | `automation/workflows/**` | `contenido_*` | n8n |
+| Legal / Libro de Reclamaciones | `app/lib/legal.ts`, `app/lib/reclamos.ts`, `app/libro-reclamaciones/**`, `app/api/reclamos/route.ts`, `app/terminos`, `app/privacidad`, `Footer.tsx` | `libro_reclamaciones` (ADR 0002 aprobada 2026-10-19; migración `20261018_libro_reclamaciones.sql` sin aplicar) | Clientes / Heber |
 
 ## Casos dorados del negocio
 
@@ -42,3 +43,22 @@
 ### GC-06: Resiliencia de colección sin BD
 - Precondición: Supabase inactivo / fetch falla.
 - Criterio: sección colección muestra estado vacío; no queda en "Cargando…" eterno.
+
+### GC-07: Libro de Reclamaciones sin tabla
+- Precondición: la tabla `libro_reclamaciones` no existe (ADR 0002 sin aplicar) o la base no responde.
+- Acción: llenar `/libro-reclamaciones` con datos ficticios válidos y enviar.
+- Criterio: la API responde 503 con `canal_alterno: true`; la página muestra el aviso con WhatsApp y correo. No se pierde el texto del formulario.
+
+### GC-08: Libro de Reclamaciones con tabla
+- Precondición: ADR 0002 aplicada.
+- Acción: enviar una hoja con datos ficticios.
+- Criterio: respuesta 201 con código `000000001-AAAA` correlativo y `copia_enviada`; la pantalla muestra la hoja completa con «Imprimir / guardar PDF»; llega copia al consumidor y a `ADMIN_EMAIL`; la fila no se puede leer ni insertar con la llave pública y `delete` falla (trigger).
+
+### GC-10: Antispam del Libro
+- Acción: enviar el formulario antes de 3 s de abrirlo; luego 4 hojas en la misma hora desde la misma IP o el mismo correo.
+- Criterio: el envío rápido responde 429 «Espera unos segundos»; el 4.º envío responde 429 con canal alterno; sin token responde 400 «Recarga la página». Prueba automática: `npm test`.
+
+### GC-09: Aceptación de Términos en el checkout
+- Precondición: bolsa con ≥ 1 ítem, en el paso de pago.
+- Criterio: "Confirmar pedido" está deshabilitado hasta marcar "He leído y acepto los Términos y la Política de privacidad".
+

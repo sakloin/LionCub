@@ -8,7 +8,7 @@ import Link from "next/link";
 import { MessageCircle, Upload, FileText, RefreshCw } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { LionMark } from "../components/LogoMark";
-import { PAYMENT_INFO, PROOF_REQUIRED, type PaymentMethod } from "../lib/payment-info";
+import { PAYMENT_INFO, PROOF_REQUIRED, NOTA_COBRO_TERCEROS, type PaymentMethod } from "../lib/payment-info";
 import { CULQI_ENABLED } from "../lib/feature-flags";
 import { toCents, fromCents, formatSoles } from "../lib/money";
 
@@ -42,14 +42,15 @@ function QrPanel({ info, label }: { info: { qrImage: string; phone: string; hold
           // eslint-disable-next-line @next/next/no-img-element
           <img src={info.qrImage} alt={`QR ${label}`} className="w-full h-full object-contain" onError={() => setImgErr(true)} />
         ) : (
-          <p className="text-[10px] text-center text-ink-mute px-2">QR pendiente<br/>(actualizar en payment-info.ts)</p>
+          <p className="text-[10px] text-center text-ink-mute-text px-2">QR pendiente<br/>(actualizar en payment-info.ts)</p>
         )}
       </div>
       <div className="text-sm flex flex-col gap-1.5">
-        <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute">{label}</p>
+        <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute-text">{label}</p>
         <p className="text-ink-soft">Número · <strong className="text-ink font-semibold">{info.phone}</strong></p>
         <p className="text-ink-soft">Titular · <strong className="text-ink font-semibold">{info.holder}</strong></p>
-        <p className="text-ink-mute text-xs mt-1">Escanea el QR o yapea al número. Después sube tu comprobante.</p>
+        <p className="text-ink-mute-text text-xs mt-1">Escanea el QR o yapea al número. Después sube tu comprobante.</p>
+        <p className="text-ink-mute-text text-xs border-t border-rule pt-2 mt-1">{NOTA_COBRO_TERCEROS}</p>
       </div>
     </div>
   );
@@ -59,7 +60,7 @@ function BankPanel() {
   const b = PAYMENT_INFO.bank;
   return (
     <div className="bg-bg-warm border border-rule p-4 text-sm flex flex-col gap-2">
-      <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute mb-1">Datos bancarios</p>
+      <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute-text mb-1">Datos bancarios</p>
       {[
         ["Banco",   b.name],
         ["Cuenta",  b.account],
@@ -72,7 +73,8 @@ function BankPanel() {
           <span className="font-semibold text-ink text-right">{v}</span>
         </div>
       ))}
-      <p className="text-ink-mute text-xs mt-1">Realiza la transferencia y sube tu comprobante.</p>
+      <p className="text-ink-mute-text text-xs mt-1">Realiza la transferencia y sube tu comprobante.</p>
+      <p className="text-ink-mute-text text-xs border-t border-rule pt-2 mt-1">{NOTA_COBRO_TERCEROS}</p>
     </div>
   );
 }
@@ -97,6 +99,8 @@ export default function CheckoutPage() {
     payment_method: "yape" as PaymentMethod,
     notes: "",
   });
+  // Aceptación expresa de Términos y Privacidad (Ley 29733) antes de confirmar.
+  const [acceptTerms, setAcceptTerms] = useState(false);
 
   // Proof upload state
   const [proofFile,       setProofFile]       = useState<File | null>(null);
@@ -134,7 +138,7 @@ export default function CheckoutPage() {
   const requiresProof   = (PROOF_REQUIRED as string[]).includes(form.payment_method);
   const requiresEmail   = form.payment_method === "culqi";
   const emailOk         = !requiresEmail || isValidEmail(form.customer_email);
-  const confirmDisabled = submitting || proofUploading || (requiresProof && !proofUrl) || !emailOk;
+  const confirmDisabled = submitting || proofUploading || (requiresProof && !proofUrl) || !emailOk || !acceptTerms;
 
   function field(key: keyof typeof form, value: string) {
     setForm(f => ({ ...f, [key]: value }));
@@ -264,6 +268,7 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          acepta_terminos: acceptTerms,
           payment_proof_url:  requiresProof ? (proofUrl || null) : null,
           delivery_date:      isShalom ? null : (form.delivery_date || null),
           delivery_time_slot: isShalom ? null : (form.delivery_time_slot || null),
@@ -367,13 +372,13 @@ export default function CheckoutPage() {
             {t("para confirmar tu pedido.", "to confirm your order.")}
           </p>
           {orderId && (
-            <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute border border-rule px-4 py-2">
+            <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute-text border border-rule px-4 py-2">
               {t("Nro. pedido", "Order no.")} · {orderId.slice(0, 8).toUpperCase()}
             </p>
           )}
           {!isShalom && form.delivery_date && (
             <div className="w-full bg-bg-warm p-4 text-sm">
-              <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute mb-1.5">
+              <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-mute-text mb-1.5">
                 {t("Entrega programada", "Scheduled delivery")}
               </p>
               <p className="lc-display-i text-lg text-ink capitalize">{fmtDeliveryDate(form.delivery_date)}</p>
@@ -386,7 +391,7 @@ export default function CheckoutPage() {
             <ol className="flex flex-col gap-5">
               {nextSteps.map(([title, desc], i) => (
                 <li key={title} className="flex gap-4">
-                  <span className="lc-mono text-[11px] tracking-[0.1em] text-gold-deep pt-1">
+                  <span className="lc-mono text-[11px] tracking-[0.1em] text-gold-text pt-1">
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   <div>
@@ -427,16 +432,18 @@ export default function CheckoutPage() {
   ];
 
   const paymentOptions: { value: PaymentMethod; label: string; desc: string; disabled?: boolean }[] = [
-    { value: "yape",          label: "Yape",                       desc: t("QR instantáneo", "Instant QR") },
-    { value: "plin",          label: "Plin",                       desc: t("QR instantáneo", "Instant QR") },
-    { value: "transferencia", label: t("Transferencia bancaria", "Bank transfer"), desc: "BCP · BBVA · Interbank" },
+    { value: "yape",          label: "Yape / Plin",                desc: t("QR instantáneo — acepta ambas", "Instant QR — both accepted") },
+    { value: "transferencia", label: t("Transferencia bancaria", "Bank transfer"), desc: t("Depósito o transferencia a nuestra cuenta", "Deposit or transfer to our account") },
     { value: "contraentrega", label: t("Contra entrega", "Cash on delivery"),      desc: isShalom ? t("Solo con entrega a domicilio", "Home delivery only") : t("Solo Lima Metropolitana (domicilio)", "Metro Lima only (home delivery)"), disabled: isShalom },
+    // Tarjeta solo con Culqi activo; si está apagado no se anuncia (misma lista
+    // que la bolsa y el pie: metodosDePagoVisibles en lib/payment-info.ts).
     ...(CULQI_ENABLED
       ? [{ value: "culqi" as PaymentMethod, label: t("Tarjeta de crédito/débito", "Credit/debit card"), desc: t("Visa, Mastercard · Powered by Culqi", "Visa, Mastercard · Powered by Culqi") }]
-      : [{ value: "izipay" as PaymentMethod, label: t("Tarjeta", "Card"), desc: t("Próximamente disponible", "Coming soon"), disabled: true }]),
+      : []),
   ];
 
   const inputCls = "lc-input";
+  const labelCls = "block lc-mono uppercase text-[12px] tracking-[0.18em] text-ink-soft mb-1";
   const cardCls = (active: boolean, disabled = false) =>
     `w-full text-left p-4 border transition-colors ${
       active ? "border-ink bg-bg-warm" : "border-rule hover:border-ink"
@@ -464,15 +471,15 @@ export default function CheckoutPage() {
                       state === "active"
                         ? "border-ink bg-ink text-bg"
                         : state === "done"
-                        ? "border-gold-deep text-gold-deep"
-                        : "border-rule text-ink-mute"
+                        ? "border-gold-deep text-gold-text"
+                        : "border-rule text-ink-mute-text"
                     }`}
                   >
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   <span
                     className={`lc-mono uppercase text-[10px] tracking-[0.22em] ${
-                      state === "next" ? "text-ink-mute" : "text-ink"
+                      state === "next" ? "text-ink-mute-text" : "text-ink"
                     }`}
                   >
                     {s.label}
@@ -494,13 +501,14 @@ export default function CheckoutPage() {
                 <>
                   <h2 className="lc-display text-2xl text-ink">{t("Tus datos", "Your details")}</h2>
                   {[
-                    { key: "customer_name",  label: t("Nombre completo *", "Full name *"),    type: "text"  },
-                    { key: "customer_phone", label: t("WhatsApp / Celular *", "WhatsApp / Phone *"), type: "tel" },
-                    { key: "customer_email", label: t("Correo electrónico", "Email"),   type: "email" },
+                    { key: "customer_name",  label: t("Nombre completo *", "Full name *"),    type: "text",  autoComplete: "name",  inputMode: "text"  as const },
+                    { key: "customer_phone", label: t("WhatsApp / Celular *", "WhatsApp / Phone *"), type: "tel", autoComplete: "tel", inputMode: "tel" as const },
+                    { key: "customer_email", label: t("Correo electrónico", "Email"),   type: "email", autoComplete: "email", inputMode: "email" as const },
                   ].map(f => (
                     <div key={f.key}>
-                      <label className="block lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-1">{f.label}</label>
-                      <input type={f.type} value={form[f.key as keyof typeof form] as string}
+                      <label htmlFor={`co-${f.key}`} className={labelCls}>{f.label}</label>
+                      <input id={`co-${f.key}`} name={f.key} type={f.type} autoComplete={f.autoComplete} inputMode={f.inputMode}
+                        value={form[f.key as keyof typeof form] as string}
                         onChange={e => field(f.key as keyof typeof form, e.target.value)}
                         className={inputCls} />
                     </div>
@@ -527,6 +535,7 @@ export default function CheckoutPage() {
                             resetProof();
                           }
                         }}
+                        aria-pressed={form.shipping_method === opt.value}
                         className={cardCls(form.shipping_method === opt.value)}>
                         <p className="lc-display text-lg text-ink">{opt.label}</p>
                         <p className="text-ink-soft text-sm mt-0.5">{opt.desc}</p>
@@ -537,35 +546,37 @@ export default function CheckoutPage() {
                   {form.shipping_method === "domicilio" && (
                     <div className="flex flex-col gap-5">
                       {[
-                        { key: "address",  label: t("Dirección *", "Address *") },
-                        { key: "district", label: t("Distrito *", "District *")  },
+                        { key: "address",  label: t("Dirección *", "Address *"), autoComplete: "street-address" },
+                        { key: "district", label: t("Distrito *", "District *"), autoComplete: "address-level3" },
                       ].map(f => (
                         <div key={f.key}>
-                          <label className="block lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-1">{f.label}</label>
-                          <input value={form[f.key as keyof typeof form] as string}
+                          <label htmlFor={`co-${f.key}`} className={labelCls}>{f.label}</label>
+                          <input id={`co-${f.key}`} name={f.key} autoComplete={f.autoComplete}
+                            value={form[f.key as keyof typeof form] as string}
                             onChange={e => field(f.key as keyof typeof form, e.target.value)}
                             className={inputCls} />
                         </div>
                       ))}
                       <div>
-                        <label className="block lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-1">
+                        <label htmlFor="co-delivery_date" className={labelCls}>
                           {t("Fecha de entrega *", "Delivery date *")}
                         </label>
-                        <input type="date" value={form.delivery_date}
+                        <input id="co-delivery_date" type="date" value={form.delivery_date}
                           min={getMinDate()} max={getMaxDate()}
                           onChange={e => handleDateChange(e.target.value)}
                           className={inputCls} />
                         {dateError && <p className="text-xs text-red-600 mt-1">{dateError}</p>}
-                        <p className="text-[11px] text-ink-mute mt-1.5">{t("De lunes a domingo (excepto sábados)", "Monday to Sunday (except Saturdays)")}</p>
+                        <p className="text-[11px] text-ink-mute-text mt-1.5">{t("De lunes a domingo (excepto sábados)", "Monday to Sunday (except Saturdays)")}</p>
                       </div>
                       {form.delivery_date && !dateError && (
                         <div>
-                          <label className="block lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-2">
+                          <p id="co-slot-label" className={labelCls}>
                             {t("Franja horaria *", "Time slot *")}
-                          </label>
-                          <div className="grid gap-2">
+                          </p>
+                          <div className="grid gap-2" role="group" aria-labelledby="co-slot-label">
                             {availableSlots.map(slot => (
                               <button key={slot} type="button" onClick={() => field("delivery_time_slot", slot)}
+                                aria-pressed={form.delivery_time_slot === slot}
                                 className={`px-4 py-3 border text-left lc-mono text-[12px] tracking-[0.08em] transition-colors ${
                                   form.delivery_time_slot === slot ? "border-ink bg-bg-warm text-ink" : "border-rule text-ink-soft hover:border-ink"
                                 }`}>
@@ -573,7 +584,7 @@ export default function CheckoutPage() {
                               </button>
                             ))}
                           </div>
-                          {isFriday(form.delivery_date) && <p className="text-[11px] text-ink-mute mt-1.5">{t("Los viernes solo hay entrega hasta las 16:00 h", "Fridays deliver only until 4:00 pm")}</p>}
+                          {isFriday(form.delivery_date) && <p className="text-[11px] text-ink-mute-text mt-1.5">{t("Los viernes solo hay entrega hasta las 16:00 h", "Fridays deliver only until 4:00 pm")}</p>}
                         </div>
                       )}
                     </div>
@@ -581,8 +592,8 @@ export default function CheckoutPage() {
 
                   {form.shipping_method === "shalom" && (
                     <div>
-                      <label className="block lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-1">{t("Agencia Shalom *", "Shalom agency *")}</label>
-                      <select value={form.shalom_agency} onChange={e => field("shalom_agency", e.target.value)}
+                      <label htmlFor="co-shalom_agency" className={labelCls}>{t("Agencia Shalom *", "Shalom agency *")}</label>
+                      <select id="co-shalom_agency" value={form.shalom_agency} onChange={e => field("shalom_agency", e.target.value)}
                         className={inputCls}>
                         <option value="">{t("Seleccionar agencia...", "Select agency...")}</option>
                         {SHALOM_AGENCIES.map(a => <option key={a} value={a}>{a}</option>)}
@@ -610,6 +621,7 @@ export default function CheckoutPage() {
                       <button key={opt.value}
                         onClick={() => { if (!opt.disabled) { field("payment_method", opt.value); resetProof(); } }}
                         disabled={opt.disabled}
+                        aria-pressed={form.payment_method === opt.value}
                         className={cardCls(form.payment_method === opt.value, opt.disabled)}>
                         <p className="lc-display text-lg text-ink">{opt.label}</p>
                         <p className="text-ink-soft text-sm mt-0.5">{opt.desc}</p>
@@ -618,8 +630,7 @@ export default function CheckoutPage() {
                   </div>
 
                   {/* Payment method details */}
-                  {form.payment_method === "yape"         && <QrPanel info={PAYMENT_INFO.yape} label="Yape" />}
-                  {form.payment_method === "plin"         && <QrPanel info={PAYMENT_INFO.plin} label="Plin" />}
+                  {form.payment_method === "yape"         && <QrPanel info={PAYMENT_INFO.yape} label="Yape / Plin" />}
                   {form.payment_method === "transferencia" && <BankPanel />}
 
                   {/* Proof uploader */}
@@ -630,8 +641,8 @@ export default function CheckoutPage() {
                       </label>
 
                       {!proofUrl ? (
-                        <label className={`flex flex-col items-center justify-center gap-2 border border-dashed px-4 py-6 cursor-pointer transition-colors ${proofUploading ? "border-ink bg-bg-warm" : "border-rule hover:border-ink hover:bg-bg-warm"}`}>
-                          <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={handleProofFile} className="hidden" disabled={proofUploading} />
+                        <label className={`flex flex-col items-center justify-center gap-2 border border-dashed px-4 py-6 cursor-pointer transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-ink ${proofUploading ? "border-ink bg-bg-warm" : "border-rule hover:border-ink hover:bg-bg-warm"}`}>
+                          <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={handleProofFile} className="sr-only" disabled={proofUploading} />
                           {proofUploading ? (
                             <>
                               <RefreshCw size={20} className="text-ink animate-spin" />
@@ -639,9 +650,9 @@ export default function CheckoutPage() {
                             </>
                           ) : (
                             <>
-                              <Upload size={20} className="text-ink-mute" />
+                              <Upload size={20} className="text-ink-mute-text" />
                               <p className="text-xs font-semibold text-ink">{t("Haz clic para seleccionar", "Click to select")}</p>
-                              <p className="text-[11px] text-ink-mute">JPG, PNG o PDF · máx. 5 MB</p>
+                              <p className="text-[11px] text-ink-mute-text">JPG, PNG o PDF · máx. 5 MB</p>
                             </>
                           )}
                         </label>
@@ -659,11 +670,11 @@ export default function CheckoutPage() {
                             </a>
                           )}
                           <div className="flex-1">
-                            <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-gold-deep">{t("Comprobante subido", "Proof uploaded")}</p>
+                            <p className="lc-mono uppercase text-[10px] tracking-[0.22em] text-gold-text">{t("Comprobante subido", "Proof uploaded")}</p>
                             {proofFile && <p className="text-[11px] text-ink-soft truncate max-w-[160px]">{proofFile.name}</p>}
                           </div>
                           <button onClick={resetProof}
-                            className="lc-mono uppercase text-[9px] tracking-[0.22em] text-ink-mute hover:text-ink shrink-0">
+                            className="lc-mono uppercase text-[9px] tracking-[0.22em] text-ink-mute-text hover:text-ink shrink-0">
                             {t("Cambiar", "Change")}
                           </button>
                         </div>
@@ -692,10 +703,29 @@ export default function CheckoutPage() {
 
                   {/* Notes */}
                   <div>
-                    <label className="block lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft mb-1">{t("Notas adicionales", "Additional notes")}</label>
-                    <textarea rows={2} value={form.notes} onChange={e => field("notes", e.target.value)}
+                    <label htmlFor="co-notes" className={labelCls}>{t("Notas adicionales", "Additional notes")}</label>
+                    <textarea id="co-notes" rows={2} value={form.notes} onChange={e => field("notes", e.target.value)}
                       placeholder={t("Instrucciones de entrega, talla especial, etc.", "Delivery instructions, special size, etc.")}
-                      className="w-full bg-transparent border border-rule px-4 py-3 text-sm text-ink focus:outline-none focus:border-ink transition-colors" />
+                      className="w-full bg-transparent border border-rule px-4 py-3 text-base text-ink focus:border-ink transition-colors" />
+                  </div>
+
+                  {/* Aceptación de Términos y Privacidad */}
+                  <div className="flex flex-col gap-2">
+                    <label htmlFor="co-accept" className="flex items-start gap-3 cursor-pointer text-sm text-ink-soft leading-relaxed min-h-11">
+                      <input id="co-accept" type="checkbox" checked={acceptTerms}
+                        onChange={e => setAcceptTerms(e.target.checked)}
+                        className="mt-0.5 w-5 h-5 shrink-0 accent-[var(--color-ink)]" />
+                      <span>
+                        {t("He leído y acepto los ", "I have read and accept the ")}
+                        <Link href="/terminos" target="_blank" className="underline text-ink">{t("Términos y condiciones", "Terms & conditions")}</Link>
+                        {t(" y la ", " and the ")}
+                        <Link href="/privacidad" target="_blank" className="underline text-ink">{t("Política de privacidad", "Privacy policy")}</Link>.
+                      </span>
+                    </label>
+                    <p className="text-[12px] text-ink-soft">
+                      {t("¿Algún problema con tu compra? ", "Any problem with your order? ")}
+                      <Link href="/libro-reclamaciones" target="_blank" className="underline">Libro de Reclamaciones</Link>
+                    </p>
                   </div>
 
                   <div className="flex gap-3">
@@ -704,7 +734,7 @@ export default function CheckoutPage() {
                     </button>
                     <button onClick={submitOrder} disabled={confirmDisabled}
                       className="lc-btn lc-btn-primary flex-1 disabled:opacity-60">
-                      {submitting ? t("Enviando…", "Sending…") : requiresProof && !proofUrl ? t("Sube el comprobante primero", "Upload proof first") : t("Confirmar pedido", "Place order")}
+                      {submitting ? t("Enviando…", "Sending…") : requiresProof && !proofUrl ? t("Sube el comprobante primero", "Upload proof first") : !acceptTerms ? t("Acepta los términos para continuar", "Accept the terms to continue") : t("Confirmar pedido", "Place order")}
                     </button>
                   </div>
                 </>

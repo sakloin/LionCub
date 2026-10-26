@@ -26,18 +26,18 @@ export default function AnnouncementBar() {
   }
 
   return (
-    <div className="relative bg-bg-warm text-ink-soft text-center lc-mono uppercase text-[10px] tracking-[0.22em] py-2 px-10">
+    <div className="relative bg-bg-warm text-ink-soft text-center lc-mono uppercase text-[12px] tracking-[0.18em] py-2 pl-4 pr-12">
       {t(
-        "Envíos a Perú · USA · Carta del recién nacido en cada pedido",
-        "Ships to Peru · USA · A newborn letter with every order"
+        "Envíos a todo el Perú · Carta del recién nacido en cada pedido",
+        "Shipping across Peru · A newborn letter with every order"
       )}
       <button
         type="button"
         onClick={dismiss}
         aria-label={t("Cerrar anuncio", "Dismiss")}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-mute hover:text-ink transition-colors"
+        className="absolute right-0 top-1/2 -translate-y-1/2 w-11 h-11 inline-flex items-center justify-center text-ink-soft hover:text-ink transition-colors"
       >
-        <X size={12} />
+        <X size={14} aria-hidden="true" />
       </button>
     </div>
   );

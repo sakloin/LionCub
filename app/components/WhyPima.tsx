@@ -34,16 +34,8 @@ export default function WhyPima() {
         "Doesn't wear out with washing. Quality holds garment after garment, wash after wash.",
     },
     {
-      titleEs: "Hipoalergénico",
-      titleEn: "Hypoallergenic",
-      descEs:
-        "Sin irritantes ni químicos agresivos. Perfecto para la piel más delicada y sensible.",
-      descEn:
-        "Free from irritants and harsh chemicals. Perfect for the most delicate, sensitive skin.",
-    },
-    {
-      titleEs: "Origen certificado",
-      titleEn: "Certified origin",
+      titleEs: "Origen peruano",
+      titleEn: "Peruvian origin",
       descEs:
         "Cultivado en los valles costeros del Perú, donde el Pima crece con condiciones únicas en el mundo.",
       descEn:
@@ -128,7 +120,7 @@ export default function WhyPima() {
           {benefits.map((b, i) => (
             <div key={i} data-reveal style={{ "--lc-reveal-i": i } as React.CSSProperties}
               className="pt-5 border-t border-rule">
-              <span className="lc-mono text-[10px] tracking-[0.24em] text-gold-deep">
+              <span className="lc-mono text-[12px] tracking-[0.2em] text-gold-text">
                 0{i + 1}
               </span>
               <div className="lc-display text-xl text-ink mt-3" style={{ fontWeight: 400 }}>
@@ -138,7 +130,7 @@ export default function WhyPima() {
                 {lang === "es" ? b.descEs : b.descEn}
               </p>
               {(lang === "es" ? b.proofEs : b.proofEn) && (
-                <p className="lc-mono text-[10px] tracking-[0.12em] text-gold-deep mt-2.5">
+                <p className="lc-mono text-[12px] tracking-[0.1em] text-gold-text mt-2.5">
                   {lang === "es" ? b.proofEs : b.proofEn}
                 </p>
               )}
@@ -152,9 +144,9 @@ export default function WhyPima() {
             {t("Orgullo peruano", "Peruvian pride")}
           </p>
           <h3 className="lc-display mx-auto mt-5 max-w-3xl text-3xl sm:text-4xl leading-tight tracking-[-0.01em]">
-            {t("Perú produce el ", "Peru produces ")}
-            <em className="lc-display-i text-gold">{t("80%", "80%")}</em>
-            {t(" del algodón Pima a nivel mundial.", " of the world's Pima cotton.")}
+            {t("Algodón ", "")}
+            <em className="lc-display-i text-gold">{t("Pima", "Pima")}</em>
+            {t(" de la costa norte del Perú.", " cotton from Peru's northern coast.")}
           </h3>
           <p className="mx-auto mt-6 max-w-xl text-[14px] leading-relaxed font-light text-bg/70">
             {t(
