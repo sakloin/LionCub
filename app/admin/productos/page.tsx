@@ -1172,11 +1172,65 @@ export default function ProductosAdmin() {
         placeholder="Buscar por nombre, SKU o categoría..."
         value={search}
         onChange={e => setSearch(e.target.value)}
-        className="bg-white border border-[#F5EDD8] rounded-xl px-4 py-2.5 text-sm text-[#3D2010] focus:outline-none focus:ring-2 focus:ring-[#D4A520] w-full max-w-sm"
+        className="bg-white border border-[#F5EDD8] rounded-xl px-4 min-h-11 text-base text-[#3D2010] focus:outline-none focus:ring-2 focus:ring-[#D4A520] w-full max-w-sm"
       />
 
-      {/* Product table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-[#F5EDD8] overflow-hidden">
+      {/* Mobile card list (< sm) */}
+      <ul className="flex flex-col gap-3 sm:hidden">
+        {filtered.map(p => {
+          const stock = stockByProduct[p.id] ?? 0;
+          return (
+            <li key={p.id} className="bg-white rounded-2xl shadow-sm border border-[#F5EDD8] p-4 flex flex-col gap-3">
+              <div className="flex items-start gap-3">
+                {p.image_url && (
+                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-[#F5EDD8] flex-shrink-0">
+                    <img src={p.image_url} alt={p.name} className="w-full h-full object-cover"
+                      onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-[#3D2010] leading-tight">{p.name}</p>
+                  <p className="text-[#9B6B45] text-xs mt-0.5">{p.id} · {p.category}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="bg-[#FDF8F0] rounded-lg py-1.5">
+                  <p className="text-[10px] text-[#9B6B45] uppercase tracking-wide">Precio</p>
+                  <p className="font-bold text-[#D4A520] text-sm">{formatSoles(p.price)}</p>
+                </div>
+                <div className="bg-[#FDF8F0] rounded-lg py-1.5">
+                  <p className="text-[10px] text-[#9B6B45] uppercase tracking-wide">Costo</p>
+                  <p className="font-semibold text-[#9B6B45] text-sm">{formatSoles(p.cost ?? 0)}</p>
+                </div>
+                <div className="bg-[#FDF8F0] rounded-lg py-1.5">
+                  <p className="text-[10px] text-[#9B6B45] uppercase tracking-wide">Stock</p>
+                  <p className={`font-bold text-sm ${stock <= 3 ? "text-orange-500" : "text-[#3D2010]"}`}>{stock}</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <button onClick={() => toggleActive(p)} className={`flex items-center gap-1 text-xs font-semibold min-h-11 px-3 rounded-xl ${p.active ? "text-green-600 bg-green-50" : "text-[#9B6B45] bg-[#F5EDD8]"}`}>
+                  {p.active ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                  {p.active ? "Activo" : "Oculto"}
+                </button>
+                <div className="flex gap-2">
+                  <button onClick={() => openEditProduct(p)} className="min-h-11 min-w-11 flex items-center justify-center rounded-xl text-[#9B6B45] hover:text-[#D4A520] hover:bg-[#FDF8F0] transition-colors">
+                    <Pencil size={17} />
+                  </button>
+                  <button onClick={() => handleDeleteClick(p)} className="min-h-11 min-w-11 flex items-center justify-center rounded-xl text-[#9B6B45] hover:text-red-500 hover:bg-red-50 transition-colors">
+                    <Trash2 size={17} />
+                  </button>
+                </div>
+              </div>
+            </li>
+          );
+        })}
+        {filtered.length === 0 && (
+          <li className="text-center py-10 text-[#9B6B45] text-sm">No hay productos que coincidan</li>
+        )}
+      </ul>
+
+      {/* Product table (sm+) */}
+      <div className="hidden sm:block bg-white rounded-2xl shadow-sm border border-[#F5EDD8] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-[#F5EDD8] text-[#6B3D1E]">
@@ -1317,6 +1371,7 @@ export default function ProductosAdmin() {
             </tbody>
           </table>
         </div>
+      </div>
       </div>
 
       {/* ── Delete dialog ───────────────────────────────────────────────────── */}

@@ -154,14 +154,14 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               key={href}
               href={href}
               onClick={() => setSidebarOpen(false)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${pathname === href ? "bg-[#D4A520] text-white" : "text-white/70 hover:bg-white/10 hover:text-white"}`}
+              className={`flex items-center gap-3 px-3 min-h-11 rounded-xl text-sm font-semibold transition-colors ${pathname === href ? "bg-[#D4A520] text-white" : "text-white/70 hover:bg-white/10 hover:text-white"}`}
             >
               <Icon size={17} />
               {label}
             </Link>
           ))}
         </nav>
-        <button onClick={logout} className="mx-3 mb-4 flex items-center gap-2 px-3 py-2 text-white/50 hover:text-white text-sm rounded-xl hover:bg-white/10 transition-colors">
+        <button onClick={logout} className="mx-3 mb-4 flex items-center gap-2 px-3 min-h-11 text-white/50 hover:text-white text-sm rounded-xl hover:bg-white/10 transition-colors">
           <LogOut size={15} /> Salir
         </button>
       </aside>
@@ -172,10 +172,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       {/* Main */}
       <div className="flex-1 md:ml-56 flex flex-col min-h-screen">
         <header className="bg-white border-b border-[#F5EDD8] px-4 py-3 flex items-center gap-3 md:hidden">
-          <button onClick={() => setSidebarOpen(true)} className="text-[#6B3D1E]"><Menu size={22} /></button>
+          <button onClick={() => setSidebarOpen(true)} className="text-[#6B3D1E] min-h-11 min-w-11 flex items-center justify-center"><Menu size={22} /></button>
           <p className="font-bold text-[#3D2010]">Admin — Lion Cub</p>
         </header>
-        <main className="flex-1 p-4 sm:p-6 max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-4 sm:p-6 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))] max-w-7xl w-full mx-auto">
           {children}
         </main>
       </div>
