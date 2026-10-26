@@ -44,7 +44,7 @@ export default async function MiPedidoPage({ params }: Props) {
 
   const { data: order } = await supabaseAdmin
     .from("orders")
-    .select("id,customer_name,order_status,payment_status,payment_paid_at,created_at,shipping_method,delivery_date,notes")
+    .select("id,order_status,payment_status,payment_paid_at,created_at,delivery_date")
     .eq("id", token)
     .single();
 
@@ -70,7 +70,6 @@ export default async function MiPedidoPage({ params }: Props) {
         <div className="bg-bg-card rounded-2xl border border-rule p-5 shadow-sm">
           <p className="text-xs font-mono text-ink-mute uppercase tracking-widest mb-1">Pedido</p>
           <p className="font-bold text-ink text-lg">#{order.id.slice(0, 8).toUpperCase()}</p>
-          <p className="text-ink-soft text-sm mt-1">{order.customer_name}</p>
           <p className="text-ink-mute text-xs mt-0.5">{fmtDate(order.created_at)}</p>
         </div>
 
@@ -130,14 +129,6 @@ export default async function MiPedidoPage({ params }: Props) {
                 );
               })}
             </ol>
-          </div>
-        )}
-
-        {/* Notes from store */}
-        {order.notes && (
-          <div className="bg-bg-soft rounded-2xl border border-rule-soft p-4 text-sm text-ink-soft">
-            <p className="font-semibold text-ink text-xs uppercase tracking-wider mb-1 font-mono">Nota del equipo</p>
-            <p>{order.notes}</p>
           </div>
         )}
 
