@@ -22,12 +22,12 @@ type Letter = {
 const LETTERS: Letter[] = [
   { char: "L", img: "/products/LC-003.jpeg",             imgFocal: "50% 30%",  fallback: "#C08A4A" },
   { char: "I", img: "/hero/planos/desktop/K02.webp",     imgFocal: "50% 50%",  fallback: "#C8965A" },
-  { char: "O", img: "/hero/planos/desktop/K03.webp",     imgFocal: "50% 60%",  fallback: "#8B9E7A" },
-  { char: "N", img: "/hero/planos/desktop/K05.webp",     imgFocal: "68% 55%",  fallback: "#C08A4A" },
+  { char: "O", img: "/hero/planos/desktop/K03.webp",     imgFocal: "62% 52%",  fallback: "#8B9E7A" },
+  { char: "N", img: "/hero/planos/desktop/K05.webp",     imgFocal: "85% 92%",  fallback: "#C08A4A" },
   { char: " ", img: "",                                   imgFocal: "",         fallback: "" },
   { char: "C", img: "/products/LC-013.jpeg",             imgFocal: "50% 40%",  fallback: "#E2765A" },
   { char: "U", img: "/products/LC-012.jpeg",             imgFocal: "45% 45%",  fallback: "#8B9E7A" },
-  { char: "B", img: "/hero/planos/desktop/K06.webp",     imgFocal: "52% 38%",  fallback: "#A47C3B" },
+  { char: "B", img: "/hero/planos/desktop/K04.webp",     imgFocal: "54% 68%",  fallback: "#A47C3B" },
 ];
 
 const DOODLES = {
@@ -81,13 +81,15 @@ export default function HeroV2() {
     <section
       aria-label="Lion Cub — Ropa de bebé en algodón pima peruano"
       style={{
-        minHeight: "100svh",
         background: "var(--color-v2-bg)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center",
-        padding: "clamp(1rem, 3vw, 2rem) clamp(1.25rem, 5vw, 3rem) clamp(4rem, 8vw, 6rem)",
+        justifyContent: "flex-start",
+        paddingTop: "clamp(3rem, 6vw, 4.5rem)",
+        paddingBottom: "clamp(4rem, 8vw, 6rem)",
+        paddingLeft: "clamp(1.25rem, 5vw, 3rem)",
+        paddingRight: "clamp(1.25rem, 5vw, 3rem)",
         textAlign: "center",
         position: "relative",
         overflow: "hidden",
@@ -165,11 +167,11 @@ export default function HeroV2() {
             const bgSizes: Record<string, string> = {
               L: "120% 120%",
               I: "200% 200%",
-              O: "150% 150%",
-              N: "280% 280%",
+              O: "120% 120%",
+              N: "200% 200%",
               C: "130% 130%",
               U: "130% 130%",
-              B: "175% 175%",
+              B: "200% 200%",
             };
 
             const style: React.CSSProperties = {
