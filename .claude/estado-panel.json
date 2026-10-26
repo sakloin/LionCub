@@ -1,0 +1,22 @@
+{
+  "fase": "v2 — hero rediseñado",
+  "rama": "claude/sistema-visual-v2",
+  "pr": "#111 DRAFT",
+  "avance_pct": 82,
+  "ultimo_commit": "1811e77",
+  "ultimo_deploy": "lioncub-git-claude-sistema-visual-v2-sakloins-projects.vercel.app",
+  "estado_deploy": "BUILDING",
+  "notas": [
+    "Hero rediseñado: 7 imágenes únicas por letra (sin repetición, sin paisaje urbano)",
+    "Mapa letras: L=LC-003, I=K02, O=K03, N=K05 (crop bebé), C=LC-013, U=LC-012, B=K06",
+    "Doodles posicionados dentro de contenedor relativo del wordmark (no viewport)",
+    "Nube orgánica con lóbulos variables; trayectoria horizontal con lazo",
+    "Fuente aumentada a clamp(78px,19vw,240px) → ~87% ancho útil en 1440px",
+    "Screenshots tomados en 390px, 1440px y 1920px — resultados visualmente correctos"
+  ],
+  "pendientes_heber": [
+    "Revisar screenshots del hero rediseñado adjuntos en este hilo",
+    "Confirmar si N (K05 crop bebé) se ve bien o prefieres otra imagen",
+    "Dar OK para avanzar con el resto del sistema visual v2"
+  ]
+}
