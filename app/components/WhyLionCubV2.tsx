@@ -1,19 +1,19 @@
-import Image from "next/image";
-
 /**
- * WhyLionCubV2 — Máscara orgánica, 4 círculos de íconos,
+ * WhyLionCubV2 — Máscara orgánica SVG Bézier, 4 círculos de íconos,
  * conexiones Bézier visibles desde las columnas hasta el borde de la foto.
+ * Foto central renderizada como SVG <image> nativo (más fiable que CSS clip-path url()).
  */
 
-// Máscara orgánica para la foto central — CSS polygon (más compatible que SVG objectBoundingBox)
-// 12 puntos que definen una forma irregular parecida a un óvalo con ondulaciones suaves
-const PHOTO_MASK_CSS =
-  "polygon(" +
-  "52% 3%, 70% 0%, 88% 8%, 97% 26%, 100% 48%, " +
-  "96% 66%, 87% 80%, 73% 94%, 55% 100%, " +
-  "38% 98%, 20% 90%, 7% 76%, 2% 56%, " +
-  "0% 38%, 6% 18%, 18% 6%" +
-  ")";
+// Ruta orgánica en coordenadas viewBox 0 0 100 100 (= objectBoundingBox × 100).
+const PHOTO_CLIP_PATH_100 =
+  "M 52,3 C 68,0 86,7 95,22 " +
+  "C 102,34 102,50 98,62 " +
+  "C 94,76 86,86 74,94 " +
+  "C 62,102 48,102 36,98 " +
+  "C 22,92 10,82 4,68 " +
+  "C -2,54 0,40 4,28 " +
+  "C 10,14 22,6 36,2 " +
+  "C 44,0 48,2 52,3 Z";
 
 const FEATURES = [
   {
@@ -124,8 +124,6 @@ export default function WhyLionCubV2() {
         overflow: "hidden",
       }}
     >
-      {/* SVG defs vacío — máscara migrada a CSS clip-path polygon */}
-
       <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: "clamp(2.5rem, 5vw, 4rem)" }}>
@@ -165,25 +163,31 @@ export default function WhyLionCubV2() {
             ))}
           </div>
 
-          {/* Foto con máscara orgánica */}
-          <div style={{ flexShrink: 0 }}>
-            <div style={{
-              position: "relative",
+          {/* Foto con máscara orgánica — SVG <image> nativo evita problemas de CSS clip-path url() */}
+          <svg
+            viewBox="0 0 100 100"
+            style={{
               width: "clamp(240px, 36vw, 420px)",
-              aspectRatio: "1 / 1",
-              clipPath: PHOTO_MASK_CSS,
-              WebkitClipPath: PHOTO_MASK_CSS,
-              overflow: "hidden",
-            }}>
-              <Image
-                src="/products/LC-019.jpeg"
-                alt="Tejido de algodón pima peruano — textura y costuras Lion Cub"
-                fill
-                style={{ objectFit: "cover", objectPosition: "center 25%" }}
-                sizes="(min-width: 768px) 36vw, 80vw"
-              />
-            </div>
-          </div>
+              height: "clamp(240px, 36vw, 420px)",
+              display: "block",
+              flexShrink: 0,
+              overflow: "visible",
+            }}
+            aria-label="Tejido de algodón pima peruano — textura y costuras Lion Cub"
+          >
+            <defs>
+              <clipPath id="why-photo-clip-svg">
+                <path d={PHOTO_CLIP_PATH_100} />
+              </clipPath>
+            </defs>
+            <image
+              href="/products/LC-019.jpeg"
+              x="0" y="0"
+              width="100" height="100"
+              preserveAspectRatio="xMidYMin slice"
+              clipPath="url(#why-photo-clip-svg)"
+            />
+          </svg>
 
           {/* Columna derecha */}
           <div style={{

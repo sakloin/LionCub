@@ -6,6 +6,7 @@ import ShopByAge from "./components/ShopByAge";
 import BestsellerGrid from "./components/BestsellerGrid";
 import DiscountBannerV2 from "./components/DiscountBannerV2";
 import WhyLionCubV2 from "./components/WhyLionCubV2";
+import NewsletterV2 from "./components/NewsletterV2";
 import TestimonialsClothesline from "./components/TestimonialsClothesline";
 import Footer from "./components/Footer";
 
@@ -24,6 +25,7 @@ export default async function Home() {
         <DiscountBannerV2 />
         <WhyLionCubV2 />
         <TestimonialsClothesline />
+        <NewsletterV2 />
       </main>
       <Footer />
     </>

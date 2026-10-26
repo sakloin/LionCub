@@ -4,25 +4,34 @@ import Image from "next/image";
 import Link from "next/link";
 
 /**
- * ShopByAge — Cards 4:3 con recorte inferior-izquierdo (SVG clipPath)
- * La etiqueta se apoya en el espacio libre que produce el notch.
+ * ShopByAge — Forma orgánica SVG con concavidad inferior-izquierda (Bézier)
+ * La concavidad ondulante reserva espacio real para la etiqueta de edad en dos líneas.
+ * Misma familia de forma en las 4 tarjetas.
  */
 
 const AGE_CARDS = [
-  { label: "0–3 m",  img: "/products/LC-016.jpeg", alt: "Ropa para bebé 0 a 3 meses",  color: "#F0D9D2", href: "/tienda?edad=0-3m",  objPos: "center 28%" },
-  { label: "3–6 m",  img: "/products/LC-001.jpeg", alt: "Ropa para bebé 3 a 6 meses",  color: "#E9D7B8", href: "/tienda?edad=3-6m",  objPos: "center 22%" },
-  { label: "6–12 m", img: "/products/LC-012.jpeg", alt: "Ropa para bebé 6 a 12 meses", color: "#DDE6D6", href: "/tienda?edad=6-12m", objPos: "center 20%" },
-  { label: "1–2 a",  img: "/products/LC-019.jpeg", alt: "Ropa para bebé 1 a 2 años",   color: "#D5D2BA", href: "/tienda?edad=1-2a",  objPos: "center 18%" },
+  { range: "0–3",  unit: "meses", img: "/products/LC-016.jpeg", alt: "Ropa para bebé 0 a 3 meses",  color: "#F0D9D2", href: "/tienda?edad=0-3m",  objPos: "center 28%" },
+  { range: "3–6",  unit: "meses", img: "/products/LC-001.jpeg", alt: "Ropa para bebé 3 a 6 meses",  color: "#E9D7B8", href: "/tienda?edad=3-6m",  objPos: "center 22%" },
+  { range: "6–12", unit: "meses", img: "/products/LC-012.jpeg", alt: "Ropa para bebé 6 a 12 meses", color: "#DDE6D6", href: "/tienda?edad=6-12m", objPos: "center 20%" },
+  { range: "1–2",  unit: "años",  img: "/products/LC-019.jpeg", alt: "Ropa para bebé 1 a 2 años",   color: "#D5D2BA", href: "/tienda?edad=1-2a",  objPos: "center 18%" },
 ];
 
-// objectBoundingBox (0–1): rectángulo redondeado con notch cóncavo inferior-izquierdo
-// Curva suave tipo "mordisco redondeado": entra desde la base (x≈0.52) y
-// sube por la izquierda con una curva cúbica amplia y natural.
-const NOTCH_PATH =
-  "M 0.08,0 L 0.92,0 Q 1,0 1,0.08 " +
-  "L 1,0.92 Q 1,1 0.92,1 " +
-  "L 0.52,1 C 0.30,0.98 0.06,0.86 0.02,0.66 " +
-  "C 0.00,0.56 0,0.30 0,0.08 Q 0,0 0.08,0 Z";
+// Forma orgánica SVG con entrada ondulante cóncava en esquina inferior-izquierda.
+// Coordenadas normalizadas (objectBoundingBox 0–1).
+// El borde inferior arranca en x≈0.54 y sube fluidamente hacia la izquierda
+// creando un espacio libre donde la etiqueta puede posarse sin tocar la foto.
+// Misma contorno para las 4 tarjetas.
+const ORGANIC_PATH =
+  "M 0.10,0.02 " +
+  "C 0.32,0.00 0.68,0.00 0.90,0.02 " +
+  "C 1.00,0.04 1.02,0.18 1.00,0.32 " +
+  "C 1.02,0.52 1.02,0.72 0.98,0.84 " +
+  "C 0.94,0.98 0.80,1.04 0.66,1.02 " +
+  "L 0.52,1.00 " +
+  "C 0.38,0.96 0.22,0.84 0.12,0.70 " +
+  "C 0.04,0.58 0.00,0.46 0.00,0.34 " +
+  "C -0.02,0.18 0.02,0.08 0.08,0.04 " +
+  "C 0.09,0.03 0.10,0.02 0.10,0.02 Z";
 
 export default function ShopByAge() {
   return (
@@ -35,11 +44,11 @@ export default function ShopByAge() {
         overflow: "hidden",
       }}
     >
-      {/* SVG defs — debe estar en el DOM para que clip-path:url(#…) funcione */}
+      {/* SVG defs — clipPath orgánico con Bézier; width/height 0 para no ocupar espacio */}
       <svg width="0" height="0" style={{ position: "absolute", overflow: "hidden" }} aria-hidden>
         <defs>
-          <clipPath id="shop-age-clip" clipPathUnits="objectBoundingBox">
-            <path d={NOTCH_PATH} />
+          <clipPath id="shop-age-organic" clipPathUnits="objectBoundingBox">
+            <path d={ORGANIC_PATH} />
           </clipPath>
         </defs>
       </svg>
@@ -80,23 +89,22 @@ export default function ShopByAge() {
         >
           {AGE_CARDS.map((card) => (
             <Link
-              key={card.label}
+              key={card.range}
               href={card.href}
               style={{ textDecoration: "none", display: "block" }}
             >
-              {/* Contenedor 4:3 — fondo marfil = sección, queda expuesto en el notch */}
+              {/* Contenedor 4:3 — fondo de sección queda expuesto en la concavidad inferior-izquierda */}
               <div style={{
                 position: "relative",
                 aspectRatio: "4/3",
                 background: "var(--color-v2-bg)",
-                borderRadius: "clamp(12px, 2.5vw, 16px)",
               }}>
-                {/* Foto recortada al contorno del notch */}
+                {/* Imagen recortada al contorno orgánico con Bézier */}
                 <div style={{
                   position: "absolute",
                   inset: 0,
-                  clipPath: "url(#shop-age-clip)",
-                  WebkitClipPath: "url(#shop-age-clip)",
+                  clipPath: "url(#shop-age-organic)",
+                  WebkitClipPath: "url(#shop-age-organic)",
                 }}>
                   <Image
                     src={card.img}
@@ -107,21 +115,34 @@ export default function ShopByAge() {
                   />
                 </div>
 
-                {/* Etiqueta en el espacio expuesto del notch — sin pastilla */}
+                {/* Etiqueta en 2 líneas — ocupa el espacio cóncavo expuesto */}
                 <div style={{
                   position: "absolute",
-                  bottom: "10%",
-                  left: "7%",
+                  bottom: "9%",
+                  left: "9%",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "1px",
+                  lineHeight: 1.1,
                 }}>
                   <span style={{
                     fontFamily: "var(--font-title)",
                     fontWeight: 700,
-                    fontSize: "clamp(0.78rem, 1.4vw, 0.88rem)",
+                    fontSize: "clamp(1.1rem, 2.2vw, 1.4rem)",
                     color: "var(--color-ink)",
-                    whiteSpace: "nowrap",
                     display: "block",
                   }}>
-                    {card.label}
+                    {card.range}
+                  </span>
+                  <span style={{
+                    fontFamily: "var(--font-title)",
+                    fontWeight: 400,
+                    fontSize: "clamp(0.7rem, 1.2vw, 0.8rem)",
+                    color: "var(--color-ink-soft)",
+                    display: "block",
+                    letterSpacing: "0.02em",
+                  }}>
+                    {card.unit}
                   </span>
                 </div>
               </div>

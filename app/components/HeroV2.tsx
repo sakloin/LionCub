@@ -18,15 +18,17 @@ type Letter = {
 
 // bgSize controla el zoom individual de cada letra
 // bgPos define qué parte de la imagen aparece dentro de la letra
-// L=set prendas dobladas, I=fibra algodón macro, O=drapeado tela, N=conjunto animal print (sin bebé), C=bodys sage, U=set estampado aventura, B=retrato protagonista bebé
+// L=bebé en prenda visible, I=detalle fibra/textil (letra estrecha), O=drapeado tela,
+// N=conjunto Lion Cub con detalle reconocible, C=detalle bebé/prenda,
+// U=campo de algodón pima (campo = fibra que toca al bebé), B=interacción mamá+bebé
 const LETTERS: Letter[] = [
-  { char: "L", img: "/products/LC-003.jpeg",             imgFocal: "50% 30%",  fallback: "#C08A4A" },
+  { char: "L", img: "/products/LC-016.jpeg",             imgFocal: "50% 25%",  fallback: "#C08A4A" },
   { char: "I", img: "/hero/planos/desktop/K02.webp",     imgFocal: "50% 50%",  fallback: "#C8965A" },
-  { char: "O", img: "/hero/planos/desktop/K03.webp",     imgFocal: "62% 52%",  fallback: "#8B9E7A" },
-  { char: "N", img: "/products/LC-001.jpeg",             imgFocal: "50% 35%",  fallback: "#C08A4A" },
+  { char: "O", img: "/hero/planos/desktop/K03.webp",     imgFocal: "58% 48%",  fallback: "#8B9E7A" },
+  { char: "N", img: "/products/LC-001.jpeg",             imgFocal: "50% 30%",  fallback: "#C08A4A" },
   { char: " ", img: "",                                   imgFocal: "",         fallback: "" },
-  { char: "C", img: "/products/LC-013.jpeg",             imgFocal: "50% 40%",  fallback: "#E2765A" },
-  { char: "U", img: "/products/LC-012.jpeg",             imgFocal: "45% 45%",  fallback: "#8B9E7A" },
+  { char: "C", img: "/products/LC-013.jpeg",             imgFocal: "50% 38%",  fallback: "#E2765A" },
+  { char: "U", img: "/hero/planos/desktop/K01.webp",     imgFocal: "50% 55%",  fallback: "#8B9E7A" },
   { char: "B", img: "/hero/planos/desktop/K04.webp",     imgFocal: "54% 4%",   fallback: "#A47C3B" },
 ];
 
@@ -112,7 +114,7 @@ export default function HeroV2() {
 
       {/* ── Wordmark + doodles — contenedor de composición ── */}
       <div style={{ position: "relative", display: "inline-block" }}>
-        {/* Nube — sobre zona LI */}
+        {/* Nube superior — sobre zona LI */}
         <span
           aria-hidden="true"
           className="lc-doodle-cloud"
@@ -120,7 +122,15 @@ export default function HeroV2() {
         >
           {DOODLES.cloud}
         </span>
-        {/* Sol — esquina superior derecha de B */}
+        {/* Nube inferior — zona U/B, parte baja */}
+        <span
+          aria-hidden="true"
+          className="lc-doodle-cloud2"
+          style={{ color: "var(--color-v2-doodle)", pointerEvents: "none", opacity: 0.52, transform: "scale(0.50)", transformOrigin: "bottom right" }}
+        >
+          {DOODLES.cloud}
+        </span>
+        {/* Sol — integrado con letra B, esquina superior derecha */}
         <span
           aria-hidden="true"
           className="lc-doodle-sun"
@@ -128,7 +138,7 @@ export default function HeroV2() {
         >
           {DOODLES.sun}
         </span>
-        {/* Corazón — lado izquierdo de L */}
+        {/* Corazón 1 — lado izquierdo de L, zona media */}
         <span
           aria-hidden="true"
           className="lc-doodle-heart"
@@ -136,16 +146,24 @@ export default function HeroV2() {
         >
           {DOODLES.heart}
         </span>
-        {/* Trayectoria punteada — parte inferior derecha de B, mayormente horizontal con lazo */}
+        {/* Corazón 2 — zona inferior de L */}
+        <span
+          aria-hidden="true"
+          className="lc-doodle-heart2"
+          style={{ color: "var(--color-v2-cta)", pointerEvents: "none", opacity: 0.48, transform: "scale(0.65)" }}
+        >
+          {DOODLES.heart}
+        </span>
+        {/* Caminito punteado — va desde la zona N hacia U con curva y lazo suave */}
         <svg
           aria-hidden="true"
           className="lc-doodle-caminito"
-          style={{ pointerEvents: "none" }}
-          width="190" height="108" viewBox="0 0 190 108"
+          style={{ pointerEvents: "none", position: "absolute" }}
+          width="320" height="180" viewBox="0 0 320 180"
           fill="none"
         >
           <path
-            d="M 6,96 C 18,84 34,70 50,60 C 62,52 68,40 60,30 C 52,20 38,22 36,36 C 34,48 52,56 72,46 C 96,34 126,20 158,12 C 168,10 180,10 184,14"
+            d="M 12,28 C 36,70 62,105 104,112 C 146,119 178,98 186,74 C 194,50 180,30 158,28 C 136,26 120,48 128,70 C 136,92 164,98 200,90 C 240,82 278,62 308,40"
             stroke="var(--color-v2-doodle)" strokeWidth="1.8" strokeDasharray="4 6" strokeLinecap="round"
             opacity="0.55"
           />
@@ -170,12 +188,12 @@ export default function HeroV2() {
             // auto X% preserva la relación de aspecto de cada imagen (X% controla zoom por altura)
             // "P% P%" deforma imágenes cuyo ratio no coincide con el de la letra
             const bgSizes: Record<string, string> = {
-              L: "auto 120%",
+              L: "auto 130%",
               I: "auto 200%",
               O: "auto 120%",
               N: "auto 140%",
               C: "auto 130%",
-              U: "auto 130%",
+              U: "120% auto",
               B: "auto 200%",
             };
 
@@ -295,22 +313,26 @@ export default function HeroV2() {
       </Link>
 
       <style>{`
-        .lc-doodle-cloud  { position: absolute; top: -52px; left: 8%; }
-        .lc-doodle-sun    { position: absolute; top: -38px; right: -8px; }
-        .lc-doodle-heart  { position: absolute; top: 20%; left: -38px; }
-        .lc-doodle-caminito { position: absolute; right: -34px; bottom: -68px; }
+        .lc-doodle-cloud   { position: absolute; top: -52px; left: 6%; }
+        .lc-doodle-cloud2  { position: absolute; bottom: -16px; right: 12%; }
+        .lc-doodle-sun     { position: absolute; top: -40px; right: -10px; }
+        .lc-doodle-heart   { position: absolute; top: 18%; left: -38px; }
+        .lc-doodle-heart2  { position: absolute; bottom: 22%; left: -30px; transform-origin: bottom left; }
+        .lc-doodle-caminito { left: 38%; top: 0%; }
         @media (max-width: 767px) {
-          .lc-doodle-cloud  {
-            top: auto; bottom: -14px; left: 8%;
-            transform: scale(0.52);
+          .lc-doodle-cloud {
+            top: auto; bottom: -12px; left: 6%;
+            transform: scale(0.50);
             transform-origin: bottom left;
           }
-          .lc-doodle-sun    { top: -22px; right: 2%; }
-          .lc-doodle-heart  { left: -26px; top: 22%; }
+          .lc-doodle-cloud2 { display: none; }
+          .lc-doodle-sun    { top: -22px; right: 2%; transform: scale(0.80); transform-origin: top right; }
+          .lc-doodle-heart  { left: -22px; top: 20%; }
+          .lc-doodle-heart2 { left: -18px; bottom: 28%; }
           .lc-doodle-caminito {
-            right: -10px; bottom: -32px;
-            transform: scale(0.48);
-            transform-origin: bottom right;
+            left: 34%; top: 0%;
+            transform: scale(0.55);
+            transform-origin: top left;
           }
         }
       `}</style>

@@ -41,6 +41,7 @@ type Product = {
   alt: string;
   href: string;
   blobIdx: number;
+  sizes: string;
 };
 
 const FEATURED = {
@@ -50,13 +51,14 @@ const FEATURED = {
   img: "/products/LC-014.jpeg",
   alt: "Conjunto Ovejita de mis Sueños — 100% algodón pima peruano",
   href: "/tienda",
+  sizes: "0–3m · 3–6m · 6–12m",
 };
 
 const PRODUCTS: Product[] = [
-  { name: "Tiernos Conejitos", price: "S/ 79", img: "/products/LC-001.jpeg", alt: "Conjunto Tiernos Conejitos", href: "/tienda", blobIdx: 0 },
-  { name: "Native Bear",       price: "S/ 69", img: "/products/LC-012.jpeg", alt: "Conjunto Native Bear",       href: "/tienda", blobIdx: 1 },
-  { name: "Manta Celestial",   price: "S/ 49", img: "/products/LC-301.jpeg", alt: "Manta Celestial pima",      href: "/tienda", blobIdx: 2 },
-  { name: "Body Esencial",     price: "S/ 29", img: "/products/LC-101.jpeg", alt: "Body Esencial Premium",     href: "/tienda", blobIdx: 3 },
+  { name: "Tiernos Conejitos", price: "S/ 79", img: "/products/LC-001.jpeg", alt: "Conjunto Tiernos Conejitos", href: "/tienda", blobIdx: 0, sizes: "0–3m · 3–6m" },
+  { name: "Native Bear",       price: "S/ 69", img: "/products/LC-012.jpeg", alt: "Conjunto Native Bear",       href: "/tienda", blobIdx: 1, sizes: "3–6m · 6–12m" },
+  { name: "Manta Celestial",   price: "S/ 49", img: "/products/LC-301.jpeg", alt: "Manta Celestial pima",      href: "/tienda", blobIdx: 2, sizes: "Talla única" },
+  { name: "Body Esencial",     price: "S/ 29", img: "/products/LC-101.jpeg", alt: "Body Esencial Premium",     href: "/tienda", blobIdx: 3, sizes: "0–3m · 3–6m · 6–12m" },
 ];
 
 function SmallCard({ product }: { product: Product }) {
@@ -83,6 +85,7 @@ function SmallCard({ product }: { product: Product }) {
             src={product.img}
             alt={product.alt}
             fill
+            loading="eager"
             style={{ objectFit: "cover", objectPosition: "center 20%" }}
             sizes="(min-width: 768px) 22vw, 45vw"
           />
@@ -113,16 +116,24 @@ function SmallCard({ product }: { product: Product }) {
         </div>
       </div>
 
-      {/* Nombre y precio directamente sobre el fondo de sección */}
+      {/* Nombre */}
       <p style={{
         fontFamily: "var(--font-title)", fontWeight: 700,
         fontSize: "clamp(0.85rem, 1.5vw, 0.98rem)",
         color: "var(--color-ink)", margin: 0,
       }}>{product.name}</p>
+      {/* Fila precio */}
       <p style={{
-        fontFamily: "var(--font-title)", fontWeight: 400,
-        fontSize: "0.88rem", color: "var(--color-v2-amber)", margin: 0,
+        fontFamily: "var(--font-title)", fontWeight: 600,
+        fontSize: "clamp(0.82rem, 1.4vw, 0.92rem)",
+        color: "var(--color-v2-amber)", margin: 0,
       }}>{product.price}</p>
+      {/* Tallas / edades */}
+      <p style={{
+        fontFamily: "var(--font-mono, monospace)", fontWeight: 400,
+        fontSize: "10px", letterSpacing: "0.06em",
+        color: "var(--color-ink-soft)", margin: 0, opacity: 0.75,
+      }}>{product.sizes}</p>
     </Link>
   );
 }
@@ -176,6 +187,7 @@ function FeaturedCard() {
             src={FEATURED.img}
             alt={FEATURED.alt}
             fill
+            loading="eager"
             style={{ objectFit: "cover", objectPosition: "center 15%" }}
             sizes="(min-width: 768px) 45vw, 100vw"
           />
@@ -199,18 +211,29 @@ function FeaturedCard() {
         </div>
       </div>
 
-      {/* Precio */}
-      <p style={{
-        fontFamily: "var(--font-title)", fontWeight: 700,
-        fontSize: "clamp(0.95rem, 1.8vw, 1.08rem)",
-        color: "var(--color-ink)", margin: 0, padding: "0 0.25rem",
-      }}>
-        {FEATURED.name}{" "}
-        <span style={{ color: "var(--color-v2-amber)", fontWeight: 400 }}>{FEATURED.price}</span>
-      </p>
+      {/* Fila precio */}
+      <div style={{ padding: "0 0.25rem", display: "flex", flexDirection: "column", gap: "3px" }}>
+        <p style={{
+          fontFamily: "var(--font-title)", fontWeight: 700,
+          fontSize: "clamp(0.95rem, 1.8vw, 1.08rem)",
+          color: "var(--color-v2-amber)", margin: 0,
+        }}>{FEATURED.price}</p>
+        {/* Tallas disponibles */}
+        <p style={{
+          fontFamily: "var(--font-mono, monospace)", fontWeight: 400,
+          fontSize: "10px", letterSpacing: "0.06em",
+          color: "var(--color-ink-soft)", margin: 0, opacity: 0.75,
+        }}>{FEATURED.sizes}</p>
+      </div>
     </Link>
   );
 }
+
+const gridStyles = `
+  @media (min-width: 768px) {
+    .bestseller-layout { grid-template-columns: 1fr 1fr !important; }
+  }
+`;
 
 export default function BestsellerGrid() {
   return (
@@ -267,13 +290,45 @@ export default function BestsellerGrid() {
             {PRODUCTS.map(p => <SmallCard key={p.name} product={p} />)}
           </div>
         </div>
+
+        {/* Botón "Ver todos" */}
+        <div style={{ textAlign: "center", marginTop: "clamp(2rem, 4vw, 3rem)" }}>
+          <Link
+            href="/tienda"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "10px",
+              fontFamily: "var(--font-title)",
+              fontWeight: 700,
+              fontSize: "clamp(0.85rem, 1.5vw, 0.95rem)",
+              letterSpacing: "0.01em",
+              padding: "13px 28px",
+              border: "1.5px solid var(--color-v2-amber)",
+              color: "var(--color-v2-amber)",
+              textDecoration: "none",
+              borderRadius: "999px",
+              background: "transparent",
+              transition: "background 0.22s ease, color 0.22s ease",
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLAnchorElement).style.background = "var(--color-v2-amber)";
+              (e.currentTarget as HTMLAnchorElement).style.color = "#fff";
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
+              (e.currentTarget as HTMLAnchorElement).style.color = "var(--color-v2-amber)";
+            }}
+          >
+            Ver todos los productos
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+              <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </Link>
+        </div>
       </div>
 
-      <style>{`
-        @media (min-width: 768px) {
-          .bestseller-layout { grid-template-columns: 1fr 1fr !important; }
-        }
-      `}</style>
+      <style>{gridStyles}</style>
     </section>
   );
 }
