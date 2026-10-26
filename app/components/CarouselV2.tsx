@@ -38,8 +38,8 @@ const SLIDES: Slide[] = [
     body: "El favorito de las mamás: suave, lavable y siempre elegante.",
     cta: "Ver conjunto",
     href: "#coleccion",
-    img: "/hero/planos/desktop/K02.webp",
-    imgAlt: "Bebé con conjunto crema",
+    img: "/products/LC-003.jpeg",
+    imgAlt: "Conjunto crema de algodón pima",
     bg: "#E9D7B8",
   },
   {
@@ -58,8 +58,8 @@ const SLIDES: Slide[] = [
     body: "Tonos coral y arándano para la nueva temporada.",
     cta: "Ver novedades",
     href: "#coleccion",
-    img: "/hero/planos/desktop/K04.webp",
-    imgAlt: "Mamá y bebé con manta pima",
+    img: "/products/LC-005.jpeg",
+    imgAlt: "Conjunto en nuevos colores temporada",
     bg: "#F0D9D2",
   },
 ];
@@ -131,7 +131,6 @@ export default function CarouselV2() {
             borderRadius: "var(--lc-radius-lg, 22px)",
             overflow: "hidden",
             background: slide.bg,
-            minHeight: "clamp(340px, 50vw, 520px)",
             transition: reduced ? "none" : `background ${FADE_MS}ms ease`,
             display: "flex",
             flexDirection: "column",
@@ -235,8 +234,7 @@ export default function CarouselV2() {
                   <div
                     style={{
                       position: "relative",
-                      aspectRatio: "4/3",
-                      minHeight: "200px",
+                      minHeight: "clamp(200px, 40vw, 400px)",
                     }}
                   >
                     <Image

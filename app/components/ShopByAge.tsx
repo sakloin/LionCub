@@ -29,7 +29,9 @@ export default function ShopByAge() {
       aria-label="Compra por edad"
       style={{
         background: "var(--color-v2-bg)",
-        padding: "clamp(3rem, 7vw, 5rem) clamp(1.25rem, 5vw, 3rem)",
+        padding: "clamp(3rem, 7vw, 5rem) clamp(1.25rem, 5vw, 3rem) clamp(12rem, 18vw, 15rem)",
+        position: "relative",
+        overflow: "hidden",
       }}
     >
       {/* SVG defs — debe estar en el DOM para que clip-path:url(#…) funcione */}
@@ -81,11 +83,11 @@ export default function ShopByAge() {
               href={card.href}
               style={{ textDecoration: "none", display: "block" }}
             >
-              {/* Contenedor 4:3 con el color de fondo visible en el notch */}
+              {/* Contenedor 4:3 — fondo marfil = sección, queda expuesto en el notch */}
               <div style={{
                 position: "relative",
                 aspectRatio: "4/3",
-                background: card.color,
+                background: "var(--color-v2-bg)",
                 borderRadius: "clamp(12px, 2.5vw, 16px)",
               }}>
                 {/* Foto recortada al contorno del notch */}
@@ -104,14 +106,11 @@ export default function ShopByAge() {
                   />
                 </div>
 
-                {/* Etiqueta en el espacio libre del notch — inferior izquierdo */}
+                {/* Etiqueta en el espacio expuesto del notch — sin pastilla */}
                 <div style={{
                   position: "absolute",
-                  bottom: "8%",
-                  left: "6%",
-                  background: "#FBF7F2",
-                  borderRadius: "6px",
-                  padding: "4px 11px",
+                  bottom: "10%",
+                  left: "7%",
                 }}>
                   <span style={{
                     fontFamily: "var(--font-title)",
@@ -130,14 +129,14 @@ export default function ShopByAge() {
         </div>
       </div>
 
-      {/* Colina orgánica inferior */}
+      {/* Onda inferior — flush, sin franja marfil */}
       <div aria-hidden style={{
+        position: "absolute",
+        bottom: 0, left: 0, right: 0,
         lineHeight: 0,
-        marginTop: "clamp(3rem, 6vw, 4rem)",
-        marginLeft: "-clamp(1.25rem,5vw,3rem)",
-        marginRight: "-clamp(1.25rem,5vw,3rem)",
+        pointerEvents: "none",
       }}>
-        <svg viewBox="0 0 1440 180" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style={{ display: "block" }}>
+        <svg viewBox="0 0 1440 180" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style={{ display: "block", width: "100%" }}>
           <path d="M0,120 C280,55 520,170 780,105 C1000,55 1240,160 1440,100 L1440,180 L0,180 Z" fill="var(--color-v2-wave)"/>
         </svg>
       </div>

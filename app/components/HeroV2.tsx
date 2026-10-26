@@ -85,7 +85,7 @@ export default function HeroV2() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        padding: "clamp(5rem, 12vw, 8rem) clamp(1.25rem, 5vw, 3rem) clamp(4rem, 8vw, 6rem)",
+        padding: "clamp(2rem, 6vw, 4rem) clamp(1.25rem, 5vw, 3rem) clamp(4rem, 8vw, 6rem)",
         textAlign: "center",
         position: "relative",
         overflow: "hidden",

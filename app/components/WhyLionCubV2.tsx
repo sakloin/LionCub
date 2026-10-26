@@ -1,73 +1,71 @@
 import Image from "next/image";
 
 /**
- * WhyLionCubV2 — Máscara orgánica ancha (~1:1), 4 círculos de íconos,
- * conexiones Bézier decorativas (solo desktop).
+ * WhyLionCubV2 — Máscara orgánica, 4 círculos de íconos,
+ * conexiones Bézier visibles desde las columnas hasta el borde de la foto.
  */
 
-// Máscara orgánica ~1:1 para la foto (objectBoundingBox)
+// Máscara más irregular (menos oval, con ondulaciones)
 const PHOTO_MASK =
-  "M 0.50,0.04 C 0.74,0.01 0.96,0.16 0.98,0.42 " +
-  "C 1.00,0.68 0.88,0.88 0.64,0.97 " +
-  "C 0.40,1.00 0.14,0.98 0.04,0.80 " +
-  "C 0.00,0.62 0.02,0.38 0.12,0.22 " +
-  "C 0.22,0.06 0.36,0.03 0.50,0.04 Z";
+  "M 0.52,0.03 C 0.72,-0.02 0.94,0.08 0.99,0.30 " +
+  "C 1.04,0.50 0.96,0.65 0.88,0.78 " +
+  "C 0.80,0.90 0.70,0.99 0.55,1.01 " +
+  "C 0.40,1.03 0.22,0.98 0.08,0.88 " +
+  "C -0.04,0.78 0.00,0.62 0.02,0.46 " +
+  "C 0.04,0.30 0.02,0.18 0.14,0.10 " +
+  "C 0.24,0.02 0.40,0.06 0.52,0.03 Z";
 
 const FEATURES = [
   {
     side: "left",
     title: "100 % algodón pima",
-    body: "La fibra larga del pima peruano produce una tela excepcionalmente suave y resistente al lavado.",
+    body: "La fibra larga del pima peruano: suave y resistente al lavado.",
     icon: (
-      // Nube — suavidad
-      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden>
+      <svg width="32" height="32" viewBox="0 0 30 30" fill="none" aria-hidden>
         <path d="M 6,20 C 2,20 1,16 3,13 C 5,10 9,9 12,11 C 13,6 17,3 21,3 C 25,3 29,7 29,12 C 30,12 31,16 29,18 C 28,20 25,20 23,20 Z"
-          stroke="var(--color-v2-doodle)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+          stroke="var(--color-v2-doodle)" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     ),
   },
   {
     side: "left",
     title: "Hecho en Perú",
-    body: "Producción local que apoya el trabajo artesanal peruano y garantiza trazabilidad desde la fibra.",
+    body: "Producción local con trazabilidad desde la fibra.",
     icon: (
-      // Hoja — fibra natural
-      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden>
+      <svg width="32" height="32" viewBox="0 0 30 30" fill="none" aria-hidden>
         <path d="M 15,3 C 15,3 27,7 27,16 C 27,22 21,27 15,27 C 9,27 3,22 3,16 C 3,7 15,3 15,3 Z"
-          stroke="var(--color-v2-doodle)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+          stroke="var(--color-v2-doodle)" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
         <path d="M 15,3 L 15,27"
-          stroke="var(--color-v2-doodle)" strokeWidth="1" strokeDasharray="2 2" strokeLinecap="round"/>
+          stroke="var(--color-v2-doodle)" strokeWidth="1.2" strokeDasharray="2 2" strokeLinecap="round"/>
       </svg>
     ),
   },
   {
     side: "right",
     title: "Tela transpirable",
-    body: "Regula la temperatura en climas cálidos sin incomodar la piel sensible del bebé.",
+    body: "Regula la temperatura sin incomodar la piel sensible del bebé.",
     icon: (
-      // Líneas de aire — transpirabilidad
-      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden>
+      <svg width="32" height="32" viewBox="0 0 30 30" fill="none" aria-hidden>
         <path d="M 4,9 Q 11,6 15,9 Q 19,12 26,9"
-          stroke="var(--color-v2-doodle)" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+          stroke="var(--color-v2-doodle)" strokeWidth="2" fill="none" strokeLinecap="round"/>
         <path d="M 4,15 Q 11,12 15,15 Q 19,18 26,15"
-          stroke="var(--color-v2-doodle)" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+          stroke="var(--color-v2-doodle)" strokeWidth="2" fill="none" strokeLinecap="round"/>
         <path d="M 4,21 Q 11,18 15,21 Q 19,24 26,21"
-          stroke="var(--color-v2-doodle)" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+          stroke="var(--color-v2-doodle)" strokeWidth="2" fill="none" strokeLinecap="round"/>
       </svg>
     ),
   },
   {
     side: "right",
     title: "Diseñado para crecer",
-    body: "Ojales, broches y costuras pensadas para el movimiento y para que las prendas duren más.",
+    body: "Costuras y broches pensados para el movimiento y la durabilidad.",
     icon: (
-      // Hilo y aguja — construcción
-      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden>
-        <path d="M 8,22 L 22,8" stroke="var(--color-v2-doodle)" strokeWidth="1.5" strokeLinecap="round"/>
+      <svg width="32" height="32" viewBox="0 0 30 30" fill="none" aria-hidden>
+        <path d="M 8,22 L 22,8" stroke="var(--color-v2-doodle)" strokeWidth="2" strokeLinecap="round"/>
         <ellipse cx="21" cy="9" rx="3" ry="4.5" transform="rotate(-45 21 9)"
-          stroke="var(--color-v2-doodle)" strokeWidth="1.5" fill="none"/>
+          stroke="var(--color-v2-doodle)" strokeWidth="2" fill="none"/>
         <path d="M 8,22 Q 14,18 18,14"
-          stroke="var(--color-v2-doodle)" strokeWidth="1" strokeDasharray="2 2" strokeLinecap="round"/>
+          stroke="var(--color-v2-doodle)" strokeWidth="1.2" strokeDasharray="2 2" strokeLinecap="round"/>
       </svg>
     ),
   },
@@ -85,12 +83,12 @@ function FeatureItem({ feat, align }: { feat: typeof FEATURES[0]; align: "left" 
       alignItems: "flex-start",
       gap: "0.75rem",
     }}>
-      {/* Círculo de ícono */}
+      {/* Círculo de ícono — fondo salvia claro */}
       <div style={{
         width: "clamp(56px, 8vw, 72px)",
         height: "clamp(56px, 8vw, 72px)",
         borderRadius: "50%",
-        background: "var(--color-v2-wave)",
+        background: "#E8F0E4",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -108,7 +106,7 @@ function FeatureItem({ feat, align }: { feat: typeof FEATURES[0]; align: "left" 
         <p style={{
           fontFamily: "var(--font-title)", fontWeight: 400,
           fontSize: "clamp(0.8rem, 1.3vw, 0.88rem)",
-          lineHeight: 1.55, color: "var(--color-ink-soft)", margin: 0,
+          lineHeight: 1.5, color: "var(--color-ink-soft)", margin: 0,
         }}>{feat.body}</p>
       </div>
     </div>
@@ -121,7 +119,9 @@ export default function WhyLionCubV2() {
       aria-label="¿Por qué Lion Cub?"
       style={{
         background: "var(--color-v2-bg)",
-        padding: "clamp(3rem, 7vw, 5rem) clamp(1.25rem, 5vw, 3rem)",
+        padding: "clamp(3rem, 7vw, 5rem) clamp(1.25rem, 5vw, 3rem) clamp(12rem, 18vw, 15rem)",
+        position: "relative",
+        overflow: "hidden",
       }}
     >
       {/* SVG defs para la máscara de la foto */}
@@ -148,7 +148,8 @@ export default function WhyLionCubV2() {
           }}>¿Por qué Lion Cub?</h2>
         </div>
 
-        {/* Layout: columna izq | foto | columna der */}
+        {/* Layout: columna izq | foto | columna der
+            Por qué: position relative para que las conexiones SVG se ubiquen sobre todo */}
         <div
           style={{
             display: "flex",
@@ -156,6 +157,7 @@ export default function WhyLionCubV2() {
             justifyContent: "center",
             gap: "clamp(1.5rem, 4vw, 3rem)",
             flexWrap: "wrap",
+            position: "relative",
           }}
           className="why-layout"
         >
@@ -170,58 +172,21 @@ export default function WhyLionCubV2() {
             ))}
           </div>
 
-          {/* Foto con máscara orgánica ancha */}
-          <div style={{ position: "relative", flexShrink: 0 }} className="why-photo-wrap">
-            {/* Conexiones Bézier decorativas (solo desktop) */}
-            <svg
-              viewBox="0 0 460 420"
-              style={{
-                position: "absolute",
-                top: "50%", left: "50%",
-                transform: "translate(-50%, -50%)",
-                width: "460px", height: "420px",
-                pointerEvents: "none", zIndex: 0,
-              }}
-              className="why-connections"
-              aria-hidden
-            >
-              {/* Izq feature 1 → borde izq foto */}
-              <path d="M 60,130 C 90,130 115,155 130,165"
-                stroke="var(--color-v2-doodle)" strokeWidth="1.5" fill="none"
-                strokeDasharray="4 5" strokeLinecap="round" opacity="0.5"/>
-              <circle cx="62" cy="130" r="3" fill="var(--color-v2-doodle)" opacity="0.5"/>
-              {/* Izq feature 2 → borde izq foto */}
-              <path d="M 60,290 C 90,290 115,278 130,270"
-                stroke="var(--color-v2-doodle)" strokeWidth="1.5" fill="none"
-                strokeDasharray="4 5" strokeLinecap="round" opacity="0.5"/>
-              <circle cx="62" cy="290" r="3" fill="var(--color-v2-doodle)" opacity="0.5"/>
-              {/* Der feature 1 → borde der foto */}
-              <path d="M 400,130 C 370,130 345,155 330,165"
-                stroke="var(--color-v2-doodle)" strokeWidth="1.5" fill="none"
-                strokeDasharray="4 5" strokeLinecap="round" opacity="0.5"/>
-              <circle cx="398" cy="130" r="3" fill="var(--color-v2-doodle)" opacity="0.5"/>
-              {/* Der feature 2 → borde der foto */}
-              <path d="M 400,290 C 370,290 345,278 330,270"
-                stroke="var(--color-v2-doodle)" strokeWidth="1.5" fill="none"
-                strokeDasharray="4 5" strokeLinecap="round" opacity="0.5"/>
-              <circle cx="398" cy="290" r="3" fill="var(--color-v2-doodle)" opacity="0.5"/>
-            </svg>
-
-            {/* Foto con máscara */}
+          {/* Foto con máscara orgánica */}
+          <div style={{ flexShrink: 0 }}>
             <div style={{
               position: "relative",
               width: "clamp(240px, 36vw, 420px)",
               aspectRatio: "1 / 1",
               clipPath: "url(#why-photo-mask)",
               WebkitClipPath: "url(#why-photo-mask)",
-              zIndex: 1,
               boxShadow: "0 8px 32px rgba(26,20,16,0.12)",
             }}>
               <Image
-                src="/products/LC-019.jpeg"
-                alt="Detalle de tejido — algodón pima peruano 100 %"
+                src="/products/LC-003.jpeg"
+                alt="Conjunto de algodón pima peruano — textura y costuras"
                 fill
-                style={{ objectFit: "cover", objectPosition: "center top" }}
+                style={{ objectFit: "cover", objectPosition: "center 30%" }}
                 sizes="(min-width: 768px) 36vw, 80vw"
               />
             </div>
@@ -237,17 +202,57 @@ export default function WhyLionCubV2() {
               <FeatureItem key={f.title} feat={f} align="right" />
             ))}
           </div>
+
+          {/* Conexiones Bézier — overlay sobre todo el layout (solo desktop) */}
+          <svg
+            viewBox="0 0 920 420"
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              pointerEvents: "none",
+              zIndex: 3,
+              overflow: "visible",
+            }}
+            className="why-connections"
+            aria-hidden
+          >
+            {/* Izq feature 1 → borde izq foto */}
+            <path d="M 215,100 C 240,100 255,130 263,145"
+              stroke="var(--color-v2-doodle)" strokeWidth="1.8" fill="none"
+              strokeDasharray="4 5" strokeLinecap="round" opacity="0.6"/>
+            <circle cx="213" cy="100" r="4" fill="var(--color-v2-doodle)" opacity="0.6"/>
+
+            {/* Izq feature 2 → borde izq foto */}
+            <path d="M 215,320 C 240,320 255,285 263,272"
+              stroke="var(--color-v2-doodle)" strokeWidth="1.8" fill="none"
+              strokeDasharray="4 5" strokeLinecap="round" opacity="0.6"/>
+            <circle cx="213" cy="320" r="4" fill="var(--color-v2-doodle)" opacity="0.6"/>
+
+            {/* Der feature 1 → borde der foto */}
+            <path d="M 705,100 C 680,100 665,130 657,145"
+              stroke="var(--color-v2-doodle)" strokeWidth="1.8" fill="none"
+              strokeDasharray="4 5" strokeLinecap="round" opacity="0.6"/>
+            <circle cx="707" cy="100" r="4" fill="var(--color-v2-doodle)" opacity="0.6"/>
+
+            {/* Der feature 2 → borde der foto */}
+            <path d="M 705,320 C 680,320 665,285 657,272"
+              stroke="var(--color-v2-doodle)" strokeWidth="1.8" fill="none"
+              strokeDasharray="4 5" strokeLinecap="round" opacity="0.6"/>
+            <circle cx="707" cy="320" r="4" fill="var(--color-v2-doodle)" opacity="0.6"/>
+          </svg>
         </div>
       </div>
 
-      {/* Colina orgánica inferior */}
+      {/* Onda inferior — flush, sin franja marfil */}
       <div aria-hidden style={{
+        position: "absolute",
+        bottom: 0, left: 0, right: 0,
         lineHeight: 0,
-        marginTop: "clamp(3rem, 6vw, 4rem)",
-        marginLeft: "-clamp(1.25rem,5vw,3rem)",
-        marginRight: "-clamp(1.25rem,5vw,3rem)",
+        pointerEvents: "none",
       }}>
-        <svg viewBox="0 0 1440 180" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style={{ display: "block" }}>
+        <svg viewBox="0 0 1440 180" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style={{ display: "block", width: "100%" }}>
           <path d="M0,110 C300,50 540,165 800,100 C1000,55 1220,155 1440,95 L1440,180 L0,180 Z" fill="var(--color-v2-sage)"/>
         </svg>
       </div>
@@ -259,11 +264,10 @@ export default function WhyLionCubV2() {
             align-items: center !important;
           }
           .why-layout > div:first-child,
-          .why-layout > div:last-child {
+          .why-layout > div:nth-child(3) {
             max-width: 100% !important;
             flex: unset !important;
           }
-          .why-photo-wrap { order: -1; }
           .why-connections { display: none; }
         }
         @media (max-width: 900px) {

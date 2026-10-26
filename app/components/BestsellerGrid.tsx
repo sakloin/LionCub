@@ -16,9 +16,21 @@ const BLOBS = [
   "M 100,6 C 152,-2 198,30 202,88 C 206,146 178,182 132,196 C 86,210 36,200 8,166 C -20,132 -6,80 12,48 C 30,16 68,6 100,6 Z",
 ];
 
+// Versiones normalizadas (÷200) de BLOBS para clipPath objectBoundingBox en HTML
+const BLOBS_NORM = [
+  "M 0.525,0.06 C 0.775,0.015 0.99,0.16 1.00,0.42 C 1.01,0.68 0.89,0.87 0.675,0.95 C 0.46,1.03 0.21,0.98 0.07,0.82 C -0.07,0.66 -0.01,0.41 0.07,0.25 C 0.15,0.09 0.34,0.04 0.50,0.045 Q 0.515,0.045 0.525,0.06 Z",
+  "M 0.475,0.04 C 0.74,0.00 0.98,0.17 1.00,0.45 C 1.02,0.73 0.89,0.91 0.66,0.98 C 0.43,1.05 0.18,1.00 0.05,0.825 C -0.08,0.65 -0.02,0.39 0.07,0.23 C 0.16,0.07 0.35,0.02 0.49,0.03 Z",
+  "M 0.55,0.05 C 0.80,0.01 1.00,0.18 1.01,0.47 C 1.02,0.76 0.88,0.93 0.65,0.99 C 0.42,1.05 0.17,0.99 0.04,0.81 C -0.09,0.63 -0.02,0.37 0.08,0.22 C 0.18,0.07 0.37,0.03 0.53,0.04 Q 0.54,0.04 0.55,0.05 Z",
+  "M 0.50,0.03 C 0.76,-0.01 0.99,0.15 1.01,0.44 C 1.03,0.73 0.89,0.91 0.66,0.98 C 0.43,1.05 0.18,1.00 0.04,0.83 C -0.10,0.66 -0.03,0.40 0.06,0.24 C 0.15,0.08 0.34,0.03 0.50,0.03 Z",
+];
+
 // Blob grande para producto featured (viewBox 0 0 300 260)
 const BLOB_FEAT =
   "M 150,14 C 210,4 268,42 272,110 C 276,178 248,220 194,236 C 140,252 78,244 38,208 C -2,172 -4,114 16,74 C 36,34 92,14 136,12 Q 143,11 150,14 Z";
+
+// Normalizado (x÷300, y÷260) para clipPath objectBoundingBox
+const BLOB_FEAT_NORM =
+  "M 0.500,0.054 C 0.700,0.015 0.893,0.162 0.907,0.423 C 0.920,0.685 0.827,0.846 0.647,0.908 C 0.467,0.969 0.260,0.938 0.127,0.800 C -0.007,0.662 -0.013,0.438 0.053,0.285 C 0.120,0.131 0.307,0.054 0.453,0.046 Q 0.477,0.042 0.500,0.054 Z";
 
 const BLOB_COLORS = ["#F0D9D2", "#DDE6D6", "#D9E2EA", "#E9D7B8"];
 
@@ -59,19 +71,19 @@ function SmallCard({ product }: { product: Product }) {
           <path d={blob} fill={color} />
         </svg>
 
-        {/* Prenda encima del blob */}
+        {/* Prenda sobre blob — recortada al contorno orgánico */}
         <div style={{
           position: "absolute",
-          top: "8%", left: "12%", right: "12%", bottom: "14%",
-          borderRadius: "52% 44% 58% 48% / 48% 52% 45% 56%",
-          overflow: "hidden",
+          inset: 0,
+          clipPath: `url(#blob-clip-${product.blobIdx})`,
+          WebkitClipPath: `url(#blob-clip-${product.blobIdx})`,
           zIndex: 2,
         }}>
           <Image
             src={product.img}
             alt={product.alt}
             fill
-            style={{ objectFit: "cover", objectPosition: "center 20%" }}
+            style={{ objectFit: "cover", objectPosition: "center 20%", mixBlendMode: "multiply" }}
             sizes="(min-width: 768px) 22vw, 45vw"
           />
         </div>
@@ -152,18 +164,19 @@ function FeaturedCard() {
             fontFamily="monospace" letterSpacing="0.04em">pima</text>
         </svg>
 
-        {/* Prenda featured encima del blob */}
+        {/* Prenda featured — recortada al contorno orgánico */}
         <div style={{
           position: "absolute",
-          top: "5%", left: "8%", right: "8%", bottom: "7%",
-          borderRadius: "55% 45% 52% 48% / 50% 52% 48% 52%",
-          overflow: "hidden", zIndex: 2,
+          inset: 0,
+          clipPath: "url(#blob-clip-feat)",
+          WebkitClipPath: "url(#blob-clip-feat)",
+          zIndex: 2,
         }}>
           <Image
             src={FEATURED.img}
             alt={FEATURED.alt}
             fill
-            style={{ objectFit: "cover", objectPosition: "center 15%" }}
+            style={{ objectFit: "cover", objectPosition: "center 15%", mixBlendMode: "multiply" }}
             sizes="(min-width: 768px) 45vw, 100vw"
           />
         </div>
@@ -208,6 +221,19 @@ export default function BestsellerGrid() {
         padding: "clamp(3rem, 7vw, 5rem) clamp(1.25rem, 5vw, 3rem)",
       }}
     >
+      {/* Defs SVG para recortar imágenes al contorno del blob (objectBoundingBox) */}
+      <svg width="0" height="0" style={{ position: "absolute", overflow: "hidden" }} aria-hidden>
+        <defs>
+          {BLOBS_NORM.map((path, i) => (
+            <clipPath key={i} id={`blob-clip-${i}`} clipPathUnits="objectBoundingBox">
+              <path d={path} />
+            </clipPath>
+          ))}
+          <clipPath id="blob-clip-feat" clipPathUnits="objectBoundingBox">
+            <path d={BLOB_FEAT_NORM} />
+          </clipPath>
+        </defs>
+      </svg>
       <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: "clamp(2rem, 4vw, 3rem)" }}>
