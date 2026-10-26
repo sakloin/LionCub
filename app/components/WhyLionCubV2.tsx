@@ -5,15 +5,15 @@ import Image from "next/image";
  * conexiones Bézier visibles desde las columnas hasta el borde de la foto.
  */
 
-// Máscara más irregular (menos oval, con ondulaciones)
-const PHOTO_MASK =
-  "M 0.52,0.03 C 0.72,-0.02 0.94,0.08 0.99,0.30 " +
-  "C 1.04,0.50 0.96,0.65 0.88,0.78 " +
-  "C 0.80,0.90 0.70,0.99 0.55,1.01 " +
-  "C 0.40,1.03 0.22,0.98 0.08,0.88 " +
-  "C -0.04,0.78 0.00,0.62 0.02,0.46 " +
-  "C 0.04,0.30 0.02,0.18 0.14,0.10 " +
-  "C 0.24,0.02 0.40,0.06 0.52,0.03 Z";
+// Máscara orgánica para la foto central — CSS polygon (más compatible que SVG objectBoundingBox)
+// 12 puntos que definen una forma irregular parecida a un óvalo con ondulaciones suaves
+const PHOTO_MASK_CSS =
+  "polygon(" +
+  "52% 3%, 70% 0%, 88% 8%, 97% 26%, 100% 48%, " +
+  "96% 66%, 87% 80%, 73% 94%, 55% 100%, " +
+  "38% 98%, 20% 90%, 7% 76%, 2% 56%, " +
+  "0% 38%, 6% 18%, 18% 6%" +
+  ")";
 
 const FEATURES = [
   {
@@ -124,14 +124,7 @@ export default function WhyLionCubV2() {
         overflow: "hidden",
       }}
     >
-      {/* SVG defs para la máscara de la foto */}
-      <svg width="0" height="0" style={{ position: "absolute", overflow: "hidden" }} aria-hidden>
-        <defs>
-          <clipPath id="why-photo-mask" clipPathUnits="objectBoundingBox">
-            <path d={PHOTO_MASK} />
-          </clipPath>
-        </defs>
-      </svg>
+      {/* SVG defs vacío — máscara migrada a CSS clip-path polygon */}
 
       <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
         {/* Header */}
@@ -178,15 +171,15 @@ export default function WhyLionCubV2() {
               position: "relative",
               width: "clamp(240px, 36vw, 420px)",
               aspectRatio: "1 / 1",
-              clipPath: "url(#why-photo-mask)",
-              WebkitClipPath: "url(#why-photo-mask)",
-              boxShadow: "0 8px 32px rgba(26,20,16,0.12)",
+              clipPath: PHOTO_MASK_CSS,
+              WebkitClipPath: PHOTO_MASK_CSS,
+              overflow: "hidden",
             }}>
               <Image
-                src="/products/LC-003.jpeg"
-                alt="Conjunto de algodón pima peruano — textura y costuras"
+                src="/products/LC-019.jpeg"
+                alt="Tejido de algodón pima peruano — textura y costuras Lion Cub"
                 fill
-                style={{ objectFit: "cover", objectPosition: "center 30%" }}
+                style={{ objectFit: "cover", objectPosition: "center 25%" }}
                 sizes="(min-width: 768px) 36vw, 80vw"
               />
             </div>

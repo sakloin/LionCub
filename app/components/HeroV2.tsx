@@ -27,7 +27,7 @@ const LETTERS: Letter[] = [
   { char: " ", img: "",                                   imgFocal: "",         fallback: "" },
   { char: "C", img: "/products/LC-013.jpeg",             imgFocal: "50% 40%",  fallback: "#E2765A" },
   { char: "U", img: "/products/LC-012.jpeg",             imgFocal: "45% 45%",  fallback: "#8B9E7A" },
-  { char: "B", img: "/hero/planos/desktop/K04.webp",     imgFocal: "54% 68%",  fallback: "#A47C3B" },
+  { char: "B", img: "/hero/planos/desktop/K04.webp",     imgFocal: "54% 4%",   fallback: "#A47C3B" },
 ];
 
 const DOODLES = {
@@ -141,11 +141,11 @@ export default function HeroV2() {
           aria-hidden="true"
           className="lc-doodle-caminito"
           style={{ pointerEvents: "none" }}
-          width="180" height="100" viewBox="0 0 180 100"
+          width="190" height="108" viewBox="0 0 190 108"
           fill="none"
         >
           <path
-            d="M 8,80 C 20,72 35,60 52,54 C 62,50 64,40 56,36 C 48,32 38,36 40,48 C 42,57 58,60 72,52 C 92,42 118,28 148,18 C 162,14 175,12 178,16"
+            d="M 6,96 C 18,84 34,70 50,60 C 62,52 68,40 60,30 C 52,20 38,22 36,36 C 34,48 52,56 72,46 C 96,34 126,20 158,12 C 168,10 180,10 184,14"
             stroke="var(--color-v2-doodle)" strokeWidth="1.8" strokeDasharray="4 6" strokeLinecap="round"
             opacity="0.55"
           />
@@ -300,12 +300,16 @@ export default function HeroV2() {
         .lc-doodle-heart  { position: absolute; top: 20%; left: -38px; }
         .lc-doodle-caminito { position: absolute; right: -34px; bottom: -68px; }
         @media (max-width: 767px) {
-          .lc-doodle-cloud  { top: -8px; left: 4%; }
-          .lc-doodle-sun    { top: -26px; right: 0; }
-          .lc-doodle-heart  { left: 2px; top: 10%; }
+          .lc-doodle-cloud  {
+            top: auto; bottom: -14px; left: 8%;
+            transform: scale(0.52);
+            transform-origin: bottom left;
+          }
+          .lc-doodle-sun    { top: -22px; right: 2%; }
+          .lc-doodle-heart  { left: -26px; top: 22%; }
           .lc-doodle-caminito {
-            right: -8px; bottom: -28px;
-            transform: scale(0.55);
+            right: -10px; bottom: -32px;
+            transform: scale(0.48);
             transform-origin: bottom right;
           }
         }

@@ -16,12 +16,13 @@ const AGE_CARDS = [
 ];
 
 // objectBoundingBox (0–1): rectángulo redondeado con notch cóncavo inferior-izquierdo
-// El notch abarca ≈ 48 % del ancho y ≈ 20 % del alto desde abajo.
+// Curva suave tipo "mordisco redondeado": entra desde la base (x≈0.52) y
+// sube por la izquierda con una curva cúbica amplia y natural.
 const NOTCH_PATH =
-  "M 0.07,0 L 0.93,0 Q 1,0 1,0.07 " +
-  "L 1,0.93 Q 1,1 0.93,1 " +
-  "L 0.48,1 Q 0.12,0.70 0,0.82 " +
-  "L 0,0.07 Q 0,0 0.07,0 Z";
+  "M 0.08,0 L 0.92,0 Q 1,0 1,0.08 " +
+  "L 1,0.92 Q 1,1 0.92,1 " +
+  "L 0.52,1 C 0.30,0.98 0.06,0.86 0.02,0.66 " +
+  "C 0.00,0.56 0,0.30 0,0.08 Q 0,0 0.08,0 Z";
 
 export default function ShopByAge() {
   return (
