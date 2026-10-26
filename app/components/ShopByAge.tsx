@@ -6,10 +6,10 @@ import Link from "next/link";
  */
 
 const AGE_CARDS = [
-  { label: "0–3 m",  img: "/hero/planos/desktop/K01.webp", alt: "Ropa para bebé 0 a 3 meses", color: "#F0D9D2", href: "/tienda?edad=0-3m" },
-  { label: "3–6 m",  img: "/hero/planos/desktop/K02.webp", alt: "Ropa para bebé 3 a 6 meses", color: "#E9D7B8", href: "/tienda?edad=3-6m" },
-  { label: "6–12 m", img: "/hero/planos/desktop/K03.webp", alt: "Ropa para bebé 6 a 12 meses", color: "#DDE6D6", href: "/tienda?edad=6-12m" },
-  { label: "1–2 a",  img: "/hero/planos/desktop/K05.webp", alt: "Ropa para bebé 1 a 2 años",  color: "#D5D2BA", href: "/tienda?edad=1-2a" },
+  { label: "0–3 m",  img: "/products/LC-016.jpeg", alt: "Ropa para bebé 0 a 3 meses — Nube Celeste Premium", color: "#F0D9D2", href: "/tienda?edad=0-3m" },
+  { label: "3–6 m",  img: "/products/LC-001.jpeg", alt: "Ropa para bebé 3 a 6 meses — Tiernos Conejitos",   color: "#E9D7B8", href: "/tienda?edad=3-6m" },
+  { label: "6–12 m", img: "/products/LC-012.jpeg", alt: "Ropa para bebé 6 a 12 meses — Native Bear",        color: "#DDE6D6", href: "/tienda?edad=6-12m" },
+  { label: "1–2 a",  img: "/products/LC-019.jpeg", alt: "Ropa para bebé 1 a 2 años — Hilo de Algodón Nativo", color: "#D5D2BA", href: "/tienda?edad=1-2a" },
 ];
 
 export default function ShopByAge() {
@@ -104,10 +104,10 @@ export default function ShopByAge() {
         </div>
       </div>
 
-      {/* Wave bottom */}
+      {/* Colina orgánica inferior */}
       <div aria-hidden style={{ lineHeight: 0, marginTop: "clamp(3rem, 6vw, 4rem)", marginLeft: "-clamp(1.25rem,5vw,3rem)", marginRight: "-clamp(1.25rem,5vw,3rem)" }}>
-        <svg viewBox="0 0 1440 70" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-          <path d="M0,30 C360,70 720,10 1080,50 C1260,70 1380,40 1440,35 L1440,70 L0,70 Z" fill="var(--color-v2-wave)"/>
+        <svg viewBox="0 0 1440 180" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style={{ display: "block" }}>
+          <path d="M0,120 C280,55 520,170 780,105 C1000,55 1240,160 1440,100 L1440,180 L0,180 Z" fill="var(--color-v2-wave)"/>
         </svg>
       </div>
     </section>

@@ -17,19 +17,19 @@ type Product = {
 };
 
 const FEATURED: Product = {
-  name: "Conjunto Crema Esencial",
-  price: "S/ 89",
-  img: "/hero/planos/desktop/K02.webp",
-  alt: "Conjunto de bebé en crema — el más vendido",
+  name: "Ovejita de mis Sueños",
+  price: "S/ 59",
+  img: "/products/LC-014.jpeg",
+  alt: "Conjunto Ovejita de mis Sueños — 100% algodón pima peruano",
   bg: "#E9D7B8",
   href: "/tienda",
 };
 
 const PRODUCTS: Product[] = [
-  { name: "Body Sage",        price: "S/ 55", img: "/hero/planos/desktop/K03.webp", alt: "Body de bebé en sage",     bg: "#DDE6D6", href: "/tienda" },
-  { name: "Conjunto Coral",   price: "S/ 85", img: "/hero/planos/desktop/K05.webp", alt: "Conjunto coral para bebé", bg: "#F0D9D2", href: "/tienda" },
-  { name: "Manta Pima",       price: "S/ 65", img: "/hero/planos/desktop/K04.webp", alt: "Manta de algodón pima",    bg: "#E9D7B8", href: "/tienda" },
-  { name: "Body Mineral",     price: "S/ 55", img: "/hero/planos/desktop/K06.webp", alt: "Body mineral para bebé",   bg: "#D9E2EA", href: "/tienda" },
+  { name: "Tiernos Conejitos", price: "S/ 79", img: "/products/LC-001.jpeg", alt: "Conjunto Tiernos Conejitos para bebé", bg: "#F0D9D2", href: "/tienda" },
+  { name: "Native Bear",       price: "S/ 69", img: "/products/LC-012.jpeg", alt: "Conjunto Native Bear para bebé",       bg: "#DDE6D6", href: "/tienda" },
+  { name: "Manta Celestial",   price: "S/ 49", img: "/products/LC-301.jpeg", alt: "Manta Celestial de algodón pima",      bg: "#D9E2EA", href: "/tienda" },
+  { name: "Body Esencial",     price: "S/ 29", img: "/products/LC-101.jpeg", alt: "Body Esencial Premium para bebé",      bg: "#E9D7B8", href: "/tienda" },
 ];
 
 function PimaBadge() {
@@ -186,7 +186,7 @@ export default function BestsellerGrid() {
               opacity: 0.85,
             }}
           >
-            Los favoritos
+            Para ti
           </p>
           <h2
             style={{
@@ -197,7 +197,7 @@ export default function BestsellerGrid() {
               margin: 0,
             }}
           >
-            Más vendidos
+            Selección Lion Cub
           </h2>
         </div>
 

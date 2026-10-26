@@ -29,32 +29,34 @@ const LETTERS: Letter[] = [
 
 const DOODLES = {
   cloud: (
-    <svg width="68" height="36" viewBox="0 0 68 36" fill="none" aria-hidden>
-      <ellipse cx="34" cy="28" rx="32" ry="10" fill="currentColor" opacity="0.18"/>
-      <ellipse cx="22" cy="22" rx="16" ry="12" fill="currentColor" opacity="0.22"/>
-      <ellipse cx="44" cy="22" rx="18" ry="13" fill="currentColor" opacity="0.22"/>
-      <ellipse cx="34" cy="16" rx="14" ry="11" fill="currentColor" opacity="0.28"/>
+    <svg width="90" height="56" viewBox="0 0 90 56" fill="none" aria-hidden>
+      <path
+        d="M18 43 C7 43 3 35 7 29 C9 24 15 22 21 25 C23 15 31 10 41 10 C51 10 58 17 59 26 C63 24 69 25 73 29 C78 33 78 41 73 43 Z"
+        stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+      />
     </svg>
   ),
   sun: (
-    <svg width="44" height="44" viewBox="0 0 44 44" fill="none" aria-hidden>
-      <circle cx="22" cy="22" r="9" fill="currentColor" opacity="0.6"/>
-      {[0,45,90,135,180,225,270,315].map((deg, i) => (
-        <line
-          key={i}
-          x1="22" y1="22"
-          x2={22 + 16 * Math.cos(deg * Math.PI / 180)}
-          y2={22 + 16 * Math.sin(deg * Math.PI / 180)}
-          stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" opacity="0.5"
-        />
-      ))}
+    <svg width="52" height="52" viewBox="0 0 52 52" fill="none" aria-hidden>
+      <circle cx="26" cy="26" r="9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+      {[0,45,90,135,180,225,270,315].map((deg, i) => {
+        const rad = deg * Math.PI / 180;
+        return (
+          <line
+            key={i}
+            x1={26 + 14 * Math.cos(rad)} y1={26 + 14 * Math.sin(rad)}
+            x2={26 + 20 * Math.cos(rad)} y2={26 + 20 * Math.sin(rad)}
+            stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"
+          />
+        );
+      })}
     </svg>
   ),
   heart: (
-    <svg width="28" height="24" viewBox="0 0 28 24" fill="none" aria-hidden>
+    <svg width="34" height="30" viewBox="0 0 34 30" fill="none" aria-hidden>
       <path
-        d="M14 22C14 22 2 14 2 7C2 4.239 4.239 2 7 2C9.2 2 11.1 3.3 12.3 5.1L14 7.3L15.7 5.1C16.9 3.3 18.8 2 21 2C23.761 2 26 4.239 26 7C26 14 14 22 14 22Z"
-        fill="currentColor" opacity="0.55"
+        d="M17 27 C17 27 3 19 3 10 C3 6.7 5.7 4 9 4 C11.6 4 13.9 5.6 15.2 8 L17 10.5 L18.8 8 C20.1 5.6 22.4 4 25 4 C28.3 4 31 6.7 31 10 C31 19 17 27 17 27 Z"
+        stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
       />
     </svg>
   ),
@@ -87,31 +89,39 @@ export default function HeroV2() {
         overflow: "hidden",
       }}
     >
-      {/* ── Doodles de fondo ── */}
+      {/* ── Doodles de fondo — trazo a mano ── */}
       <span
         aria-hidden
-        style={{ position: "absolute", top: "12%", left: "5%", color: "var(--color-v2-doodle)", pointerEvents: "none" }}
+        style={{ position: "absolute", top: "10%", left: "4%", color: "var(--color-v2-doodle)", pointerEvents: "none", opacity: 0.7 }}
       >
         {DOODLES.cloud}
       </span>
       <span
         aria-hidden
-        style={{ position: "absolute", top: "8%", right: "8%", color: "var(--color-v2-amber)", pointerEvents: "none", transform: "scale(0.7)" }}
+        style={{ position: "absolute", top: "7%", right: "7%", color: "var(--color-v2-amber)", pointerEvents: "none", opacity: 0.65 }}
       >
         {DOODLES.sun}
       </span>
       <span
         aria-hidden
-        style={{ position: "absolute", bottom: "22%", left: "8%", color: "var(--color-v2-cta)", pointerEvents: "none", transform: "scale(0.8)" }}
+        style={{ position: "absolute", bottom: "28%", left: "7%", color: "var(--color-v2-cta)", pointerEvents: "none", opacity: 0.6, transform: "scale(0.85)" }}
       >
         {DOODLES.heart}
       </span>
-      <span
+
+      {/* ── Dotted path — lado derecho ── */}
+      <svg
         aria-hidden
-        style={{ position: "absolute", bottom: "20%", right: "6%", color: "var(--color-v2-doodle)", pointerEvents: "none", transform: "scale(0.65)" }}
+        style={{ position: "absolute", right: "3%", top: "14%", pointerEvents: "none" }}
+        width="58" height="260" viewBox="0 0 58 260"
+        fill="none"
       >
-        {DOODLES.cloud}
-      </span>
+        <path
+          d="M 42,8 C 55,48 22,88 46,128 C 62,155 30,205 40,255"
+          stroke="var(--color-v2-doodle)" strokeWidth="1.8" strokeDasharray="4 6" strokeLinecap="round"
+          opacity="0.55"
+        />
+      </svg>
 
       {/* ── Eyebrow ── */}
       <p
@@ -259,7 +269,7 @@ export default function HeroV2() {
         Explorar colección · Verano 2027
       </Link>
 
-      {/* ── Ola inferior ── */}
+      {/* ── Colina orgánica inferior ── */}
       <div
         aria-hidden
         style={{
@@ -271,9 +281,9 @@ export default function HeroV2() {
           pointerEvents: "none",
         }}
       >
-        <svg viewBox="0 0 1440 80" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+        <svg viewBox="0 0 1440 200" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style={{ display: "block" }}>
           <path
-            d="M0,50 C240,20 480,80 720,50 C960,20 1200,70 1440,45 L1440,80 L0,80 Z"
+            d="M0,130 C200,70 420,175 680,120 C860,80 1040,165 1260,110 C1340,90 1400,130 1440,115 L1440,200 L0,200 Z"
             fill="var(--color-v2-wave)"
           />
         </svg>

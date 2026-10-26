@@ -1,7 +1,8 @@
+import Image from "next/image";
+
 /**
- * WhyLionCubV2 — "¿Por qué Lion Cub?" con 3 razones + diagrama de prenda
- * No contiene claims médicos ("hipoalergénico", "dermatológicamente testeado")
- * sin evidencia — solo ventajas verificables del algodón pima.
+ * WhyLionCubV2 — "¿Por qué Lion Cub?" con 3 razones + foto de producto con callouts
+ * Sin claims médicos. Solo ventajas verificables del algodón pima.
  */
 
 const REASONS = [
@@ -39,11 +40,11 @@ const REASONS = [
   },
 ];
 
-const GARMENT_FEATURES = [
-  { side: "left",  top: "15%", label: "Cuello suave\nsin costuras incómodas" },
-  { side: "left",  top: "42%", label: "Broches a presión\nde fácil apertura" },
-  { side: "right", top: "20%", label: "Fibra larga pima\nextra suave" },
-  { side: "right", top: "50%", label: "Elástico suave\nen cintura y puños" },
+const PHOTO_FEATURES = [
+  { side: "left",  title: "100% algodón pima", body: "Fibra larga del pima peruano — más suave y resistente al lavado." },
+  { side: "left",  title: "Broches seguros",   body: "Cierres a presión fáciles de abrir para cambios rápidos." },
+  { side: "right", title: "Costuras internas", body: "Sin costuras ásperas: la piel sensible del bebé lo nota." },
+  { side: "right", title: "Tela transpirable", body: "Regula la temperatura en climas cálidos sin incomodar." },
 ];
 
 export default function WhyLionCubV2() {
@@ -135,19 +136,8 @@ export default function WhyLionCubV2() {
           ))}
         </div>
 
-        {/* Diagrama de prenda */}
-        <div
-          style={{
-            background: "var(--color-v2-wave)",
-            borderRadius: "clamp(16px, 3vw, 24px)",
-            padding: "clamp(2rem, 5vw, 3.5rem)",
-            display: "flex",
-            flexDirection: "column" as const,
-            alignItems: "center",
-            gap: "clamp(1.5rem, 3vw, 2rem)",
-          }}
-          className="diagram-wrapper"
-        >
+        {/* ── Foto de producto + callouts ── */}
+        <div style={{ textAlign: "center", marginBottom: "clamp(1.5rem, 3vw, 2rem)" }}>
           <p
             style={{
               fontFamily: "var(--font-title)",
@@ -155,96 +145,154 @@ export default function WhyLionCubV2() {
               fontSize: "clamp(1rem, 2vw, 1.2rem)",
               color: "var(--color-ink)",
               margin: 0,
-              textAlign: "center",
             }}
           >
-            Cada detalle pensado para el bebé
+            Cada detalle, pensado para tu bebé
           </p>
+        </div>
 
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "clamp(1.25rem, 4vw, 3.5rem)",
+            flexWrap: "wrap",
+          }}
+          className="photo-callout-layout"
+        >
+          {/* Left callouts */}
           <div
             style={{
               display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "clamp(1rem, 4vw, 3rem)",
-              width: "100%",
-              maxWidth: "700px",
-              flexWrap: "wrap",
+              flexDirection: "column",
+              gap: "clamp(1.5rem, 3vw, 2.5rem)",
+              flex: "1 1 190px",
+              minWidth: 0,
+              maxWidth: "220px",
+              alignItems: "flex-end",
+              textAlign: "right",
             }}
           >
-            {/* Left labels */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "2rem", alignItems: "flex-end", flex: "1 1 160px", minWidth: "0" }}>
-              {GARMENT_FEATURES.filter(f => f.side === "left").map(f => (
-                <div key={f.label} style={{ textAlign: "right" }}>
-                  <p
-                    style={{
-                      fontFamily: "var(--font-title)",
-                      fontSize: "clamp(0.78rem, 1.3vw, 0.9rem)",
-                      lineHeight: 1.4,
-                      color: "var(--color-ink-soft)",
-                      margin: 0,
-                      whiteSpace: "pre-line",
-                    }}
-                  >
-                    {f.label}
-                  </p>
-                </div>
-              ))}
-            </div>
+            {PHOTO_FEATURES.filter(f => f.side === "left").map(f => (
+              <div key={f.title}>
+                <p
+                  style={{
+                    fontFamily: "var(--font-title)",
+                    fontWeight: 700,
+                    fontSize: "clamp(0.82rem, 1.4vw, 0.95rem)",
+                    color: "var(--color-ink)",
+                    margin: "0 0 4px",
+                  }}
+                >
+                  {f.title}
+                </p>
+                <p
+                  style={{
+                    fontFamily: "var(--font-title)",
+                    fontWeight: 400,
+                    fontSize: "clamp(0.78rem, 1.2vw, 0.88rem)",
+                    lineHeight: 1.5,
+                    color: "var(--color-ink-soft)",
+                    margin: 0,
+                  }}
+                >
+                  {f.body}
+                </p>
+              </div>
+            ))}
+          </div>
 
-            {/* Garment silhouette */}
-            <div style={{ flexShrink: 0 }}>
-              <svg width="160" height="200" viewBox="0 0 160 200" fill="none" aria-label="Diagrama de prenda Lion Cub">
-                {/* Body */}
-                <rect x="45" y="80" width="70" height="100" rx="8" fill="white" stroke="var(--color-v2-amber)" strokeWidth="1.5"/>
-                {/* Neck */}
-                <ellipse cx="80" cy="80" rx="16" ry="8" fill="white" stroke="var(--color-v2-amber)" strokeWidth="1.5"/>
-                {/* Shoulders */}
-                <path d="M45 80 C20 70 10 90 15 110 L45 105 Z" fill="white" stroke="var(--color-v2-amber)" strokeWidth="1.5"/>
-                <path d="M115 80 C140 70 150 90 145 110 L115 105 Z" fill="white" stroke="var(--color-v2-amber)" strokeWidth="1.5"/>
-                {/* Snaps */}
-                <circle cx="80" cy="160" r="4" fill="var(--color-v2-amber)" opacity="0.6"/>
-                <circle cx="80" cy="175" r="4" fill="var(--color-v2-amber)" opacity="0.6"/>
-                <circle cx="80" cy="190" r="4" fill="var(--color-v2-amber)" opacity="0.6"/>
-                {/* Dotted center line */}
-                <line x1="80" y1="95" x2="80" y2="150" stroke="var(--color-v2-amber)" strokeWidth="1" strokeDasharray="4 4"/>
-                {/* Dotted lines to labels */}
-                <line x1="64" y1="88" x2="20" y2="100" stroke="var(--color-v2-amber)" strokeWidth="1" strokeDasharray="3 3"/>
-                <line x1="65" y1="125" x2="20" y2="145" stroke="var(--color-v2-amber)" strokeWidth="1" strokeDasharray="3 3"/>
-                <line x1="96" y1="88" x2="140" y2="100" stroke="var(--color-v2-amber)" strokeWidth="1" strokeDasharray="3 3"/>
-                <line x1="95" y1="125" x2="140" y2="145" stroke="var(--color-v2-amber)" strokeWidth="1" strokeDasharray="3 3"/>
-              </svg>
-            </div>
+          {/* Foto con forma orgánica */}
+          <div
+            style={{
+              position: "relative",
+              width: "clamp(210px, 32vw, 300px)",
+              aspectRatio: "3/4",
+              borderRadius: "58% 42% 50% 50% / 60% 55% 45% 40%",
+              overflow: "hidden",
+              flexShrink: 0,
+              boxShadow: "0 8px 32px rgba(26,20,16,0.13)",
+            }}
+          >
+            <Image
+              src="/products/LC-019.jpeg"
+              alt="Detalle de tejido — Hilo de Algodón Nativo en 100% pima peruano"
+              fill
+              style={{ objectFit: "cover", objectPosition: "center top" }}
+              sizes="(min-width: 768px) 32vw, 80vw"
+            />
+          </div>
 
-            {/* Right labels */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "2rem", alignItems: "flex-start", flex: "1 1 160px", minWidth: "0" }}>
-              {GARMENT_FEATURES.filter(f => f.side === "right").map(f => (
-                <div key={f.label}>
-                  <p
-                    style={{
-                      fontFamily: "var(--font-title)",
-                      fontSize: "clamp(0.78rem, 1.3vw, 0.9rem)",
-                      lineHeight: 1.4,
-                      color: "var(--color-ink-soft)",
-                      margin: 0,
-                      whiteSpace: "pre-line",
-                    }}
-                  >
-                    {f.label}
-                  </p>
-                </div>
-              ))}
-            </div>
+          {/* Right callouts */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "clamp(1.5rem, 3vw, 2.5rem)",
+              flex: "1 1 190px",
+              minWidth: 0,
+              maxWidth: "220px",
+              alignItems: "flex-start",
+              textAlign: "left",
+            }}
+          >
+            {PHOTO_FEATURES.filter(f => f.side === "right").map(f => (
+              <div key={f.title}>
+                <p
+                  style={{
+                    fontFamily: "var(--font-title)",
+                    fontWeight: 700,
+                    fontSize: "clamp(0.82rem, 1.4vw, 0.95rem)",
+                    color: "var(--color-ink)",
+                    margin: "0 0 4px",
+                  }}
+                >
+                  {f.title}
+                </p>
+                <p
+                  style={{
+                    fontFamily: "var(--font-title)",
+                    fontWeight: 400,
+                    fontSize: "clamp(0.78rem, 1.2vw, 0.88rem)",
+                    lineHeight: 1.5,
+                    color: "var(--color-ink-soft)",
+                    margin: 0,
+                  }}
+                >
+                  {f.body}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Wave bottom */}
+      {/* Colina orgánica inferior */}
       <div aria-hidden style={{ lineHeight: 0, marginTop: "clamp(3rem, 6vw, 4rem)", marginLeft: "-clamp(1.25rem,5vw,3rem)", marginRight: "-clamp(1.25rem,5vw,3rem)" }}>
-        <svg viewBox="0 0 1440 70" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-          <path d="M0,35 C320,70 640,10 960,45 C1120,65 1320,30 1440,40 L1440,70 L0,70 Z" fill="var(--color-v2-sage)"/>
+        <svg viewBox="0 0 1440 180" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style={{ display: "block" }}>
+          <path d="M0,110 C300,50 540,165 800,100 C1000,55 1220,155 1440,95 L1440,180 L0,180 Z" fill="var(--color-v2-sage)"/>
         </svg>
       </div>
+
+      <style>{`
+        .photo-callout-layout {
+          flex-wrap: wrap;
+        }
+        @media (max-width: 600px) {
+          .photo-callout-layout {
+            flex-direction: column !important;
+            align-items: center !important;
+          }
+          .photo-callout-layout > div:first-child,
+          .photo-callout-layout > div:last-child {
+            max-width: 100% !important;
+            flex: unset !important;
+            text-align: left !important;
+            align-items: flex-start !important;
+          }
+        }
+      `}</style>
     </section>
   );
 }
