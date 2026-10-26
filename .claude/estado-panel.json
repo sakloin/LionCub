@@ -1,22 +1,24 @@
 {
-  "fase": "v2 — hero rediseñado",
+  "fase": "v2 — hero resuelto visualmente, pendiente OK de Heber",
   "rama": "claude/sistema-visual-v2",
   "pr": "#111 DRAFT",
-  "avance_pct": 82,
-  "ultimo_commit": "1811e77",
+  "avance_pct": 87,
+  "ultimo_commit": "daed3b6",
   "ultimo_deploy": "lioncub-git-claude-sistema-visual-v2-sakloins-projects.vercel.app",
   "estado_deploy": "BUILDING",
   "notas": [
-    "Hero rediseñado: 7 imágenes únicas por letra (sin repetición, sin paisaje urbano)",
-    "Mapa letras: L=LC-003, I=K02, O=K03, N=K05 (crop bebé), C=LC-013, U=LC-012, B=K06",
-    "Doodles posicionados dentro de contenedor relativo del wordmark (no viewport)",
-    "Nube orgánica con lóbulos variables; trayectoria horizontal con lazo",
-    "Fuente aumentada a clamp(78px,19vw,240px) → ~87% ancho útil en 1440px",
-    "Screenshots tomados en 390px, 1440px y 1920px — resultados visualmente correctos"
+    "Hero iteración completada: void superior eliminado, B→K04, focales N/O/B reajustadas",
+    "Commit daed3b6 en rama claude/sistema-visual-v2 — screenshots tomados y revisados",
+    "Mapa letras final: L=LC-003, I=K02, O=K03, N=K05 (zona inferior manta), C=LC-013, U=LC-012, B=K04",
+    "Decorativos correctamente posicionados en contenedor relativo del wordmark",
+    "Wordmark ~87% ancho útil en 1440px; mobile 390px funciona correctamente",
+    "N: fragamento de piel de bebé aún visible — sin foto de bebé en prenda LionCub con cara fuera del encuadre",
+    "B: ventana/exterior de Lima visible en esquina sup-der de K04 — artefacto de la foto disponible"
   ],
   "pendientes_heber": [
-    "Revisar screenshots del hero rediseñado adjuntos en este hilo",
-    "Confirmar si N (K05 crop bebé) se ve bien o prefieres otra imagen",
-    "Dar OK para avanzar con el resto del sistema visual v2"
+    "Revisar screenshots del hero en este hilo y dar OK para continuar con otras secciones",
+    "Confirmar si N (K05 zona manta) es aceptable o se necesita nueva foto",
+    "Confirmar si B (K04 madre+bebé+exterior Lima) es aceptable o se necesita nueva foto sin fondo urbano",
+    "Fotos pendientes para otras secciones: Carousel slide 1 (K01 campo algodón no muestra prendas), Slide 3, BestsellerGrid (cutouts reales LC-001 LC-012 LC-301 LC-101 LC-014)"
   ]
 }
