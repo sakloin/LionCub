@@ -161,9 +161,11 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             </Link>
           ))}
         </nav>
-        <button onClick={logout} className="mx-3 mb-4 flex items-center gap-2 px-3 min-h-11 text-white/50 hover:text-white text-sm rounded-xl hover:bg-white/10 transition-colors">
-          <LogOut size={15} /> Salir
-        </button>
+        <div className="mx-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <button onClick={logout} className="w-full flex items-center gap-2 px-3 min-h-11 text-white/50 hover:text-white text-sm rounded-xl hover:bg-white/10 transition-colors">
+            <LogOut size={15} /> Salir
+          </button>
+        </div>
       </aside>
 
       {/* Mobile overlay */}
