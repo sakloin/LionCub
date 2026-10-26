@@ -233,15 +233,21 @@ function customerOrderReceivedHTML(order: EmailOrder, items: EmailOrderItem[], m
     ${shippingBlock(order)}
     ${deliveryBlock(order)}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px;">
-      <tr><td align="center" style="padding-bottom:${magicLink ? "10px" : "0"};">
+      <tr><td align="center" style="padding-bottom:10px;">
         <a href="https://wa.me/51920201943"
            style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:24px;">
           Confirmar pago por WhatsApp
         </a>
       </td></tr>
+      <tr><td align="center" style="padding-bottom:${magicLink ? "10px" : "0"};">
+        <a href="${PUBLIC_SITE}/mi-pedido/${escape(order.id)}"
+           style="display:inline-block;background:${COLORS.gold};color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:24px;">
+          Ver estado del pedido →
+        </a>
+      </td></tr>
       ${magicLink ? `<tr><td align="center">
         <a href="${escape(magicLink)}"
-           style="display:inline-block;background:${COLORS.gold};color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:24px;">
+           style="display:inline-block;background:${COLORS.ink};color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:24px;">
           Ver mis pedidos →
         </a>
       </td></tr>` : ""}
@@ -261,6 +267,14 @@ function customerPaymentConfirmedHTML(order: EmailOrder, items: EmailOrderItem[]
     ${orderTable(order, items)}
     ${shippingBlock(order)}
     ${deliveryBlock(order)}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px;">
+      <tr><td align="center">
+        <a href="${PUBLIC_SITE}/mi-pedido/${escape(order.id)}"
+           style="display:inline-block;background:${COLORS.gold};color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:24px;">
+          Ver estado del pedido →
+        </a>
+      </td></tr>
+    </table>
   `;
   return shell("Pago confirmado", body);
 }

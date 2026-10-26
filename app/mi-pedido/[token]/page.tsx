@@ -1,9 +1,9 @@
 export const dynamic = "force-dynamic";
 
-import { supabase } from "../../lib/supabase";
+import { supabaseAdmin } from "../../lib/supabase-admin";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle2, Circle, Clock, Package, Send, Truck } from "lucide-react";
+import { CheckCircle2, Clock, Package, Send, Truck } from "lucide-react";
 
 interface Props {
   params: Promise<{ token: string }>;
@@ -42,7 +42,7 @@ export default async function MiPedidoPage({ params }: Props) {
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!UUID_RE.test(token)) notFound();
 
-  const { data: order } = await supabase
+  const { data: order } = await supabaseAdmin
     .from("orders")
     .select("id,customer_name,order_status,payment_status,payment_paid_at,created_at,shipping_method,delivery_date,notes")
     .eq("id", token)
