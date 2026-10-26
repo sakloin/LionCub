@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "./components/Providers";
+import { SITE_URL } from "./lib/site";
+import { DATOS_LEGALES } from "./lib/legal";
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
@@ -24,15 +26,12 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
-const _sUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
-const SITE_URL  = (_sUrl && !_sUrl.includes("vercel.app")) ? _sUrl : "https://lioncub.pe";
 const SITE_NAME = "Lion Cub Baby Clothing";
 const OG_IMAGE  = `${SITE_URL}/hero/poster-desktop.webp`;
 
+// Solo en español y ≤ 155 caracteres (Google corta lo demás).
 const DESCRIPTION_ES =
-  "Ropa de bebé en 100% algodón pima peruano. Suave, hipoalergénica y respirable — conjuntos, bodies, baberos y mantas hechos para el primer abrazo y los días que siguen. Envíos a todo Perú.";
-const DESCRIPTION_EN =
-  "Baby clothing made with 100% Peruvian Pima cotton. Soft, hypoallergenic and breathable — sets, bodies, bibs and blankets for the first cuddle and the days that follow. Ships across Peru.";
+  "Ropa de bebé en 100% algodón pima peruano: conjuntos, bodies, baberos y mantas para el primer abrazo. Envíos a todo el Perú.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -40,7 +39,7 @@ export const metadata: Metadata = {
     default: `${SITE_NAME} — Algodón Pima Peruano`,
     template: `%s · ${SITE_NAME}`,
   },
-  description: `${DESCRIPTION_ES} ${DESCRIPTION_EN}`,
+  description: DESCRIPTION_ES,
   keywords: [
     "ropa de bebé",
     "ropa bebé Perú",
@@ -51,7 +50,6 @@ export const metadata: Metadata = {
     "baberos bebé",
     "mantas bebé",
     "ajuar recién nacido",
-    "ropa hipoalergénica bebé",
     "Lion Cub",
     "baby clothing Peru",
     "pima cotton baby",
@@ -63,14 +61,13 @@ export const metadata: Metadata = {
   publisher: "Lion Cub",
   category: "shopping",
   formatDetection: { email: false, telephone: false, address: false },
+  // Sin hreflang: el inglés se cambia por JS en la misma URL (no hay /en).
   alternates: {
     canonical: "/",
-    languages: { "es-PE": "/", "en-US": "/" },
   },
   openGraph: {
     type: "website",
     locale: "es_PE",
-    alternateLocale: ["en_US"],
     url: SITE_URL,
     siteName: SITE_NAME,
     title: `${SITE_NAME} — Algodón Pima Peruano`,
@@ -104,7 +101,7 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: "/favicon.ico",
-    apple: "/logo-solid.png",
+    apple: "/logo-512.png",
   },
 };
 
@@ -123,7 +120,7 @@ const ORGANIZATION_JSONLD = {
   alternateName: "Lion Cub",
   description: DESCRIPTION_ES,
   url: SITE_URL,
-  logo: `${SITE_URL}/logo-solid.png`,
+  logo: `${SITE_URL}/logo-512.png`,
   image: OG_IMAGE,
   telephone: "+51-920-201-943",
   email: "hola@lioncub.pe",
@@ -133,6 +130,9 @@ const ORGANIZATION_JSONLD = {
     addressRegion: "Lima",
   },
   areaServed: { "@type": "Country", name: "Peru" },
+  // Solo cuando Heber confirme los datos (app/lib/legal.ts).
+  ...(DATOS_LEGALES.razonSocial ? { legalName: DATOS_LEGALES.razonSocial } : {}),
+  ...(DATOS_LEGALES.ruc ? { taxID: DATOS_LEGALES.ruc } : {}),
   sameAs: [
     "https://www.instagram.com/lioncubbabyclothing/",
     "https://www.facebook.com/profile.php?id=61577494893684",

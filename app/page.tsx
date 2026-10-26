@@ -4,7 +4,6 @@ import HeroVitrina from "./components/HeroVitrina";
 import TrustBar from "./components/TrustBar";
 import Collection from "./components/Collection";
 import WhyPima from "./components/WhyPima";
-import OurStory from "./components/OurStory";
 import Footer from "./components/Footer";
 import { getCatalog } from "./lib/catalog";
 
@@ -23,7 +22,7 @@ export default async function Home() {
         <Collection initialProducts={products} initialOffers={offers} />
         <TrustBar />
         <WhyPima />
-        <OurStory />
+        {/* OurStory y Testimonials ocultos — enfoque en productos al estilo Falabella */}
       </main>
       <Footer />
     </>

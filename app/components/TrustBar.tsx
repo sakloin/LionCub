@@ -9,10 +9,10 @@ export default function TrustBar() {
 
   const promises: [string, string][] = [
     [
-      t("Hipoalergénico", "Hypoallergenic"),
+      t("Delicado con su piel", "Gentle on their skin"),
       t(
-        "Libre de químicos agresivos. Para pieles que apenas están conociendo el mundo.",
-        "Free of harsh chemicals. For skin that's only just meeting the world."
+        "Fibra natural de hebra larga, suave al tacto. Para pieles que apenas están conociendo el mundo.",
+        "A natural long-staple fiber, soft to the touch. For skin that's only just meeting the world."
       ),
     ],
     [
@@ -38,7 +38,7 @@ export default function TrustBar() {
           {promises.map(([title, desc], i) => (
             <div key={title} data-reveal style={{ "--lc-reveal-i": i } as React.CSSProperties}
               className="pt-5 border-t border-rule">
-              <span className="lc-mono text-[10px] tracking-[0.24em] text-gold-deep">
+              <span className="lc-mono text-[12px] tracking-[0.2em] text-gold-text">
                 0{i + 1}
               </span>
               <div className="lc-display text-2xl text-ink mt-3" style={{ fontWeight: 400 }}>

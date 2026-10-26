@@ -47,14 +47,33 @@
 - [x] `AnnouncementBar` dismissible — botón X + `localStorage` para persistir la decisión
 - [x] DT-01 y DT-02 verificados como ya resueltos en código; actualizados en `deuda-tecnica.md`
 
+## Correcciones de la auditoría previa al lanzamiento (2026-10-18)
+Rama `claude/correcciones-auditoria-lanzamiento` (PR en borrador). Fuente: `LionCub-Auditoria-2026-10-18.md` (vault). Estado: 🟡 en revisión (falta veredicto del auditor y decisiones de Heber).
+- [x] **#1** Libro de Reclamaciones virtual: página + `POST /api/reclamos` listas. ADR 0002 aprobada por Heber (2026-10-19); migración `20261018_libro_reclamaciones.sql` en el repo (incluye `orders.acepta_terminos_at`, DT-17). 🧑 **Falta aplicarla en Supabase** (DT-08).
+- [x] **#2** Bloque legal en el pie (Términos, Privacidad, Libro). 🧑 Razón social, RUC y domicilio: `PENDIENTE_HEBER` en `app/lib/legal.ts` (DT-09).
+- [x] **#3** Feed de Meta: enlace a `/#coleccion` e imagen de respaldo que existe.
+- [x] **#4** Sin "USA" en el anuncio ni en el pie.
+- [x] **#5** Métodos de pago únicos (bolsa, pie, checkout); sin IZIPAY; tarjeta = Culqi solo con el flag.
+- [x] **#6** Sin "80% del Pima mundial", "Origen certificado" ni "Hipoalergénico" en la web.
+- [x] **#7** Correo único hola@lioncub.pe en Términos y Privacidad; sin domicilio no confirmado.
+- [x] **#8** Checkout: 16 px, foco visible, etiquetas, autocomplete y aceptación de Términos y Privacidad.
+- [x] **#9** Hero por CSS + `<picture>`; sin `priority` en tarjetas. Medir con PSI (DT-15).
+- [x] **#10** Tokens de texto AA en `globals.css`; ADR 0003 aprobada por Heber (2026-10-19) y tokens registrados en IDENTIDAD §2 (DT-13 resuelto).
+- [x] **#11** Áreas táctiles ≥ 44 px.
+- [ ] **#12** Logo: solo se corrigió el enlace a `/`; la proporción espera decisión de Heber (DT-12).
+- [x] **#13** Bolsa inert, modales accesibles, tarjeta `<article>`.
+- [x] **#14** Precio tachado formateado, sin código LC en la bolsa, tope de stock.
+- [x] **#15** Host canónico www, sin hreflang falso, sitemap real, checkout noindex.
+- [x] **#16** `logo-512.png` (49 KB) para apple-touch-icon, JSON-LD y feed.
+
 ## Fase A1 — Rediseño del panel admin (2026-10-19)
 > Pedido de Heber: admin «rústico» → más interactivo, con las mejoras de los videos. Solo UI/UX; sin cambios de lógica, auth ni esquema.
 - [x] **A1.1** Navegación agrupada (`AdminShell`): íconos, grupos, activo accesible, cajón + barra inferior en móvil, login accesible, toaster propio del admin.
 - [x] **A1.2** Tablero: KPI de hoy/7 días, pedidos por estado, stock bajo, lista de espera, acciones rápidas, saludo con contexto, contadores, skeleton.
 - [x] **A1.3** Pedidos: búsqueda, filtros con conteo, estados color+ícono+texto, acción principal por pedido, confirmación y deshacer.
 - [x] **A1.4** Productos (lista): filtros, stock con texto, interruptor accesible con deshacer, móvil sin desborde, skeleton.
-- [ ] **A1.5** Auditor: veredicto APROBADO antes de integrar. Pendientes en `deuda-tecnica.md` (DT-07 a DT-14).
-- [ ] **A1.6** Siguiente rebanada: Ofertas, Compras, Configuración, Reportes, Contenido, Lista de espera y formulario de producto con las mismas piezas (DT-11).
+- [ ] **A1.5** Auditor: veredicto APROBADO antes de integrar. Pendientes en `deuda-tecnica.md` (DT-21 a DT-29).
+- [ ] **A1.6** Siguiente rebanada: Ofertas, Compras, Configuración, Reportes, Contenido, Lista de espera y formulario de producto con las mismas piezas (DT-25).
 
 ## Notas
 - El **inglés va al lanzamiento** — selector EN/ES visible. Aprobado por Heber 2026-10-11.

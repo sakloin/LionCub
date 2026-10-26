@@ -72,7 +72,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems(prev => {
       const exists = prev.find(i => i.variant.id === v.id);
       if (exists) {
-        return prev.map(i => i.variant.id === v.id ? { ...i, quantity: i.quantity + 1 } : i);
+        // Tope de stock: no se suma más de lo disponible (el servidor vuelve a validar).
+        const max = v.stock > 0 ? v.stock : Infinity;
+        return prev.map(i => i.variant.id === v.id ? { ...i, quantity: Math.min(i.quantity + 1, max) } : i);
       }
       return [
         ...prev,
@@ -100,7 +102,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   function updateQty(variantId: string, qty: number) {
     if (qty <= 0) { remove(variantId); return; }
-    setItems(prev => prev.map(i => i.variant.id === variantId ? { ...i, quantity: qty } : i));
+    setItems(prev => prev.map(i => {
+      if (i.variant.id !== variantId) return i;
+      // Tope de stock: el que tenía la variante al elegirla (el servidor vuelve a validar).
+      const max = i.variant.stock_at_pick > 0 ? i.variant.stock_at_pick : Infinity;
+      return { ...i, quantity: Math.min(qty, max) };
+    }));
   }
 
   function clear() { setItems([]); }
