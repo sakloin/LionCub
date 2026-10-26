@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Toaster } from "sonner";
 import {
   LayoutDashboard, Package, ShoppingBag, Boxes, BarChart3, Bell, FileText, Tag, Settings,
@@ -11,12 +12,11 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { supabase } from "../../lib/supabase";
-import { ADMIN_TOASTER, Skeleton, btn, cx, focusRing, useFocusTrap } from "./ui";
+import { ADMIN_TOASTER, btn, cx, focusRing, useFocusTrap } from "./ui";
 
 interface NavItem { href: string; label: string; icon: LucideIcon; badgeKey?: "pedidosNuevos" }
 interface NavGroup { title: string; items: NavItem[] }
 
-// Menú agrupado por frecuencia de uso: primero lo que se atiende hoy.
 const NAV_GROUPS: NavGroup[] = [
   { title: "Hoy", items: [
     { href: "/admin",          label: "Inicio",          icon: LayoutDashboard },
@@ -40,7 +40,6 @@ const NAV_GROUPS: NavGroup[] = [
   ]},
 ];
 
-// Accesos de la barra inferior en móvil (lo más usado + menú completo).
 const MOBILE_TABS: NavItem[] = [
   { href: "/admin",           label: "Inicio",    icon: LayoutDashboard },
   { href: "/admin/pedidos",   label: "Pedidos",   icon: ShoppingBag, badgeKey: "pedidosNuevos" },
@@ -49,18 +48,6 @@ const MOBILE_TABS: NavItem[] = [
 
 function isActive(pathname: string, href: string) {
   return href === "/admin" ? pathname === "/admin" : pathname === href || pathname.startsWith(href + "/");
-}
-
-// Comma-separated allowlist of admin emails. The authoritative gate is
-// Supabase RLS (policies keyed on the auth.jwt() email); this client-side
-// check is only for UX. Fails closed: if unset, nobody is treated as admin.
-const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
-  .split(",")
-  .map((s) => s.trim().toLowerCase())
-  .filter(Boolean);
-
-function isAllowed(email?: string | null) {
-  return !!email && ADMIN_EMAILS.includes(email.toLowerCase());
 }
 
 function Logo({ size = 40 }: { size?: number }) {
@@ -76,42 +63,38 @@ function Logo({ size = 40 }: { size?: number }) {
   );
 }
 
-export default function AdminShell({ children }: { children: React.ReactNode }) {
+interface AdminShellProps {
+  children: React.ReactNode;
+  // Email del admin verificado por el servidor; no se comprueba de nuevo aquí.
+  email: string;
+}
+
+export default function AdminShell({ children, email }: AdminShellProps) {
   const pathname = usePathname();
-  const [authed, setAuthed] = useState(false);
-  const [checking, setChecking] = useState(true);
-  const [email, setEmail] = useState("");
-  const [userEmail, setUserEmail] = useState("");
-  const [pw, setPw] = useState("");
-  const [error, setError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [badges, setBadges] = useState<{ pedidosNuevos: number }>({ pedidosNuevos: 0 });
   const sidebarRef = useRef<HTMLElement>(null);
   const firstLinkRef = useRef<HTMLAnchorElement>(null);
 
+  // Cuando Supabase refresca el token de forma automática, sincroniza la cookie
+  // del servidor para que el layout siga aceptando la sesión más allá de la
+  // primera hora.
   useEffect(() => {
-    let mounted = true;
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return;
-      setAuthed(!!session && isAllowed(session.user?.email));
-      setUserEmail(session?.user?.email ?? "");
-      setChecking(false);
-    });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return;
-      setAuthed(!!session && isAllowed(session?.user?.email));
-      setUserEmail(session?.user?.email ?? "");
+      if (_event === "TOKEN_REFRESHED" && session?.access_token) {
+        void fetch("/api/admin/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: session.access_token }),
+        });
+      }
     });
-    return () => {
-      mounted = false;
-      sub.subscription.unsubscribe();
-    };
+    return () => { sub.subscription.unsubscribe(); };
   }, []);
 
-  // Contador de pedidos nuevos para el menú (solo lectura; se refresca al navegar).
+  // Contador de pedidos nuevos para el badge del menú.
   useEffect(() => {
-    if (!authed) return;
     let cancelled = false;
     supabase
       .from("orders")
@@ -119,43 +102,17 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       .eq("order_status", "nuevo")
       .then(({ count }) => { if (!cancelled) setBadges({ pedidosNuevos: count ?? 0 }); });
     return () => { cancelled = true; };
-  }, [authed, pathname]);
+  }, [pathname]);
 
-  // Cajón móvil: foco atrapado dentro mientras está abierto, Escape cierra y
-  // el foco vuelve al botón que lo abrió.
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
   useFocusTrap(sidebarRef, sidebarOpen, { onEscape: closeSidebar, initialFocus: firstLinkRef });
 
-  async function login(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setSubmitting(true);
-    try {
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: pw,
-      });
-      if (signInError) {
-        setError("Credenciales inválidas");
-        return;
-      }
-      if (!isAllowed(data.user?.email)) {
-        await supabase.auth.signOut();
-        setError("Esta cuenta no tiene acceso al panel");
-        return;
-      }
-      setAuthed(true);
-      setPw("");
-    } catch {
-      setError("No se pudo iniciar sesión. Intenta de nuevo.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   async function logout() {
-    await supabase.auth.signOut();
-    setAuthed(false);
+    await Promise.all([
+      supabase.auth.signOut(),
+      fetch("/api/admin/session", { method: "DELETE" }),
+    ]);
+    router.refresh();
   }
 
   const toaster = (
@@ -172,75 +129,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           borderRadius: "14px",
           boxShadow: "var(--lc-shadow-2)",
         },
-        // «Deshacer» con objetivo táctil de 44 px.
         actionButtonStyle: { background: "var(--color-ink)", color: "var(--color-bg)", minHeight: 44, minWidth: 44, padding: "0 16px", fontSize: 14 },
       }}
     />
   );
-
-  if (checking) {
-    return (
-      <div className="min-h-screen flex bg-bg" role="status" aria-live="polite">
-        <span className="sr-only">Cargando panel…</span>
-        <div className="hidden md:flex w-64 flex-col gap-3 p-5 border-r border-rule bg-bg-card">
-          <Skeleton className="h-10 w-32 mb-4" />
-          {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-9" />)}
-        </div>
-        <div className="flex-1 p-6 flex flex-col gap-4">
-          <Skeleton className="h-10 w-56" />
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28" />)}
-          </div>
-          <Skeleton className="h-64" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!authed) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-bg p-4">
-        <form onSubmit={login} className="bg-bg-card rounded-3xl border border-rule shadow-[var(--lc-shadow-2)] p-8 sm:p-10 w-full max-w-sm flex flex-col gap-5" aria-labelledby="login-title">
-          <div className="flex flex-col items-center text-center gap-3">
-            <Logo size={64} />
-            <div>
-              <p className="lc-eyebrow lc-eyebrow-ink">Lion Cub · Admin</p>
-              <h1 id="login-title" className="lc-display text-3xl text-ink mt-1">Panel de administración</h1>
-            </div>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="admin-email" className="text-sm font-semibold text-ink">Correo</label>
-            <input
-              id="admin-email"
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              autoComplete="username"
-              required
-              className={cx("min-h-11 border border-rule rounded-xl px-4 text-ink bg-bg-card", focusRing)}
-              autoFocus
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="admin-pw" className="text-sm font-semibold text-ink">Contraseña</label>
-            <input
-              id="admin-pw"
-              type="password"
-              value={pw}
-              onChange={e => setPw(e.target.value)}
-              autoComplete="current-password"
-              required
-              className={cx("min-h-11 border border-rule rounded-xl px-4 text-ink bg-bg-card", focusRing)}
-            />
-          </div>
-          {error && <p role="alert" className="text-red-700 text-sm text-center">{error}</p>}
-          <button type="submit" disabled={submitting} className={cx(btn.primary, "w-full")}>
-            {submitting ? "Ingresando…" : "Ingresar"}
-          </button>
-        </form>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen bg-bg">
@@ -249,7 +141,6 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         Saltar al contenido
       </a>
 
-      {/* Menú lateral (cajón en móvil) */}
       <aside
         ref={sidebarRef}
         id="admin-sidebar"
@@ -312,7 +203,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </nav>
 
         <div className="border-t border-rule p-3 flex flex-col gap-1">
-          {userEmail && <p className="px-3 py-1 text-xs text-ink-soft truncate" title={userEmail}>{userEmail}</p>}
+          {email && <p className="px-3 py-1 text-xs text-ink-soft truncate" title={email}>{email}</p>}
           <a href="/" target="_blank" rel="noopener noreferrer" className={cx(btn.ghost, "justify-start!")}>
             <ExternalLink size={16} aria-hidden /> Ver tienda
           </a>
@@ -322,12 +213,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </div>
       </aside>
 
-      {/* Fondo del cajón móvil */}
       {sidebarOpen && <div className="fixed inset-0 z-40 bg-ink/40 md:hidden" onClick={closeSidebar} aria-hidden />}
 
-      {/* Contenido */}
       <div className="flex-1 md:ml-64 flex flex-col min-h-screen min-w-0">
-        {/* Barra superior móvil: única capa con desenfoque (≤ 12 px, respaldo sólido) */}
         <header className="sticky top-0 z-30 md:hidden h-14 px-2 flex items-center gap-2 border-b border-rule bg-bg supports-[backdrop-filter]:bg-bg/80 supports-[backdrop-filter]:backdrop-blur-md">
           <button
             onClick={() => setSidebarOpen(true)}
@@ -346,7 +234,6 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           {children}
         </main>
 
-        {/* Barra inferior móvil */}
         <nav
           aria-label="Accesos rápidos"
           className="fixed bottom-0 inset-x-0 z-30 md:hidden bg-bg-card border-t border-rule grid grid-cols-4 pb-[env(safe-area-inset-bottom)]"
