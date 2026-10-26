@@ -18,22 +18,24 @@ type Letter = {
 
 // bgSize controla el zoom individual de cada letra
 // bgPos define qué parte de la imagen aparece dentro de la letra
+// L=set prendas dobladas, I=fibra algodón macro, O=drapeado tela, N=madre+bebé (crop bebé), C=bodys sage, U=set estampado aventura, B=retrato protagonista bebé
 const LETTERS: Letter[] = [
-  { char: "L", img: "/hero/planos/desktop/K01.webp", imgFocal: "58% 52%", fallback: "#C08A4A" },
-  { char: "I", img: "/hero/planos/desktop/K02.webp", imgFocal: "48% 42%", fallback: "#C8965A" },
-  { char: "O", img: "/hero/planos/desktop/K03.webp", imgFocal: "50% 45%", fallback: "#8B9E7A" },
-  { char: "N", img: "/hero/planos/desktop/K04.webp", imgFocal: "45% 28%", fallback: "#C08A4A" },
-  { char: " ", img: "", imgFocal: "", fallback: "" },
-  { char: "C", img: "/hero/planos/desktop/K05.webp", imgFocal: "50% 38%", fallback: "#E2765A" },
-  { char: "U", img: "/hero/planos/desktop/K06.webp", imgFocal: "52% 38%", fallback: "#9BBBC8" },
-  { char: "B", img: "/hero/planos/desktop/K01.webp", imgFocal: "38% 65%", fallback: "#A47C3B" },
+  { char: "L", img: "/products/LC-003.jpeg",             imgFocal: "50% 30%",  fallback: "#C08A4A" },
+  { char: "I", img: "/hero/planos/desktop/K02.webp",     imgFocal: "50% 50%",  fallback: "#C8965A" },
+  { char: "O", img: "/hero/planos/desktop/K03.webp",     imgFocal: "50% 60%",  fallback: "#8B9E7A" },
+  { char: "N", img: "/hero/planos/desktop/K05.webp",     imgFocal: "68% 55%",  fallback: "#C08A4A" },
+  { char: " ", img: "",                                   imgFocal: "",         fallback: "" },
+  { char: "C", img: "/products/LC-013.jpeg",             imgFocal: "50% 40%",  fallback: "#E2765A" },
+  { char: "U", img: "/products/LC-012.jpeg",             imgFocal: "45% 45%",  fallback: "#8B9E7A" },
+  { char: "B", img: "/hero/planos/desktop/K06.webp",     imgFocal: "52% 38%",  fallback: "#A47C3B" },
 ];
 
 const DOODLES = {
   cloud: (
-    <svg width="90" height="56" viewBox="0 0 90 56" fill="none" aria-hidden>
+    // Nube orgánica: lóbulos de tamaño variable, base suavemente curva, sin aristas rectas
+    <svg width="104" height="64" viewBox="0 0 104 64" fill="none" aria-hidden>
       <path
-        d="M18 43 C7 43 3 35 7 29 C9 24 15 22 21 25 C23 15 31 10 41 10 C51 10 58 17 59 26 C63 24 69 25 73 29 C78 33 78 41 73 43 Z"
+        d="M14 50 C6 50 2 43 5 37 C7 32 12 30 18 33 C18 22 26 15 37 15 C44 15 49 18 52 24 C55 18 62 14 70 14 C80 14 87 21 87 31 C91 29 97 31 100 36 C103 41 101 48 96 50 C96 52 94 54 91 54 C88 54 86 53 85 51 C82 53 78 55 74 55 C71 55 68 54 66 52 C63 54 59 55 55 55 C51 55 47 54 44 51 C41 53 37 55 33 55 C28 55 24 52 22 48 C20 50 17 50 14 50 Z"
         stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
       />
     </svg>
@@ -85,46 +87,12 @@ export default function HeroV2() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        padding: "clamp(2rem, 6vw, 4rem) clamp(1.25rem, 5vw, 3rem) clamp(4rem, 8vw, 6rem)",
+        padding: "clamp(1rem, 3vw, 2rem) clamp(1.25rem, 5vw, 3rem) clamp(4rem, 8vw, 6rem)",
         textAlign: "center",
         position: "relative",
         overflow: "hidden",
       }}
     >
-      {/* ── Doodles de fondo — trazo a mano ── */}
-      <span
-        aria-hidden
-        style={{ position: "absolute", top: "10%", left: "4%", color: "var(--color-v2-doodle)", pointerEvents: "none", opacity: 0.7 }}
-      >
-        {DOODLES.cloud}
-      </span>
-      <span
-        aria-hidden
-        style={{ position: "absolute", top: "7%", right: "7%", color: "var(--color-v2-amber)", pointerEvents: "none", opacity: 0.65 }}
-      >
-        {DOODLES.sun}
-      </span>
-      <span
-        aria-hidden
-        style={{ position: "absolute", bottom: "28%", left: "7%", color: "var(--color-v2-cta)", pointerEvents: "none", opacity: 0.6, transform: "scale(0.85)" }}
-      >
-        {DOODLES.heart}
-      </span>
-
-      {/* ── Dotted path — lado derecho ── */}
-      <svg
-        aria-hidden
-        style={{ position: "absolute", right: "3%", top: "14%", pointerEvents: "none" }}
-        width="58" height="260" viewBox="0 0 58 260"
-        fill="none"
-      >
-        <path
-          d="M 42,8 C 55,48 22,88 46,128 C 62,155 30,205 40,255"
-          stroke="var(--color-v2-doodle)" strokeWidth="1.8" strokeDasharray="4 6" strokeLinecap="round"
-          opacity="0.55"
-        />
-      </svg>
-
       {/* ── Eyebrow ── */}
       <p
         style={{
@@ -140,60 +108,97 @@ export default function HeroV2() {
         Algodón pima peruano
       </p>
 
-      {/* ── Wordmark per-letter ── */}
-      <h1
-        aria-label="Lion Cub"
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          justifyContent: "center",
-          lineHeight: 0.88,
-          letterSpacing: "-0.02em",
-          gap: "0 2px",
-          userSelect: "none",
-        }}
-      >
-        {LETTERS.map((l, i) => {
-          if (l.char === " ") {
-            return <span key={i} style={{ width: "0.28em", display: "inline-block" }} aria-hidden />;
-          }
-          // Zoom individual por letra (backgroundSize) para que el sujeto sea reconocible
-          const bgSizes: Record<string, string> = {
-            L: "175% 175%",
-            I: "320% 320%",
-            O: "155% 155%",
-            N: "195% 195%",
-            C: "175% 175%",
-            U: "225% 225%",
-            B: "165% 165%",
-          };
+      {/* ── Wordmark + doodles — contenedor de composición ── */}
+      <div style={{ position: "relative", display: "inline-block" }}>
+        {/* Nube — sobre zona LI */}
+        <span
+          aria-hidden="true"
+          style={{ position: "absolute", top: -52, left: "8%", color: "var(--color-v2-doodle)", pointerEvents: "none", opacity: 0.72 }}
+        >
+          {DOODLES.cloud}
+        </span>
+        {/* Sol — esquina superior derecha de B */}
+        <span
+          aria-hidden="true"
+          style={{ position: "absolute", top: -38, right: -8, color: "var(--color-v2-amber)", pointerEvents: "none", opacity: 0.65 }}
+        >
+          {DOODLES.sun}
+        </span>
+        {/* Corazón — lado izquierdo de L */}
+        <span
+          aria-hidden="true"
+          style={{ position: "absolute", top: "20%", left: -38, color: "var(--color-v2-cta)", pointerEvents: "none", opacity: 0.62, transform: "scale(0.88)" }}
+        >
+          {DOODLES.heart}
+        </span>
+        {/* Trayectoria punteada — parte inferior derecha de B, mayormente horizontal con lazo */}
+        <svg
+          aria-hidden="true"
+          style={{ position: "absolute", right: -34, bottom: -68, pointerEvents: "none" }}
+          width="180" height="100" viewBox="0 0 180 100"
+          fill="none"
+        >
+          <path
+            d="M 8,80 C 20,72 35,60 52,54 C 62,50 64,40 56,36 C 48,32 38,36 40,48 C 42,57 58,60 72,52 C 92,42 118,28 148,18 C 162,14 175,12 178,16"
+            stroke="var(--color-v2-doodle)" strokeWidth="1.8" strokeDasharray="4 6" strokeLinecap="round"
+            opacity="0.55"
+          />
+        </svg>
 
-          const style: React.CSSProperties = {
-            fontFamily: "var(--font-wordmark)",
-            fontWeight: 700,
-            fontSize: "clamp(80px, 18vw, 196px)",
+        <h1
+          aria-label="Lion Cub"
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            justifyContent: "center",
             lineHeight: 0.88,
-            display: "inline-block",
-            ...(reduced || !l.img
-              ? { color: l.fallback }
-              : {
-                  backgroundImage: `url(${l.img})`,
-                  backgroundSize: bgSizes[l.char] ?? "200% 200%",
-                  backgroundPosition: l.imgFocal,
-                  backgroundRepeat: "no-repeat",
-                  WebkitBackgroundClip: "text",
-                  backgroundClip: "text",
-                  color: "transparent",
-                  WebkitTextFillColor: "transparent",
-                }),
-          };
-          return (
-            <span key={i} aria-hidden style={style}>
-              {l.char}
-            </span>
-          );
-        })}
-      </h1>
+            letterSpacing: "-0.02em",
+            gap: "0 2px",
+            userSelect: "none",
+          }}
+        >
+          {LETTERS.map((l, i) => {
+            if (l.char === " ") {
+              return <span key={i} style={{ width: "0.28em", display: "inline-block" }} aria-hidden />;
+            }
+            // Zoom individual por letra para que el sujeto sea reconocible
+            const bgSizes: Record<string, string> = {
+              L: "120% 120%",
+              I: "200% 200%",
+              O: "150% 150%",
+              N: "280% 280%",
+              C: "130% 130%",
+              U: "130% 130%",
+              B: "175% 175%",
+            };
+
+            const style: React.CSSProperties = {
+              fontFamily: "var(--font-wordmark)",
+              fontWeight: 700,
+              fontSize: "clamp(78px, 19vw, 240px)",
+              lineHeight: 0.88,
+              display: "inline-block",
+              ...(reduced || !l.img
+                ? { color: l.fallback }
+                : {
+                    backgroundImage: `url(${l.img})`,
+                    backgroundSize: bgSizes[l.char] ?? "200% 200%",
+                    backgroundPosition: l.imgFocal,
+                    backgroundRepeat: "no-repeat",
+                    WebkitBackgroundClip: "text",
+                    backgroundClip: "text",
+                    color: "transparent",
+                    WebkitTextFillColor: "transparent",
+                  }),
+            };
+            return (
+              <span key={i} aria-hidden style={style}>
+                {l.char}
+              </span>
+            );
+          })}
+        </h1>
+      </div>
 
       {/* ── Tagline ── */}
       <p
