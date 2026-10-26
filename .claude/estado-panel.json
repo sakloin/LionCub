@@ -2,8 +2,8 @@
   "fase": "v2 — fixes post-revisión Heber: decorativos móvil, franja marfil, claim químicos",
   "rama": "claude/sistema-visual-v2",
   "pr": "#111 DRAFT",
-  "avance_pct": 93,
-  "ultimo_commit": "e8c650a",
+  "avance_pct": 95,
+  "ultimo_commit": "6a2d13c",
   "ultimo_deploy": "lioncub-git-claude-sistema-visual-v2-sakloins-projects.vercel.app",
   "estado_deploy": "LIVE",
   "notas": [
@@ -21,7 +21,7 @@
     "OK visual decorativos móvil (nube ya no tapa eyebrow, corazón dentro del encuadre, caminito acortado)",
     "OK unión hero↔carrusel sin franja marfil",
     "OK slide 1 sin claim 'químicos agresivos'",
-    "Foto nueva para B: bebé + prenda LionCub visible, interior neutro, cara evita zona hueco superior de la B",
+    "Foto nueva para B: bebé + prenda LionCub visible, interior neutro, rostro reconocible en zona sólida (trazo vertical); ver artefacto diagnóstico v2",
     "PNGs con alpha para grid: LC-001, LC-012, LC-301, LC-101, LC-014"
   ]
 }
