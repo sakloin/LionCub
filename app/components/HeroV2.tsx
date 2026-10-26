@@ -167,15 +167,16 @@ export default function HeroV2() {
             if (l.char === " ") {
               return <span key={i} style={{ width: "0.28em", display: "inline-block" }} aria-hidden />;
             }
-            // Zoom individual por letra para que el sujeto sea reconocible
+            // auto X% preserva la relación de aspecto de cada imagen (X% controla zoom por altura)
+            // "P% P%" deforma imágenes cuyo ratio no coincide con el de la letra
             const bgSizes: Record<string, string> = {
-              L: "120% 120%",
-              I: "200% 200%",
-              O: "120% 120%",
-              N: "140% 140%",
-              C: "130% 130%",
-              U: "130% 130%",
-              B: "200% 200%",
+              L: "auto 120%",
+              I: "auto 200%",
+              O: "auto 120%",
+              N: "auto 140%",
+              C: "auto 130%",
+              U: "auto 130%",
+              B: "auto 200%",
             };
 
             const style: React.CSSProperties = {
