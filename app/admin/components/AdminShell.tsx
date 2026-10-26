@@ -106,25 +106,33 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             <p className="font-brand text-3xl text-[#D4A520]" style={{ fontFamily: "cursive" }}>Lion Cub</p>
             <p className="text-[#9B6B45] text-sm mt-1">Panel de administración</p>
           </div>
-          <input
-            type="email"
-            placeholder="Correo"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            autoComplete="username"
-            className="border border-[#F5EDD8] rounded-xl px-4 py-3 text-[#3D2010] focus:outline-none focus:ring-2 focus:ring-[#D4A520]"
-            autoFocus
-          />
-          <input
-            type="password"
-            placeholder="Contraseña"
-            value={pw}
-            onChange={e => setPw(e.target.value)}
-            autoComplete="current-password"
-            className="border border-[#F5EDD8] rounded-xl px-4 py-3 text-[#3D2010] focus:outline-none focus:ring-2 focus:ring-[#D4A520]"
-          />
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="admin-email" className="text-xs font-semibold text-[#9B6B45]">Correo</label>
+            <input
+              id="admin-email"
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              autoComplete="username"
+              required
+              className="border border-[#F5EDD8] rounded-xl px-4 min-h-11 text-base text-[#3D2010] focus:outline-none focus:ring-2 focus:ring-[#D4A520]"
+              autoFocus
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="admin-pw" className="text-xs font-semibold text-[#9B6B45]">Contraseña</label>
+            <input
+              id="admin-pw"
+              type="password"
+              value={pw}
+              onChange={e => setPw(e.target.value)}
+              autoComplete="current-password"
+              required
+              className="border border-[#F5EDD8] rounded-xl px-4 min-h-11 text-base text-[#3D2010] focus:outline-none focus:ring-2 focus:ring-[#D4A520]"
+            />
+          </div>
           {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-          <button type="submit" disabled={submitting} className="bg-[#D4A520] text-white font-bold py-3 rounded-xl hover:bg-[#A07D10] transition-colors disabled:opacity-60">
+          <button type="submit" disabled={submitting} className="bg-[#D4A520] text-white font-bold min-h-11 rounded-xl hover:bg-[#A07D10] transition-colors disabled:opacity-60">
             {submitting ? "Ingresando…" : "Ingresar"}
           </button>
         </form>
