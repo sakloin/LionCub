@@ -4,7 +4,8 @@ import React, { useEffect, useRef, useState } from "react";
 import * as XLSX from "@e965/xlsx";
 import { supabase } from "../../lib/supabase";
 import { Product, ProductImage } from "../../lib/types";
-import { Plus, Pencil, ToggleLeft, ToggleRight, Save, X, Upload, Trash2, AlertTriangle, FileDown, FileUp, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Pencil, Save, X, Upload, Trash2, AlertTriangle, FileDown, FileUp, CheckCircle2, ChevronDown, Search, PackageX, Package, Eye, EyeOff } from "lucide-react";
+import { EmptyState, ErrorState, FilterChip, ListSkeleton, PageHeader, btn, card, cx, focusRing, notify } from "../components/ui";
 import { formatSoles } from "../../lib/money";
 
 interface Category { id: string; name: string; }
@@ -101,6 +102,21 @@ function parseArr(v: any): string[] {
   return String(v).split(",").map(s => s.trim()).filter(Boolean);
 }
 
+type ListFilter = "todos" | "activos" | "ocultos" | "stock-bajo" | "agotados";
+const LIST_FILTERS: { key: ListFilter; label: string }[] = [
+  { key: "todos", label: "Todos" },
+  { key: "activos", label: "Visibles" },
+  { key: "ocultos", label: "Ocultos" },
+  { key: "stock-bajo", label: "Stock bajo" },
+  { key: "agotados", label: "Agotados" },
+];
+const LOW_STOCK = 3;
+function readFiltroFromUrl(): ListFilter {
+  if (typeof window === "undefined") return "todos";
+  const f = new URLSearchParams(window.location.search).get("filtro");
+  return LIST_FILTERS.some(x => x.key === f) ? (f as ListFilter) : "todos";
+}
+
 export default function ProductosAdmin() {
   const [products,   setProducts]   = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>(FALLBACK_CATS);
@@ -110,6 +126,10 @@ export default function ProductosAdmin() {
   const [saving,     setSaving]     = useState(false);
   const [saveError,  setSaveError]  = useState<string | null>(null);
   const [search,     setSearch]     = useState("");
+  // Filtros de la lista; ?filtro=stock-bajo llega desde el tablero.
+  const [listFilter, setListFilter] = useState<ListFilter>(readFiltroFromUrl);
+  const [catFilter,  setCatFilter]  = useState("todas");
+  const wantsNewFromUrl = useRef(typeof window !== "undefined" && new URLSearchParams(window.location.search).get("nuevo") === "1");
 
   // Inline category creation
   const [addingCat,  setAddingCat]  = useState(false);
@@ -248,6 +268,16 @@ export default function ProductosAdmin() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [editing]);
+
+  // Acceso rápido «Nuevo producto» desde el tablero (?nuevo=1): abre el
+  // formulario cuando la lista ya cargó (el id sugerido depende de ella).
+  useEffect(() => {
+    if (loading || !wantsNewFromUrl.current) return;
+    wantsNewFromUrl.current = false;
+    window.history.replaceState(null, "", window.location.pathname);
+    openNewProduct();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   /** Opens the modal for an existing product and loads its variants into
    *  draft state so the admin can edit / add / remove without leaving the
@@ -539,9 +569,18 @@ export default function ProductosAdmin() {
     return makeVariantSku(productId, sizeName, colorName);
   }
 
-  async function toggleActive(p: Product) {
+  async function toggleActive(p: Product, silent = false) {
     const { error: e } = await supabase.from("products").update({ active: !p.active }).eq("id", p.id);
-    if (!e) setProducts(ps => ps.map(x => x.id === p.id ? { ...x, active: !x.active } : x));
+    if (!e) {
+      setProducts(ps => ps.map(x => x.id === p.id ? { ...x, active: !x.active } : x));
+      if (!silent) {
+        notify.ok(`${p.name}: ${p.active ? "oculto de la tienda" : "visible en la tienda"}`, {
+          undo: () => { void toggleActive({ ...p, active: !p.active }, true); },
+        });
+      }
+    } else {
+      notify.error("No se pudo cambiar la visibilidad", e.message);
+    }
   }
 
   // ── Delete ─────────────────────────────────────────────────────────────────
@@ -1109,41 +1148,182 @@ export default function ProductosAdmin() {
   }
 
   // ── Filtered list ──────────────────────────────────────────────────────────
-  const filtered = products.filter(p =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.id.toLowerCase().includes(search.toLowerCase()) ||
-    p.category.toLowerCase().includes(search.toLowerCase())
+  const q = search.trim().toLowerCase();
+  const stockOf = (p: Product) => stockByProduct[p.id] ?? 0;
+  const searched = products.filter(p =>
+    (catFilter === "todas" || p.category === catFilter) &&
+    (!q || p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q) || p.category.toLowerCase().includes(q))
+  );
+  const matches: Record<ListFilter, (p: Product) => boolean> = {
+    "todos": () => true,
+    "activos": p => p.active,
+    "ocultos": p => !p.active,
+    "stock-bajo": p => p.active && stockOf(p) <= LOW_STOCK,
+    "agotados": p => stockOf(p) <= 0,
+  };
+  const filtered = searched.filter(matches[listFilter]);
+  const listCounts = Object.fromEntries(LIST_FILTERS.map(f => [f.key, searched.filter(matches[f.key]).length])) as Record<ListFilter, number>;
+  const categoryOptions = Array.from(new Set(products.map(p => p.category))).sort();
+
+  function changeListFilter(next: ListFilter) {
+    setListFilter(next);
+    const url = new URL(window.location.href);
+    if (next === "todos") url.searchParams.delete("filtro"); else url.searchParams.set("filtro", next);
+    window.history.replaceState(null, "", url.toString());
+  }
+
+  const pageHeader = (
+    <PageHeader
+      eyebrow="Tienda"
+      title="Productos"
+      subtitle={loading ? "Cargando catálogo…" : `${products.length} productos · ${products.filter(p => p.active).length} visibles en la tienda`}
+      actions={
+        // Plantillas e import por Excel: deshabilitadas en Fase 1 — el modelo
+        // de variantes (talla x color) cambia las columnas necesarias.
+        // Se rediseñan junto con el variant matrix en una fase próxima.
+        <button onClick={openNewProduct} className={btn.primary} disabled={loading}>
+          <Plus size={16} aria-hidden /> Nuevo producto
+        </button>
+      }
+    />
   );
 
-  if (loading) return <p className="text-[#9B6B45]">Cargando...</p>;
-  if (error) return (
-    <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-red-700">
-      <p className="font-bold mb-1">Error al cargar productos</p>
-      <p className="text-sm font-mono">{error}</p>
-      <button onClick={load} className="mt-3 text-xs font-bold underline">Reintentar</button>
-    </div>
-  );
+  if (loading) return <div className="flex flex-col gap-5">{pageHeader}<ListSkeleton rows={5} label="Cargando productos…" /></div>;
+  if (error) return <div className="flex flex-col gap-5">{pageHeader}<ErrorState title="No se pudieron cargar los productos" detail={error} onRetry={load} /></div>;
+
+  function stockBadge(s: number) {
+    if (s <= 0) return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 text-red-800 px-2.5 py-1 text-xs font-semibold whitespace-nowrap">
+        <PackageX size={13} aria-hidden /> Agotado
+      </span>
+    );
+    if (s <= LOW_STOCK) return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-gold-pale bg-gold-pale/60 text-ink px-2.5 py-1 text-xs font-semibold whitespace-nowrap">
+        <AlertTriangle size={13} aria-hidden /> Bajo · {s}
+      </span>
+    );
+    return <span className="text-sm font-semibold text-ink tabular-nums">{s} uds.</span>;
+  }
+
+  function activeSwitch(p: Product) {
+    return (
+      <button
+        type="button"
+        role="switch"
+        aria-checked={p.active}
+        aria-label={`Visible en la tienda: ${p.name}`}
+        onClick={() => toggleActive(p)}
+        className={cx("inline-flex items-center gap-2 min-h-11 px-1 rounded-xl text-sm", focusRing)}
+      >
+        <span className={cx("relative w-10 h-6 rounded-full transition-colors duration-200", p.active ? "bg-ink" : "bg-bg-warm ring-1 ring-inset ring-ink-soft")}>
+          <span className={cx("absolute top-0.5 left-0.5 w-5 h-5 rounded-full shadow-[var(--lc-shadow-1)] transition-transform duration-200", p.active ? "translate-x-4 bg-bg-card" : "bg-ink-soft")} />
+        </span>
+        <span className={cx("inline-flex items-center gap-1", p.active ? "text-ink" : "text-ink-soft")}>
+          {p.active ? <Eye size={14} aria-hidden /> : <EyeOff size={14} aria-hidden />}
+          {p.active ? "Visible" : "Oculto"}
+        </span>
+      </button>
+    );
+  }
+
+  function rowActions(p: Product) {
+    return (
+      <div className="flex items-center justify-end gap-1">
+        <button onClick={() => openEditProduct(p)} className={btn.icon} aria-label={`Editar ${p.name}`} title="Editar">
+          <Pencil size={17} />
+        </button>
+        <button onClick={() => handleDeleteClick(p)} className={cx(btn.icon, "hover:text-red-700 hover:bg-red-50")} aria-label={`Eliminar ${p.name}`} title="Eliminar">
+          <Trash2 size={17} />
+        </button>
+      </div>
+    );
+  }
+
+  function expandButton(p: Product, count: number) {
+    const isExpanded = expandedIds.has(p.id);
+    if (count === 0) return <span className="flex-shrink-0 w-11 h-11" aria-hidden />;
+    return (
+      <button
+        onClick={() => toggleExpand(p.id)}
+        aria-expanded={isExpanded}
+        aria-label={isExpanded ? `Ocultar variantes de ${p.name}` : `Ver ${count} variantes de ${p.name}`}
+        className={cx(btn.icon, "flex-shrink-0")}
+      >
+        <ChevronDown size={18} className={cx("transition-transform duration-200", isExpanded && "rotate-180")} />
+      </button>
+    );
+  }
+
+  function thumb(p: Product) {
+    return (
+      <div className="w-11 h-11 rounded-lg overflow-hidden bg-bg-warm flex-shrink-0 flex items-center justify-center text-ink-soft">
+        {p.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={p.image_url}
+            alt=""
+            className="w-full h-full object-cover"
+            onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+          />
+        ) : <Package size={18} aria-hidden />}
+      </div>
+    );
+  }
+
+  function variantsTable(p: Product, variants: ListVariant[]) {
+    return (
+      <div className="rounded-xl border border-rule overflow-x-auto bg-bg-card">
+        <table className="w-full text-xs">
+          <caption className="sr-only">Variantes de {p.name}</caption>
+          <thead className="bg-bg-soft text-ink-soft">
+            <tr>
+              <th scope="col" className="px-3 py-2 text-left font-semibold">Talla</th>
+              <th scope="col" className="px-3 py-2 text-left font-semibold">Color</th>
+              <th scope="col" className="px-3 py-2 text-right font-semibold">Precio</th>
+              <th scope="col" className="px-3 py-2 text-right font-semibold">Costo</th>
+              <th scope="col" className="px-3 py-2 text-right font-semibold">Stock</th>
+              <th scope="col" className="px-3 py-2 text-center font-semibold">Estado</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-rule">
+            {variants.map(v => {
+              const cost  = v.cost ?? (p.cost ?? 0);
+              const price = v.price_override ?? (p.price ?? 0);
+              return (
+                <tr key={v.id} className={v.active ? "" : "opacity-60"}>
+                  <td className="px-3 py-2 font-semibold text-ink">{v.size?.name ?? "—"}</td>
+                  <td className="px-3 py-2 text-ink-soft">
+                    <span className="inline-flex items-center gap-2">
+                      {v.color?.hex_code && <span className="lc-sw" style={{ background: v.color.hex_code }} aria-hidden />}
+                      {v.color?.name ?? "—"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-right text-ink tabular-nums whitespace-nowrap">
+                    {formatSoles(price)}
+                    {v.price_override === null && <span className="ml-1 text-[10px] uppercase tracking-wider text-ink-soft">base</span>}
+                  </td>
+                  <td className="px-3 py-2 text-right text-ink-soft tabular-nums whitespace-nowrap">
+                    {formatSoles(cost)}
+                    {v.cost === null && <span className="ml-1 text-[10px] uppercase tracking-wider">base</span>}
+                  </td>
+                  <td className="px-3 py-2 text-right">{stockBadge(v.stock)}</td>
+                  <td className="px-3 py-2 text-center">
+                    <span className={cx("text-[11px] font-semibold px-2 py-0.5 rounded-full border", v.active ? "bg-mint-soft border-mint text-ink" : "bg-bg-soft border-rule text-ink-soft")}>
+                      {v.active ? "Activa" : "Oculta"}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-extrabold text-[#3D2010]">Productos</h1>
-          <p className="text-[#9B6B45] text-sm">{products.length} productos en catálogo</p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Plantillas e import por Excel: deshabilitadas en Fase 1 — el modelo
-              de variantes (talla x color) cambia las columnas necesarias.
-              Se rediseñan junto con el variant matrix en una fase próxima. */}
-          <button
-            onClick={openNewProduct}
-            className="flex items-center gap-2 bg-[#D4A520] text-white font-bold px-4 py-2.5 rounded-xl hover:bg-[#A07D10] transition-colors text-sm"
-          >
-            <Plus size={16} /> Nuevo producto
-          </button>
-        </div>
-      </div>
+      {pageHeader}
 
       {/* Cost import result banner */}
       {costImportResult && (
@@ -1168,257 +1348,209 @@ export default function ProductosAdmin() {
         </div>
       )}
 
-      <input
-        placeholder="Buscar por nombre, SKU o categoría..."
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        className="bg-white border border-[#F5EDD8] rounded-xl px-4 min-h-11 text-base text-[#3D2010] focus:outline-none focus:ring-2 focus:ring-[#D4A520] w-full max-w-sm"
-      />
-
-      {/* Mobile card list (< sm) */}
-      <ul className="flex flex-col gap-3 sm:hidden">
-        {filtered.map(p => {
-          const stock = stockByProduct[p.id] ?? 0;
-          return (
-            <li key={p.id} className="bg-white rounded-2xl shadow-sm border border-[#F5EDD8] p-4 flex flex-col gap-3">
-              <div className="flex items-start gap-3">
-                {p.image_url && (
-                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-[#F5EDD8] flex-shrink-0">
-                    <img src={p.image_url} alt={p.name} className="w-full h-full object-cover"
-                      onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-[#3D2010] leading-tight">{p.name}</p>
-                  <p className="text-[#9B6B45] text-xs mt-0.5">{p.id} · {p.category}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="bg-[#FDF8F0] rounded-lg py-1.5">
-                  <p className="text-[10px] text-[#9B6B45] uppercase tracking-wide">Precio</p>
-                  <p className="font-bold text-[#D4A520] text-sm">{formatSoles(p.price)}</p>
-                </div>
-                <div className="bg-[#FDF8F0] rounded-lg py-1.5">
-                  <p className="text-[10px] text-[#9B6B45] uppercase tracking-wide">Costo</p>
-                  <p className="font-semibold text-[#9B6B45] text-sm">{formatSoles(p.cost ?? 0)}</p>
-                </div>
-                <div className="bg-[#FDF8F0] rounded-lg py-1.5">
-                  <p className="text-[10px] text-[#9B6B45] uppercase tracking-wide">Stock</p>
-                  <p className={`font-bold text-sm ${stock <= 3 ? "text-orange-500" : "text-[#3D2010]"}`}>{stock}</p>
-                </div>
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <button onClick={() => toggleActive(p)} className={`flex items-center gap-1 text-xs font-semibold min-h-11 px-3 rounded-xl ${p.active ? "text-green-600 bg-green-50" : "text-[#9B6B45] bg-[#F5EDD8]"}`}>
-                  {p.active ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
-                  {p.active ? "Activo" : "Oculto"}
-                </button>
-                <div className="flex gap-2">
-                  <button onClick={() => openEditProduct(p)} className="min-h-11 min-w-11 flex items-center justify-center rounded-xl text-[#9B6B45] hover:text-[#D4A520] hover:bg-[#FDF8F0] transition-colors">
-                    <Pencil size={17} />
-                  </button>
-                  <button onClick={() => handleDeleteClick(p)} className="min-h-11 min-w-11 flex items-center justify-center rounded-xl text-[#9B6B45] hover:text-red-500 hover:bg-red-50 transition-colors">
-                    <Trash2 size={17} />
-                  </button>
-                </div>
-              </div>
-            </li>
-          );
-        })}
-        {filtered.length === 0 && (
-          <li className="text-center py-10 text-[#9B6B45] text-sm">No hay productos que coincidan</li>
-        )}
-      </ul>
-
-      {/* Product table (sm+) */}
-      <div className="hidden sm:block bg-white rounded-2xl shadow-sm border border-[#F5EDD8] overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-[#F5EDD8] text-[#6B3D1E]">
-              <tr>
-                <th className="px-4 py-3 text-left font-bold">Producto</th>
-                <th className="px-4 py-3 text-right font-bold">Precio</th>
-                <th className="px-4 py-3 text-right font-bold">Costo</th>
-                <th className="px-4 py-3 text-right font-bold">Stock</th>
-                <th className="px-4 py-3 text-center font-bold">Estado</th>
-                <th className="px-4 py-3 text-center font-bold">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#F5EDD8]">
-              {filtered.map(p => {
-                const variants = variantsByProduct[p.id] ?? [];
-                const isExpanded = expandedIds.has(p.id);
-                return (
-                  <React.Fragment key={p.id}>
-                    <tr className="hover:bg-[#FDF8F0] transition-colors">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          {variants.length > 0 ? (
-                            <button
-                              onClick={() => toggleExpand(p.id)}
-                              aria-label={isExpanded ? "Ocultar variantes" : "Ver variantes"}
-                              title={isExpanded ? "Ocultar variantes" : `Ver ${variants.length} variantes`}
-                              className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-[#6B3D1E] hover:bg-[#F5EDD8] transition-colors"
-                            >
-                              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                            </button>
-                          ) : (
-                            <span className="flex-shrink-0 w-6 h-6" aria-hidden />
-                          )}
-                          {p.image_url && (
-                            <div className="w-10 h-10 rounded-lg overflow-hidden bg-[#F5EDD8] flex-shrink-0 flex items-center justify-center text-[#C4956A] text-[10px]">
-                              <img
-                                src={p.image_url}
-                                alt={p.name}
-                                className="w-full h-full object-cover"
-                                onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                              />
-                            </div>
-                          )}
-                          <div>
-                            <p className="font-semibold text-[#3D2010]">{p.name}</p>
-                            <p className="text-[#9B6B45] text-xs">{p.id} · {p.category} · {variants.length} {variants.length === 1 ? "variante" : "variantes"}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-right font-bold text-[#D4A520]">{formatSoles(p.price)}</td>
-                      <td className="px-4 py-3 text-right text-[#9B6B45]">{formatSoles(p.cost ?? 0)}</td>
-                      <td className="px-4 py-3 text-right">
-                        {(() => {
-                          const s = stockByProduct[p.id] ?? 0;
-                          return <span className={`font-bold ${s <= 3 ? "text-orange-500" : "text-[#3D2010]"}`}>{s}</span>;
-                        })()}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <button onClick={() => toggleActive(p)} className={`flex items-center gap-1 mx-auto text-xs font-semibold ${p.active ? "text-green-600" : "text-[#9B6B45]"}`}>
-                          {p.active ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
-                          {p.active ? "Activo" : "Oculto"}
-                        </button>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <button onClick={() => openEditProduct(p)} className="p-1.5 text-[#9B6B45] hover:text-[#D4A520] transition-colors">
-                            <Pencil size={15} />
-                          </button>
-                          <button onClick={() => handleDeleteClick(p)} className="p-1.5 text-[#9B6B45] hover:text-red-500 transition-colors">
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                    {isExpanded && (
-                      <tr className="bg-[#FDF8F0]">
-                        <td colSpan={6} className="px-4 pt-2 pb-5">
-                          <div className="ml-9 rounded-xl border border-[#EDD9B4] overflow-hidden bg-white">
-                            <table className="w-full text-xs">
-                              <thead className="bg-[#F5EDD8] text-[#6B3D1E]">
-                                <tr>
-                                  <th className="px-3 py-2 text-left font-bold">Talla</th>
-                                  <th className="px-3 py-2 text-left font-bold">Color</th>
-                                  <th className="px-3 py-2 text-right font-bold">Precio</th>
-                                  <th className="px-3 py-2 text-right font-bold">Costo</th>
-                                  <th className="px-3 py-2 text-right font-bold">Stock</th>
-                                  <th className="px-3 py-2 text-center font-bold">Estado</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-[#F5EDD8]">
-                                {variants.map(v => {
-                                  const baseCost  = p.cost  ?? 0;
-                                  const basePrice = p.price ?? 0;
-                                  const cost  = v.cost  ?? baseCost;
-                                  const price = v.price_override ?? basePrice;
-                                  const costInherited  = v.cost === null;
-                                  const priceInherited = v.price_override === null;
-                                  return (
-                                    <tr key={v.id} className={v.active ? "" : "opacity-50"}>
-                                      <td className="px-3 py-2 font-semibold text-[#3D2010]">{v.size?.name ?? "—"}</td>
-                                      <td className="px-3 py-2 text-[#6B3D1E]">
-                                        <span className="inline-flex items-center gap-2">
-                                          {v.color?.hex_code && (
-                                            <span
-                                              className="inline-block w-3 h-3 rounded-full border border-[#EDD9B4]"
-                                              style={{ background: v.color.hex_code }}
-                                            />
-                                          )}
-                                          {v.color?.name ?? "—"}
-                                        </span>
-                                      </td>
-                                      <td className="px-3 py-2 text-right font-semibold text-[#D4A520]">
-                                        {formatSoles(price)}
-                                        {priceInherited && <span className="ml-1 text-[9px] uppercase tracking-wider text-[#9B6B45]">base</span>}
-                                      </td>
-                                      <td className="px-3 py-2 text-right text-[#9B6B45]">
-                                        {formatSoles(cost)}
-                                        {costInherited && <span className="ml-1 text-[9px] uppercase tracking-wider">base</span>}
-                                      </td>
-                                      <td className={`px-3 py-2 text-right font-bold ${v.stock <= 3 ? "text-orange-500" : "text-[#3D2010]"}`}>{v.stock}</td>
-                                      <td className="px-3 py-2 text-center">
-                                        {v.active
-                                          ? <span className="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full uppercase tracking-wider">Activa</span>
-                                          : <span className="text-[10px] font-bold text-[#9B6B45] bg-[#F5EDD8] px-2 py-0.5 rounded-full uppercase tracking-wider">Oculta</span>}
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-          </table>
+      {/* Búsqueda + categoría */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1 max-w-md">
+          <label htmlFor="productos-buscar" className="sr-only">Buscar productos</label>
+          <Search size={18} aria-hidden className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-soft pointer-events-none" />
+          <input
+            id="productos-buscar"
+            type="search"
+            placeholder="Buscar por nombre, SKU o categoría"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className={cx("w-full min-h-11 pl-10 pr-11 rounded-xl border border-rule bg-bg-card text-ink placeholder:text-ink-soft/80", focusRing)}
+          />
+          {search && (
+            <button onClick={() => setSearch("")} aria-label="Limpiar búsqueda" className={cx(btn.icon, "absolute right-0 top-0")}>
+              <X size={16} />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <label htmlFor="productos-cat" className="text-sm text-ink-soft whitespace-nowrap">Categoría</label>
+          <select
+            id="productos-cat"
+            value={catFilter}
+            onChange={e => setCatFilter(e.target.value)}
+            className={cx("min-h-11 rounded-xl border border-rule bg-bg-card text-ink px-3 text-sm capitalize", focusRing)}
+          >
+            <option value="todas">Todas</option>
+            {categoryOptions.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
         </div>
       </div>
+
+      <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto" role="group" aria-label="Filtrar productos">
+        <div className="flex gap-2 w-max sm:w-auto sm:flex-wrap pb-1">
+          {LIST_FILTERS.map(f => (
+            <FilterChip key={f.key} active={listFilter === f.key} onClick={() => changeListFilter(f.key)} count={listCounts[f.key]}>
+              {f.label}
+            </FilterChip>
+          ))}
+        </div>
       </div>
+
+      {filtered.length === 0 ? (
+        products.length === 0 ? (
+          <EmptyState
+            icon={Package}
+            title="Tu catálogo está vacío"
+            description="Crea el primer producto con sus tallas y colores; aparecerá en la tienda cuando lo marques como visible."
+            action={<button onClick={openNewProduct} className={btn.primary}><Plus size={16} aria-hidden /> Nuevo producto</button>}
+          />
+        ) : (
+          <EmptyState
+            icon={Search}
+            title="Nada con estos filtros"
+            description="Prueba con otra búsqueda, categoría o filtro."
+            action={<button onClick={() => { setSearch(""); setCatFilter("todas"); changeListFilter("todos"); }} className={btn.secondary}>Quitar filtros</button>}
+          />
+        )
+      ) : (
+        <>
+          {/* Móvil: tarjetas (sin desborde horizontal) */}
+          <ul className="md:hidden flex flex-col gap-3" aria-label="Productos">
+            {filtered.map(p => {
+              const variants = variantsByProduct[p.id] ?? [];
+              return (
+                <li key={p.id} className={cx(card, "p-3 flex flex-col gap-2")}>
+                  <div className="flex items-center gap-2">
+                    {thumb(p)}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-ink leading-tight line-clamp-2">{p.name}</p>
+                      <p className="text-xs text-ink-soft capitalize">{p.id} · {p.category}</p>
+                    </div>
+                    {rowActions(p)}
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 pl-1">
+                    <p className="text-sm text-ink tabular-nums">
+                      <span className="font-semibold">{formatSoles(p.price)}</span>
+                      <span className="text-ink-soft"> · costo {formatSoles(p.cost ?? 0)}</span>
+                    </p>
+                    {stockBadge(stockOf(p))}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    {activeSwitch(p)}
+                    {variants.length > 0 && (
+                      <button
+                        onClick={() => toggleExpand(p.id)}
+                        aria-expanded={expandedIds.has(p.id)}
+                        className={btn.ghost}
+                      >
+                        {variants.length} {variants.length === 1 ? "variante" : "variantes"}
+                        <ChevronDown size={16} aria-hidden className={cx("transition-transform duration-200", expandedIds.has(p.id) && "rotate-180")} />
+                      </button>
+                    )}
+                  </div>
+                  {expandedIds.has(p.id) && variantsTable(p, variants)}
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* Escritorio: tabla */}
+          <div className={cx(card, "hidden md:block overflow-hidden")}>
+            <table className="w-full text-sm">
+              <caption className="sr-only">Productos del catálogo</caption>
+              <thead className="bg-bg-soft text-ink-soft border-b border-rule">
+                <tr>
+                  <th scope="col" className="px-4 py-3 text-left font-semibold">Producto</th>
+                  <th scope="col" className="px-4 py-3 text-right font-semibold">Precio</th>
+                  <th scope="col" className="px-4 py-3 text-right font-semibold">Costo</th>
+                  <th scope="col" className="px-4 py-3 text-right font-semibold">Stock</th>
+                  <th scope="col" className="px-4 py-3 text-left font-semibold">En la tienda</th>
+                  <th scope="col" className="px-4 py-3 text-right font-semibold"><span className="sr-only">Acciones</span></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-rule">
+                {filtered.map(p => {
+                  const variants = variantsByProduct[p.id] ?? [];
+                  return (
+                    <React.Fragment key={p.id}>
+                      <tr className="hover:bg-bg-soft transition-colors">
+                        <td className="px-2 py-2">
+                          <div className="flex items-center gap-2">
+                            {expandButton(p, variants.length)}
+                            {thumb(p)}
+                            <div className="min-w-0 pl-1">
+                              <p className="font-semibold text-ink">{p.name}</p>
+                              <p className="text-ink-soft text-xs">{p.id} · <span className="capitalize">{p.category}</span> · {variants.length} {variants.length === 1 ? "variante" : "variantes"}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 text-right font-semibold text-ink tabular-nums whitespace-nowrap">{formatSoles(p.price)}</td>
+                        <td className="px-4 py-2 text-right text-ink-soft tabular-nums whitespace-nowrap">{formatSoles(p.cost ?? 0)}</td>
+                        <td className="px-4 py-2 text-right">{stockBadge(stockOf(p))}</td>
+                        <td className="px-4 py-2">{activeSwitch(p)}</td>
+                        <td className="px-2 py-2">{rowActions(p)}</td>
+                      </tr>
+                      {expandedIds.has(p.id) && (
+                        <tr className="bg-bg-soft">
+                          <td colSpan={6} className="px-4 pt-1 pb-4">
+                            <div className="ml-12">{variantsTable(p, variants)}</div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
 
       {/* ── Delete dialog ───────────────────────────────────────────────────── */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm flex flex-col gap-4">
+        <div
+          className="fixed inset-0 z-[60] bg-ink/40 flex items-end sm:items-center justify-center p-4"
+          onKeyDown={e => { if (e.key === "Escape" && !deleting) { setDeleteTarget(null); setDeleteError(null); } }}
+        >
+          <div role="dialog" aria-modal="true" aria-label={deleteHasSales ? "No se puede eliminar" : "Eliminar producto"} className="bg-bg-card rounded-2xl shadow-[var(--lc-shadow-3)] p-6 w-full max-w-sm flex flex-col gap-4 lc-admin-pop">
             {deleteHasSales ? (
               <>
-                <div className="flex items-center gap-3 text-orange-600">
+                <div className="flex items-center gap-3 text-gold-deep">
                   <AlertTriangle size={22} />
-                  <h2 className="font-extrabold text-[#3D2010] text-lg">No se puede eliminar</h2>
+                  <h2 className="font-semibold text-ink text-lg">No se puede eliminar</h2>
                 </div>
-                <p className="text-sm text-[#6B3D1E]">
+                <p className="text-sm text-ink-soft">
                   <strong>{deleteTarget.name}</strong> tiene ventas registradas y no puede eliminarse.
                 </p>
-                <p className="text-sm text-[#9B6B45]">
+                <p className="text-sm text-ink-soft">
                   Si ya no quieres venderlo, puedes <strong>desactivarlo</strong> para ocultarlo de la tienda sin perder el historial de pedidos.
                 </p>
-                {deleteError && <p className="text-xs text-red-600 font-mono break-all">{deleteError}</p>}
+                {deleteError && <p className="text-xs text-red-700 font-mono break-all">{deleteError}</p>}
                 <button
                   onClick={() => { setDeleteTarget(null); setDeleteError(null); }}
-                  className="w-full py-2.5 bg-[#D4A520] text-white font-bold rounded-xl hover:bg-[#A07D10] transition-colors text-sm"
+                  autoFocus
+                  className={cx(btn.primary, "w-full")}
                 >
                   Entendido
                 </button>
               </>
             ) : (
               <>
-                <div className="flex items-center gap-3 text-red-600">
+                <div className="flex items-center gap-3 text-red-700">
                   <Trash2 size={22} />
-                  <h2 className="font-extrabold text-[#3D2010] text-lg">Eliminar producto</h2>
+                  <h2 className="font-semibold text-ink text-lg">Eliminar producto</h2>
                 </div>
-                <p className="text-sm text-[#6B3D1E]">
+                <p className="text-sm text-ink-soft">
                   ¿Eliminar <strong>{deleteTarget.name}</strong>? Esta acción no se puede deshacer.
                 </p>
-                {deleteError && <p className="text-xs text-red-600 font-mono break-all">{deleteError}</p>}
+                {deleteError && <p className="text-xs text-red-700 font-mono break-all">{deleteError}</p>}
                 <div className="flex gap-3">
                   <button
                     onClick={() => { setDeleteTarget(null); setDeleteError(null); }}
-                    className="flex-1 py-2.5 border border-[#F5EDD8] rounded-xl text-[#9B6B45] font-semibold hover:bg-[#F5EDD8] transition-colors text-sm"
+                    autoFocus
+                    className={cx(btn.secondary, "flex-1")}
                   >
                     Cancelar
                   </button>
                   <button
                     onClick={confirmDelete}
                     disabled={deleting}
-                    className="flex-1 py-2.5 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-colors text-sm disabled:opacity-60"
+                    className={cx(btn.dangerSolid, "flex-1")}
                   >
                     {deleting ? "Eliminando..." : "Sí, eliminar"}
                   </button>
