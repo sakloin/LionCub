@@ -83,7 +83,7 @@ function SmallCard({ product }: { product: Product }) {
             src={product.img}
             alt={product.alt}
             fill
-            style={{ objectFit: "cover", objectPosition: "center 20%", mixBlendMode: "multiply" }}
+            style={{ objectFit: "cover", objectPosition: "center 20%" }}
             sizes="(min-width: 768px) 22vw, 45vw"
           />
         </div>
@@ -176,7 +176,7 @@ function FeaturedCard() {
             src={FEATURED.img}
             alt={FEATURED.alt}
             fill
-            style={{ objectFit: "cover", objectPosition: "center 15%", mixBlendMode: "multiply" }}
+            style={{ objectFit: "cover", objectPosition: "center 15%" }}
             sizes="(min-width: 768px) 45vw, 100vw"
           />
         </div>

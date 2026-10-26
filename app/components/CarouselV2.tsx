@@ -23,13 +23,13 @@ type Slide = {
 
 const SLIDES: Slide[] = [
   {
-    eyebrow: "Colección · Verano 2027",
-    title: "Esenciales\nde Verano",
-    body: "Bodies y conjuntos en algodón pima ultraligero para los días más cálidos.",
-    cta: "Ver colección",
+    eyebrow: "Algodón Pima Peruano",
+    title: "Del Campo\nal Bebé",
+    body: "Cultivado en los valles de la costa peruana: fibra extra-larga, suave al tacto y libre de químicos agresivos.",
+    cta: "Conocer más",
     href: "#coleccion",
     img: "/hero/planos/desktop/K01.webp",
-    imgAlt: "Conjunto de bebé en algodón pima",
+    imgAlt: "Campo de algodón pima peruano — materia prima Lion Cub",
     bg: "#DDE6D6",
   },
   {
@@ -38,7 +38,7 @@ const SLIDES: Slide[] = [
     body: "El favorito de las mamás: suave, lavable y siempre elegante.",
     cta: "Ver conjunto",
     href: "#coleccion",
-    img: "/products/LC-003.jpeg",
+    img: "/products/LC-007.jpeg",
     imgAlt: "Conjunto crema de algodón pima",
     bg: "#E9D7B8",
   },
@@ -48,8 +48,8 @@ const SLIDES: Slide[] = [
     body: "Los colores neutros que combinan con todo el ajuar del bebé.",
     cta: "Explorar",
     href: "#coleccion",
-    img: "/hero/planos/desktop/K05.webp",
-    imgAlt: "Conjuntos en tono sage",
+    img: "/products/LC-010.jpeg",
+    imgAlt: "Conjuntos en tono sage y neutros",
     bg: "#D5D2BA",
   },
   {
@@ -234,7 +234,8 @@ export default function CarouselV2() {
                   <div
                     style={{
                       position: "relative",
-                      minHeight: "clamp(200px, 40vw, 400px)",
+                      aspectRatio: "4/3",
+                      minHeight: "200px",
                     }}
                   >
                     <Image

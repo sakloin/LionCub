@@ -18,12 +18,12 @@ type Letter = {
 
 // bgSize controla el zoom individual de cada letra
 // bgPos define qué parte de la imagen aparece dentro de la letra
-// L=set prendas dobladas, I=fibra algodón macro, O=drapeado tela, N=madre+bebé (crop bebé), C=bodys sage, U=set estampado aventura, B=retrato protagonista bebé
+// L=set prendas dobladas, I=fibra algodón macro, O=drapeado tela, N=conjunto animal print (sin bebé), C=bodys sage, U=set estampado aventura, B=retrato protagonista bebé
 const LETTERS: Letter[] = [
   { char: "L", img: "/products/LC-003.jpeg",             imgFocal: "50% 30%",  fallback: "#C08A4A" },
   { char: "I", img: "/hero/planos/desktop/K02.webp",     imgFocal: "50% 50%",  fallback: "#C8965A" },
   { char: "O", img: "/hero/planos/desktop/K03.webp",     imgFocal: "62% 52%",  fallback: "#8B9E7A" },
-  { char: "N", img: "/hero/planos/desktop/K05.webp",     imgFocal: "85% 92%",  fallback: "#C08A4A" },
+  { char: "N", img: "/products/LC-001.jpeg",             imgFocal: "50% 35%",  fallback: "#C08A4A" },
   { char: " ", img: "",                                   imgFocal: "",         fallback: "" },
   { char: "C", img: "/products/LC-013.jpeg",             imgFocal: "50% 40%",  fallback: "#E2765A" },
   { char: "U", img: "/products/LC-012.jpeg",             imgFocal: "45% 45%",  fallback: "#8B9E7A" },
@@ -168,7 +168,7 @@ export default function HeroV2() {
               L: "120% 120%",
               I: "200% 200%",
               O: "120% 120%",
-              N: "200% 200%",
+              N: "140% 140%",
               C: "130% 130%",
               U: "130% 130%",
               B: "200% 200%",
