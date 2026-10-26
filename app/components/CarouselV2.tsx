@@ -25,7 +25,7 @@ const SLIDES: Slide[] = [
   {
     eyebrow: "Algodón Pima Peruano",
     title: "Del Campo\nal Bebé",
-    body: "Cultivado en los valles de la costa peruana: fibra extra-larga, suave al tacto y libre de químicos agresivos.",
+    body: "Cultivado en los valles de la costa peruana. Fibra extra-larga, naturalmente suave desde el primer contacto con la piel del bebé.",
     cta: "Conocer más",
     href: "#coleccion",
     img: "/hero/planos/desktop/K01.webp",

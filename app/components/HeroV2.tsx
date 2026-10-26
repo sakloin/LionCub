@@ -115,28 +115,32 @@ export default function HeroV2() {
         {/* Nube — sobre zona LI */}
         <span
           aria-hidden="true"
-          style={{ position: "absolute", top: -52, left: "8%", color: "var(--color-v2-doodle)", pointerEvents: "none", opacity: 0.72 }}
+          className="lc-doodle-cloud"
+          style={{ color: "var(--color-v2-doodle)", pointerEvents: "none", opacity: 0.72 }}
         >
           {DOODLES.cloud}
         </span>
         {/* Sol — esquina superior derecha de B */}
         <span
           aria-hidden="true"
-          style={{ position: "absolute", top: -38, right: -8, color: "var(--color-v2-amber)", pointerEvents: "none", opacity: 0.65 }}
+          className="lc-doodle-sun"
+          style={{ color: "var(--color-v2-amber)", pointerEvents: "none", opacity: 0.65 }}
         >
           {DOODLES.sun}
         </span>
         {/* Corazón — lado izquierdo de L */}
         <span
           aria-hidden="true"
-          style={{ position: "absolute", top: "20%", left: -38, color: "var(--color-v2-cta)", pointerEvents: "none", opacity: 0.62, transform: "scale(0.88)" }}
+          className="lc-doodle-heart"
+          style={{ color: "var(--color-v2-cta)", pointerEvents: "none", opacity: 0.62, transform: "scale(0.88)" }}
         >
           {DOODLES.heart}
         </span>
         {/* Trayectoria punteada — parte inferior derecha de B, mayormente horizontal con lazo */}
         <svg
           aria-hidden="true"
-          style={{ position: "absolute", right: -34, bottom: -68, pointerEvents: "none" }}
+          className="lc-doodle-caminito"
+          style={{ pointerEvents: "none" }}
           width="180" height="100" viewBox="0 0 180 100"
           fill="none"
         >
@@ -289,25 +293,22 @@ export default function HeroV2() {
         Explorar colección · Verano 2027
       </Link>
 
-      {/* ── Colina orgánica inferior ── */}
-      <div
-        aria-hidden
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          lineHeight: 0,
-          pointerEvents: "none",
-        }}
-      >
-        <svg viewBox="0 0 1440 200" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style={{ display: "block" }}>
-          <path
-            d="M0,130 C200,70 420,175 680,120 C860,80 1040,165 1260,110 C1340,90 1400,130 1440,115 L1440,200 L0,200 Z"
-            fill="var(--color-v2-wave)"
-          />
-        </svg>
-      </div>
+      <style>{`
+        .lc-doodle-cloud  { position: absolute; top: -52px; left: 8%; }
+        .lc-doodle-sun    { position: absolute; top: -38px; right: -8px; }
+        .lc-doodle-heart  { position: absolute; top: 20%; left: -38px; }
+        .lc-doodle-caminito { position: absolute; right: -34px; bottom: -68px; }
+        @media (max-width: 767px) {
+          .lc-doodle-cloud  { top: -8px; left: 4%; }
+          .lc-doodle-sun    { top: -26px; right: 0; }
+          .lc-doodle-heart  { left: 2px; top: 10%; }
+          .lc-doodle-caminito {
+            right: -8px; bottom: -28px;
+            transform: scale(0.55);
+            transform-origin: bottom right;
+          }
+        }
+      `}</style>
     </section>
   );
 }
