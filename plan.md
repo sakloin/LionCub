@@ -20,6 +20,7 @@
 | 3 | Jerarquía y contenido | ⬜ |
 | 4 | Congelamiento + velocidad (LCP < 2.5 s móvil) + prueba de compra real | ⬜ |
 | 5 | Lanzamiento | ⬜ |
+| A1 | Rediseño del panel admin (navegación, tablero, pedidos, productos) — spec `docs/requisitos/admin-rediseno-2026-10-19.md` | 🟡 implementado en rama `claude/admin-rediseno` (PR borrador) — falta auditor |
 
 ## Fase 2 — Críticos de compra
 - [x] **2.1 Resiliencia de la colección** (`app/components/Collection.tsx`): `try/catch/finally` en la carga para que un fallo del fetch NO deje "Cargando…" eterno; cae al estado vacío. _(hecho en rama; criterio: con la base caída, la sección no se cuelga)._
@@ -64,6 +65,15 @@ Rama `claude/correcciones-auditoria-lanzamiento` (PR en borrador). Fuente: `Lion
 - [x] **#14** Precio tachado formateado, sin código LC en la bolsa, tope de stock.
 - [x] **#15** Host canónico www, sin hreflang falso, sitemap real, checkout noindex.
 - [x] **#16** `logo-512.png` (49 KB) para apple-touch-icon, JSON-LD y feed.
+
+## Fase A1 — Rediseño del panel admin (2026-10-19)
+> Pedido de Heber: admin «rústico» → más interactivo, con las mejoras de los videos. Solo UI/UX; sin cambios de lógica, auth ni esquema.
+- [x] **A1.1** Navegación agrupada (`AdminShell`): íconos, grupos, activo accesible, cajón + barra inferior en móvil, login accesible, toaster propio del admin.
+- [x] **A1.2** Tablero: KPI de hoy/7 días, pedidos por estado, stock bajo, lista de espera, acciones rápidas, saludo con contexto, contadores, skeleton.
+- [x] **A1.3** Pedidos: búsqueda, filtros con conteo, estados color+ícono+texto, acción principal por pedido, confirmación y deshacer.
+- [x] **A1.4** Productos (lista): filtros, stock con texto, interruptor accesible con deshacer, móvil sin desborde, skeleton.
+- [ ] **A1.5** Auditor: veredicto APROBADO antes de integrar. Pendientes en `deuda-tecnica.md` (DT-21 a DT-29).
+- [ ] **A1.6** Siguiente rebanada: Ofertas, Compras, Configuración, Reportes, Contenido, Lista de espera y formulario de producto con las mismas piezas (DT-25).
 
 ## Notas
 - El **inglés va al lanzamiento** — selector EN/ES visible. Aprobado por Heber 2026-10-11.
