@@ -23,7 +23,7 @@ type Slide = {
 const SLIDES: Slide[] = [
   { img: "/hero/planos/desktop/K01.webp", imgMobile: "/hero/planos/mobile/K01.webp", focal: "50% 60%", alt: "Bebé recién nacido con body de algodón Pima Lion Cub" },
   { img: "/hero/planos/desktop/K02.webp", imgMobile: "/hero/planos/mobile/K02.webp", focal: "50% 50%", alt: "Conjunto de ropa para bebé en algodón Pima natural, color crema" },
-  { img: "/hero/planos/desktop/K03.webp", imgMobile: "/hero/planos/mobile/K03.webp", focal: "50% 50%", alt: "Detalle de textura de tela pima de Lion Cub" },
+  { img: "/hero/planos/desktop/K03.webp", imgMobile: "/hero/planos/mobile/K03.webp", focal: "50% 50%", alt: "Detalle de textura de tela Pima de Lion Cub" },
   { img: "/hero/planos/desktop/K04.webp", imgMobile: "/hero/planos/mobile/K04.webp", focal: "50% 30%", alt: "Mamá abrazando a su bebé envuelto en una manta de algodón Pima" },
   { img: "/hero/planos/desktop/K05.webp", imgMobile: "/hero/planos/mobile/K05.webp", focal: "50% 40%", alt: "Body de algodón Pima para bebé con acabados Lion Cub" },
   { img: "/hero/planos/desktop/K06.webp", imgMobile: "/hero/planos/mobile/K06.webp", focal: "50% 40%", alt: "Ropa de bebé Lion Cub, colección de algodón Pima peruano" },
