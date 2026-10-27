@@ -527,7 +527,44 @@ export default function ComprasAdmin() {
       <div className="bg-white rounded-2xl p-5 border border-[#F5EDD8] shadow-sm">
         <h2 className="font-bold text-[#3D2010] mb-1">Stock por variante</h2>
         <p className="text-xs text-[#9B6B45] mb-4">Ordenado por menor stock primero. Click en "Reponer" para abrir el form prellenado.</p>
-        <div className="overflow-x-auto">
+
+        {/* Mobile cards (< sm) */}
+        <div className="sm:hidden flex flex-col gap-3">
+          {variants.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-8 text-[#9B6B45]">
+              <Package size={28} className="opacity-60" />
+              <p className="text-sm text-center">No hay variantes activas. Crea variantes en <a href="/admin/productos" className="underline font-bold">Productos</a>.</p>
+            </div>
+          ) : variants.map(v => (
+            <div key={v.id} className={`rounded-xl border p-3 flex items-center gap-3 ${v.stock <= 3 ? "bg-orange-50 border-orange-200" : "border-[#F5EDD8]"}`}>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm text-[#3D2010] leading-tight">{v.product_name}</p>
+                <p className="text-xs text-[#6B3D1E] mt-0.5">
+                  T{v.size_name}
+                  {v.color_hex && <span className="inline-block w-2 h-2 rounded-full mx-1 border border-[#EDD9B4]" style={{ background: v.color_hex }} />}
+                  {v.color_name}
+                </p>
+                <p className="text-xs text-[#9B6B45] mt-1">
+                  Costo {formatSoles(v.cost ?? 0)} · Valor {formatSoles(v.stock * (v.cost ?? 0))}
+                </p>
+              </div>
+              <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                <span className={`text-lg font-bold ${v.stock === 0 ? "text-red-600" : v.stock <= 3 ? "text-orange-500" : "text-[#3D2010]"}`}>
+                  {v.stock}
+                </span>
+                <button
+                  onClick={() => openFormForVariant(v)}
+                  className="text-xs font-bold text-[#D4A520] hover:bg-[#FDF8F0] min-h-11 px-3 rounded-lg transition-colors border border-[#F5EDD8]"
+                >
+                  Reponer
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop table (sm+) */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-[#F5EDD8] text-[#6B3D1E]">
               <tr>
@@ -594,60 +631,99 @@ export default function ComprasAdmin() {
         {purchases.length === 0 ? (
           <p className="p-6 text-[#9B6B45] text-sm">Sin compras registradas aún</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-[#F5EDD8] text-[#6B3D1E]">
-                <tr>
-                  <th className="px-4 py-2 text-left font-bold">Fecha</th>
-                  <th className="px-4 py-2 text-left font-bold">Producto</th>
-                  <th className="px-4 py-2 text-left font-bold">Variante</th>
-                  <th className="px-4 py-2 text-right font-bold">Cant.</th>
-                  <th className="px-4 py-2 text-right font-bold">C/U</th>
-                  <th className="px-4 py-2 text-right font-bold">Total</th>
-                  <th className="px-4 py-2 text-left font-bold">Proveedor</th>
-                  <th className="px-4 py-2 text-center font-bold">Acción</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#F5EDD8]">
-                {purchases.map(p => {
-                  const safe = canRevertPurchase(p);
-                  return (
-                    <tr key={p.id} className="hover:bg-[#FDF8F0]">
-                      <td className="px-4 py-2.5 text-[#9B6B45] whitespace-nowrap">
+          <>
+            {/* Mobile cards (< sm) */}
+            <div className="sm:hidden divide-y divide-[#F5EDD8]">
+              {purchases.map(p => {
+                const safe = canRevertPurchase(p);
+                return (
+                  <div key={p.id} className="px-4 py-3 flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                        <p className="font-semibold text-sm text-[#3D2010] truncate">{p.product_name}</p>
+                        <p className="font-bold text-[#D4A520] text-sm flex-shrink-0">{formatSoles(Number(p.total_cost))}</p>
+                      </div>
+                      <p className="text-xs text-[#6B3D1E]">
+                        {p.selected_size ? <span className="font-semibold">T{p.selected_size}</span> : null}
+                        {p.selected_size && p.selected_color ? " · " : null}
+                        {p.selected_color ?? null}
+                        {!p.selected_size && !p.selected_color ? <span className="italic text-[#9B6B45]">sin variante</span> : null}
+                      </p>
+                      <p className="text-xs text-[#9B6B45] mt-0.5">
                         {new Date(p.purchased_at + "T00:00:00").toLocaleDateString("es-PE")}
-                      </td>
-                      <td className="px-4 py-2.5 font-medium text-[#3D2010]">{p.product_name}</td>
-                      <td className="px-4 py-2.5 text-[#6B3D1E]">
-                        {p.selected_size || p.selected_color ? (
-                          <>
-                            {p.selected_size && <span className="font-semibold">T{p.selected_size}</span>}
-                            {p.selected_size && p.selected_color && " · "}
-                            {p.selected_color}
-                          </>
-                        ) : <span className="text-[#9B6B45] italic text-xs">sin variante (histórico)</span>}
-                      </td>
-                      <td className="px-4 py-2.5 text-right">{p.quantity}</td>
-                      <td className="px-4 py-2.5 text-right text-[#9B6B45]">{formatSoles(Number(p.unit_cost))}</td>
-                      <td className="px-4 py-2.5 text-right font-bold text-[#D4A520]">{formatSoles(Number(p.total_cost))}</td>
-                      <td className="px-4 py-2.5 text-[#9B6B45]">{p.supplier ?? "-"}</td>
-                      <td className="px-4 py-2.5 text-center">
-                        <button
-                          onClick={() => deletePurchase(p)}
-                          disabled={!safe}
-                          title={safe
-                            ? "Eliminar esta compra (descuenta su cantidad del stock)"
-                            : "No se puede eliminar: parte ya se vendió"}
-                          className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        {" · "}x{p.quantity} · {formatSoles(Number(p.unit_cost))} c/u
+                        {p.supplier ? ` · ${p.supplier}` : ""}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => deletePurchase(p)}
+                      disabled={!safe}
+                      title={safe ? "Eliminar esta compra" : "No se puede eliminar: parte ya se vendió"}
+                      className="min-h-11 min-w-[44px] flex items-center justify-center rounded-lg text-red-600 hover:bg-red-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop table (sm+) */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-[#F5EDD8] text-[#6B3D1E]">
+                  <tr>
+                    <th className="px-4 py-2 text-left font-bold">Fecha</th>
+                    <th className="px-4 py-2 text-left font-bold">Producto</th>
+                    <th className="px-4 py-2 text-left font-bold">Variante</th>
+                    <th className="px-4 py-2 text-right font-bold">Cant.</th>
+                    <th className="px-4 py-2 text-right font-bold">C/U</th>
+                    <th className="px-4 py-2 text-right font-bold">Total</th>
+                    <th className="px-4 py-2 text-left font-bold">Proveedor</th>
+                    <th className="px-4 py-2 text-center font-bold">Acción</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#F5EDD8]">
+                  {purchases.map(p => {
+                    const safe = canRevertPurchase(p);
+                    return (
+                      <tr key={p.id} className="hover:bg-[#FDF8F0]">
+                        <td className="px-4 py-2.5 text-[#9B6B45] whitespace-nowrap">
+                          {new Date(p.purchased_at + "T00:00:00").toLocaleDateString("es-PE")}
+                        </td>
+                        <td className="px-4 py-2.5 font-medium text-[#3D2010]">{p.product_name}</td>
+                        <td className="px-4 py-2.5 text-[#6B3D1E]">
+                          {p.selected_size || p.selected_color ? (
+                            <>
+                              {p.selected_size && <span className="font-semibold">T{p.selected_size}</span>}
+                              {p.selected_size && p.selected_color && " · "}
+                              {p.selected_color}
+                            </>
+                          ) : <span className="text-[#9B6B45] italic text-xs">sin variante (histórico)</span>}
+                        </td>
+                        <td className="px-4 py-2.5 text-right">{p.quantity}</td>
+                        <td className="px-4 py-2.5 text-right text-[#9B6B45]">{formatSoles(Number(p.unit_cost))}</td>
+                        <td className="px-4 py-2.5 text-right font-bold text-[#D4A520]">{formatSoles(Number(p.total_cost))}</td>
+                        <td className="px-4 py-2.5 text-[#9B6B45]">{p.supplier ?? "-"}</td>
+                        <td className="px-4 py-2.5 text-center">
+                          <button
+                            onClick={() => deletePurchase(p)}
+                            disabled={!safe}
+                            title={safe
+                              ? "Eliminar esta compra (descuenta su cantidad del stock)"
+                              : "No se puede eliminar: parte ya se vendió"}
+                            className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>
