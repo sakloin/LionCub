@@ -1,36 +1,29 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 
-/**
- * ShopByAge — Forma orgánica SVG con concavidad inferior-izquierda (Bézier)
- * Usa SVG <image> nativo con clipPath interno para evitar el bug de Chromium
- * donde CSS clip-path: url(#id) falla silencioso cuando un ancestro tiene
- * overflow: hidden. El clipPath se define dentro del mismo <svg> que lo usa.
- */
-
 const AGE_CARDS = [
-  { range: "0–3",  unit: "meses", img: "/products/LC-016.jpeg", alt: "Ropa para bebé 0 a 3 meses",  href: "/tienda?edad=0-3m"  },
-  { range: "3–6",  unit: "meses", img: "/products/LC-001.jpeg", alt: "Ropa para bebé 3 a 6 meses",  href: "/tienda?edad=3-6m"  },
-  { range: "6–12", unit: "meses", img: "/products/LC-012.jpeg", alt: "Ropa para bebé 6 a 12 meses", href: "/tienda?edad=6-12m" },
-  { range: "1–2",  unit: "años",  img: "/products/LC-019.jpeg", alt: "Ropa para bebé 1 a 2 años",   href: "/tienda?edad=1-2a"  },
+  { range: "0–3",  unit: "meses", img: "/products/LC-016.jpeg", alt: "Ropa para bebé 0 a 3 meses",  href: "/tienda?edad=0-3m",  objPos: "center 28%" },
+  { range: "3–6",  unit: "meses", img: "/products/LC-001.jpeg", alt: "Ropa para bebé 3 a 6 meses",  href: "/tienda?edad=3-6m",  objPos: "center 22%" },
+  { range: "6–12", unit: "meses", img: "/products/LC-012.jpeg", alt: "Ropa para bebé 6 a 12 meses", href: "/tienda?edad=6-12m", objPos: "center 20%" },
+  { range: "1–2",  unit: "años",  img: "/products/LC-019.jpeg", alt: "Ropa para bebé 1 a 2 años",   href: "/tienda?edad=1-2a",  objPos: "center 18%" },
 ];
 
-// Forma orgánica en coordenadas absolutas para viewBox "0 0 100 75" (ratio 4:3).
-// Convertida de objectBoundingBox original multiplicando x×100, y×75.
-// La concavidad inferior-izquierda (L 52,75 … C 12,52.5) reserva espacio
-// natural para la etiqueta de edad sin tapar la foto.
-const CLIP_PATH =
-  "M 10,1.5 " +
-  "C 32,0 68,0 90,1.5 " +
-  "C 100,3 102,13.5 100,24 " +
-  "C 102,39 102,54 98,63 " +
-  "C 94,73.5 80,78 66,76.5 " +
-  "L 52,75 " +
-  "C 38,72 22,63 12,52.5 " +
-  "C 4,43.5 0,34.5 0,25.5 " +
-  "C -2,13.5 2,6 8,3 " +
-  "C 9,2.25 10,1.5 10,1.5 Z";
+// Blob orgánico en coordenadas absolutas viewBox "0 0 100 75" (ratio 4:3).
+// Concavidad inferior-izquierda preservada del diseño original.
+const BLOB_PATH =
+  "M 10,1.5 C 32,0 68,0 90,1.5 C 100,3 102,13.5 100,24 " +
+  "C 102,39 102,54 98,63 C 94,73.5 80,78 66,76.5 " +
+  "L 52,75 C 38,72 22,63 12,52.5 C 4,43.5 0,34.5 0,25.5 " +
+  "C -2,13.5 2,6 8,3 C 9,2.25 10,1.5 10,1.5 Z";
+
+// mask-image via data URI evita el bug de Chromium donde clip-path:url(#id)
+// falla silencioso cuando un ancestro tiene overflow:hidden.
+const MASK_SVG = encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 75"><path d="${BLOB_PATH}" fill="black"/></svg>`
+);
+const MASK_URL = `url("data:image/svg+xml,${MASK_SVG}")`;
 
 export default function ShopByAge() {
   return (
@@ -77,78 +70,67 @@ export default function ShopByAge() {
             gap: "clamp(0.75rem, 2vw, 1.25rem)",
           }}
         >
-          {AGE_CARDS.map((card, index) => (
+          {AGE_CARDS.map((card) => (
             <Link
               key={card.range}
               href={card.href}
               style={{ textDecoration: "none", display: "block" }}
             >
-              <div style={{ position: "relative" }}>
-                {/*
-                  SVG nativo: clipPath definido DENTRO del mismo <svg> que lo usa.
-                  Esto evita el bug de Chromium donde clip-path: url(#external)
-                  falla silencioso cuando overflow:hidden está en un ancestro.
-                  El id lleva el index para garantizar unicidad en la página.
-                */}
-                <svg
-                  viewBox="0 0 100 75"
-                  style={{ display: "block", width: "100%", overflow: "visible" }}
-                  role="img"
-                  aria-label={card.alt}
-                >
-                  <defs>
-                    <clipPath id={`age-clip-${index}`}>
-                      <path d={CLIP_PATH} />
-                    </clipPath>
-                  </defs>
-                  <image
-                    href={card.img}
-                    x="0"
-                    y="0"
-                    width="100"
-                    height="75"
-                    preserveAspectRatio="xMidYMid slice"
-                    clipPath={`url(#age-clip-${index})`}
-                  />
-                </svg>
+              {/* Foto con forma orgánica vía mask-image */}
+              <div
+                style={{
+                  position: "relative",
+                  aspectRatio: "4 / 3",
+                  WebkitMaskImage: MASK_URL,
+                  maskImage: MASK_URL,
+                  WebkitMaskSize: "100% 100%",
+                  maskSize: "100% 100%",
+                }}
+              >
+                <Image
+                  src={card.img}
+                  alt={card.alt}
+                  fill
+                  style={{ objectFit: "cover", objectPosition: card.objPos }}
+                  sizes="(max-width: 767px) 50vw, 25vw"
+                />
+              </div>
 
-                {/* Etiqueta en 2 líneas — ocupa el espacio cóncavo expuesto */}
-                <div style={{
-                  position: "absolute",
-                  bottom: "9%",
-                  left: "9%",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "1px",
-                  lineHeight: 1.1,
+              {/* Etiqueta debajo del cuadro, con espacio */}
+              <div style={{
+                marginTop: "0.75rem",
+                paddingLeft: "0.25rem",
+                display: "flex",
+                flexDirection: "column",
+                gap: "2px",
+                lineHeight: 1.2,
+              }}>
+                <span style={{
+                  fontFamily: "var(--font-title)",
+                  fontWeight: 700,
+                  fontSize: "clamp(1.1rem, 2.2vw, 1.4rem)",
+                  color: "var(--color-ink)",
+                  display: "block",
                 }}>
-                  <span style={{
-                    fontFamily: "var(--font-title)",
-                    fontWeight: 700,
-                    fontSize: "clamp(1.1rem, 2.2vw, 1.4rem)",
-                    color: "var(--color-ink)",
-                    display: "block",
-                  }}>
-                    {card.range}
-                  </span>
-                  <span style={{
-                    fontFamily: "var(--font-title)",
-                    fontWeight: 400,
-                    fontSize: "clamp(0.7rem, 1.2vw, 0.8rem)",
-                    color: "var(--color-ink-soft)",
-                    display: "block",
-                    letterSpacing: "0.02em",
-                  }}>
-                    {card.unit}
-                  </span>
-                </div>
+                  {card.range}
+                </span>
+                <span style={{
+                  fontFamily: "var(--font-title)",
+                  fontWeight: 400,
+                  fontSize: "clamp(0.7rem, 1.2vw, 0.85rem)",
+                  color: "var(--color-ink-soft)",
+                  display: "block",
+                  letterSpacing: "0.02em",
+                }}>
+                  {card.unit}
+                </span>
               </div>
             </Link>
           ))}
         </div>
       </div>
 
-      {/* Onda inferior — flush, sin franja marfil */}
+      {/* Onda inferior */}
       <div aria-hidden style={{
         position: "absolute",
         bottom: 0, left: 0, right: 0,
