@@ -104,7 +104,7 @@ export default function HeroV2() {
           fontSize: "11px",
           letterSpacing: "0.26em",
           textTransform: "uppercase",
-          color: "var(--color-v2-amber)",
+          color: "var(--color-gold-text)",
           marginBottom: "clamp(1rem, 2.5vw, 1.75rem)",
           opacity: 0.85,
         }}
@@ -193,7 +193,7 @@ export default function HeroV2() {
               O: "auto 120%",
               N: "auto 140%",
               C: "auto 130%",
-              U: "120% auto",
+              U: "auto 130%",
               B: "auto 200%",
             };
 
