@@ -28,7 +28,7 @@ const LETTERS: Letter[] = [
   { char: "N", img: "/products/LC-001.jpeg",             imgFocal: "50% 30%",  fallback: "#C08A4A" },
   { char: " ", img: "",                                   imgFocal: "",         fallback: "" },
   { char: "C", img: "/products/LC-013.jpeg",             imgFocal: "50% 38%",  fallback: "#E2765A" },
-  { char: "U", img: "/hero/planos/desktop/K01.webp",     imgFocal: "50% 55%",  fallback: "#8B9E7A" },
+  { char: "U", img: "/hero/planos/desktop/K07-algodon.png", imgFocal: "50% 32%",  fallback: "#8B9E7A" },
   { char: "B", img: "/hero/planos/desktop/K04.webp",     imgFocal: "54% 4%",   fallback: "#A47C3B" },
 ];
 
