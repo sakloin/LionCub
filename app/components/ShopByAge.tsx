@@ -10,6 +10,16 @@ const AGE_CARDS = [
   { range: "1–2",  unit: "años",  img: "/products/LC-019.jpeg", alt: "Ropa para bebé 1 a 2 años",   href: "/tienda?edad=1-2a",  objPos: "center 18%" },
 ];
 
+// Formas orgánicas por tarjeta — border-radius asimétrico (CSS nativo, sin SVG).
+// Evita el bug Chromium de clip-path:url() con overflow:hidden en ancestro.
+// Cada tarjeta tiene su propia forma para darle variedad al grid.
+const BLOB_RADII = [
+  "62% 38% 30% 70% / 60% 32% 68% 40%",
+  "38% 62% 70% 30% / 30% 58% 42% 70%",
+  "50% 70% 32% 62% / 42% 52% 68% 40%",
+  "68% 32% 58% 42% / 52% 42% 58% 48%",
+];
+
 export default function ShopByAge() {
   return (
     <section
@@ -55,56 +65,58 @@ export default function ShopByAge() {
             gap: "clamp(0.75rem, 2vw, 1.25rem)",
           }}
         >
-          {AGE_CARDS.map((card) => (
+          {AGE_CARDS.map((card, i) => (
             <Link
               key={card.range}
               href={card.href}
               style={{ textDecoration: "none", display: "block" }}
             >
-              {/* Tarjeta: foto arriba + texto abajo, todo dentro del mismo card */}
-              <div style={{
-                borderRadius: "20px",
-                overflow: "hidden",
-                background: "#FFFFFF",
-                boxShadow: "0 2px 14px rgba(0,0,0,0.07)",
-              }}>
-                {/* Foto */}
-                <div style={{ position: "relative", aspectRatio: "4 / 3" }}>
-                  <Image
-                    src={card.img}
-                    alt={card.alt}
-                    fill
-                    style={{ objectFit: "cover", objectPosition: card.objPos }}
-                    sizes="(max-width: 767px) 50vw, 25vw"
-                  />
-                </div>
+              {/* Foto con forma blob orgánica via border-radius asimétrico */}
+              <div
+                style={{
+                  position: "relative",
+                  aspectRatio: "1 / 1",
+                  borderRadius: BLOB_RADII[i],
+                  overflow: "hidden",
+                }}
+              >
+                <Image
+                  src={card.img}
+                  alt={card.alt}
+                  fill
+                  style={{ objectFit: "cover", objectPosition: card.objPos }}
+                  sizes="(max-width: 767px) 50vw, 25vw"
+                />
+              </div>
 
-                {/* Texto */}
-                <div style={{
-                  padding: "0.85rem 1rem 1rem",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "3px",
+              {/* Etiqueta debajo del blob */}
+              <div style={{
+                marginTop: "0.85rem",
+                paddingLeft: "0.5rem",
+                display: "flex",
+                flexDirection: "column",
+                gap: "3px",
+                lineHeight: 1.2,
+              }}>
+                <span style={{
+                  fontFamily: "var(--font-title)",
+                  fontWeight: 700,
+                  fontSize: "clamp(1.05rem, 2.1vw, 1.3rem)",
+                  color: "var(--color-ink)",
+                  display: "block",
                 }}>
-                  <span style={{
-                    fontFamily: "var(--font-title)",
-                    fontWeight: 700,
-                    fontSize: "clamp(1rem, 2vw, 1.2rem)",
-                    color: "var(--color-ink)",
-                    lineHeight: 1.2,
-                  }}>
-                    {card.range} {card.unit}
-                  </span>
-                  <span style={{
-                    fontFamily: "var(--font-title)",
-                    fontWeight: 400,
-                    fontSize: "clamp(0.72rem, 1.3vw, 0.82rem)",
-                    color: "var(--color-ink-soft)",
-                    letterSpacing: "0.01em",
-                  }}>
-                    Algodón pima peruano
-                  </span>
-                </div>
+                  {card.range}
+                </span>
+                <span style={{
+                  fontFamily: "var(--font-title)",
+                  fontWeight: 400,
+                  fontSize: "clamp(0.72rem, 1.3vw, 0.85rem)",
+                  color: "var(--color-ink-soft)",
+                  display: "block",
+                  letterSpacing: "0.01em",
+                }}>
+                  {card.unit}
+                </span>
               </div>
             </Link>
           ))}
