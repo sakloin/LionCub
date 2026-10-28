@@ -90,7 +90,7 @@ export default function LogoMark({
         </span>
         <span
           className="lc-mono uppercase"
-          style={{ fontSize: size * 0.22, color, letterSpacing: "0.32em", opacity: 0.6 }}
+          style={{ fontSize: Math.max(size * 0.36, 10), color, letterSpacing: "0.28em", opacity: 0.6 }}
         >
           Baby Clothing
         </span>
