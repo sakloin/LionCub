@@ -1,37 +1,36 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 
 /**
  * ShopByAge — Forma orgánica SVG con concavidad inferior-izquierda (Bézier)
- * La concavidad ondulante reserva espacio real para la etiqueta de edad en dos líneas.
- * Misma familia de forma en las 4 tarjetas.
+ * Usa SVG <image> nativo con clipPath interno para evitar el bug de Chromium
+ * donde CSS clip-path: url(#id) falla silencioso cuando un ancestro tiene
+ * overflow: hidden. El clipPath se define dentro del mismo <svg> que lo usa.
  */
 
 const AGE_CARDS = [
-  { range: "0–3",  unit: "meses", img: "/products/LC-016.jpeg", alt: "Ropa para bebé 0 a 3 meses",  color: "#F0D9D2", href: "/tienda?edad=0-3m",  objPos: "center 28%" },
-  { range: "3–6",  unit: "meses", img: "/products/LC-001.jpeg", alt: "Ropa para bebé 3 a 6 meses",  color: "#E9D7B8", href: "/tienda?edad=3-6m",  objPos: "center 22%" },
-  { range: "6–12", unit: "meses", img: "/products/LC-012.jpeg", alt: "Ropa para bebé 6 a 12 meses", color: "#DDE6D6", href: "/tienda?edad=6-12m", objPos: "center 20%" },
-  { range: "1–2",  unit: "años",  img: "/products/LC-019.jpeg", alt: "Ropa para bebé 1 a 2 años",   color: "#D5D2BA", href: "/tienda?edad=1-2a",  objPos: "center 18%" },
+  { range: "0–3",  unit: "meses", img: "/products/LC-016.jpeg", alt: "Ropa para bebé 0 a 3 meses",  href: "/tienda?edad=0-3m"  },
+  { range: "3–6",  unit: "meses", img: "/products/LC-001.jpeg", alt: "Ropa para bebé 3 a 6 meses",  href: "/tienda?edad=3-6m"  },
+  { range: "6–12", unit: "meses", img: "/products/LC-012.jpeg", alt: "Ropa para bebé 6 a 12 meses", href: "/tienda?edad=6-12m" },
+  { range: "1–2",  unit: "años",  img: "/products/LC-019.jpeg", alt: "Ropa para bebé 1 a 2 años",   href: "/tienda?edad=1-2a"  },
 ];
 
-// Forma orgánica SVG con entrada ondulante cóncava en esquina inferior-izquierda.
-// Coordenadas normalizadas (objectBoundingBox 0–1).
-// El borde inferior arranca en x≈0.54 y sube fluidamente hacia la izquierda
-// creando un espacio libre donde la etiqueta puede posarse sin tocar la foto.
-// Misma contorno para las 4 tarjetas.
-const ORGANIC_PATH =
-  "M 0.10,0.02 " +
-  "C 0.32,0.00 0.68,0.00 0.90,0.02 " +
-  "C 1.00,0.04 1.02,0.18 1.00,0.32 " +
-  "C 1.02,0.52 1.02,0.72 0.98,0.84 " +
-  "C 0.94,0.98 0.80,1.04 0.66,1.02 " +
-  "L 0.52,1.00 " +
-  "C 0.38,0.96 0.22,0.84 0.12,0.70 " +
-  "C 0.04,0.58 0.00,0.46 0.00,0.34 " +
-  "C -0.02,0.18 0.02,0.08 0.08,0.04 " +
-  "C 0.09,0.03 0.10,0.02 0.10,0.02 Z";
+// Forma orgánica en coordenadas absolutas para viewBox "0 0 100 75" (ratio 4:3).
+// Convertida de objectBoundingBox original multiplicando x×100, y×75.
+// La concavidad inferior-izquierda (L 52,75 … C 12,52.5) reserva espacio
+// natural para la etiqueta de edad sin tapar la foto.
+const CLIP_PATH =
+  "M 10,1.5 " +
+  "C 32,0 68,0 90,1.5 " +
+  "C 100,3 102,13.5 100,24 " +
+  "C 102,39 102,54 98,63 " +
+  "C 94,73.5 80,78 66,76.5 " +
+  "L 52,75 " +
+  "C 38,72 22,63 12,52.5 " +
+  "C 4,43.5 0,34.5 0,25.5 " +
+  "C -2,13.5 2,6 8,3 " +
+  "C 9,2.25 10,1.5 10,1.5 Z";
 
 export default function ShopByAge() {
   return (
@@ -44,15 +43,6 @@ export default function ShopByAge() {
         overflow: "hidden",
       }}
     >
-      {/* SVG defs — clipPath orgánico con Bézier; width/height 0 para no ocupar espacio */}
-      <svg width="0" height="0" style={{ position: "absolute", overflow: "hidden" }} aria-hidden>
-        <defs>
-          <clipPath id="shop-age-organic" clipPathUnits="objectBoundingBox">
-            <path d={ORGANIC_PATH} />
-          </clipPath>
-        </defs>
-      </svg>
-
       <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: "clamp(2rem, 4vw, 3rem)" }}>
@@ -61,7 +51,7 @@ export default function ShopByAge() {
             fontSize: "11px",
             letterSpacing: "0.26em",
             textTransform: "uppercase",
-            color: "var(--color-v2-amber)",
+            color: "var(--color-gold-text)",
             marginBottom: "0.75rem",
             opacity: 0.85,
           }}>
@@ -87,33 +77,40 @@ export default function ShopByAge() {
             gap: "clamp(0.75rem, 2vw, 1.25rem)",
           }}
         >
-          {AGE_CARDS.map((card) => (
+          {AGE_CARDS.map((card, index) => (
             <Link
               key={card.range}
               href={card.href}
               style={{ textDecoration: "none", display: "block" }}
             >
-              {/* Contenedor 4:3 — fondo de sección queda expuesto en la concavidad inferior-izquierda */}
-              <div style={{
-                position: "relative",
-                aspectRatio: "4/3",
-                background: "var(--color-v2-bg)",
-              }}>
-                {/* Imagen recortada al contorno orgánico con Bézier */}
-                <div style={{
-                  position: "absolute",
-                  inset: 0,
-                  clipPath: "url(#shop-age-organic)",
-                  WebkitClipPath: "url(#shop-age-organic)",
-                }}>
-                  <Image
-                    src={card.img}
-                    alt={card.alt}
-                    fill
-                    style={{ objectFit: "cover", objectPosition: card.objPos }}
-                    sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
+              <div style={{ position: "relative" }}>
+                {/*
+                  SVG nativo: clipPath definido DENTRO del mismo <svg> que lo usa.
+                  Esto evita el bug de Chromium donde clip-path: url(#external)
+                  falla silencioso cuando overflow:hidden está en un ancestro.
+                  El id lleva el index para garantizar unicidad en la página.
+                */}
+                <svg
+                  viewBox="0 0 100 75"
+                  style={{ display: "block", width: "100%", overflow: "visible" }}
+                  role="img"
+                  aria-label={card.alt}
+                >
+                  <defs>
+                    <clipPath id={`age-clip-${index}`}>
+                      <path d={CLIP_PATH} />
+                    </clipPath>
+                  </defs>
+                  <image
+                    href={card.img}
+                    x="0"
+                    y="0"
+                    width="100"
+                    height="75"
+                    preserveAspectRatio="xMidYMid slice"
+                    clipPath={`url(#age-clip-${index})`}
                   />
-                </div>
+                </svg>
 
                 {/* Etiqueta en 2 líneas — ocupa el espacio cóncavo expuesto */}
                 <div style={{
