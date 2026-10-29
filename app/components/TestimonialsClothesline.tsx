@@ -15,9 +15,9 @@ type Testimonial = {
 };
 
 const TESTIMONIALS: Testimonial[] = [
-  { name: "Lucía M.", text: "La mantita llegó hermosa y súper suave. Mi bebé no se la quita.", stars: 5, rotate: -4 },
-  { name: "Karla R.", text: "La calidad del algodón pima es increíble, muy diferente a otras marcas.", stars: 5, rotate: 2 },
-  { name: "Ana P.", text: "Los colores son preciosos y no decoloran con los lavados. ¡Los recomiendo!", stars: 5, rotate: -2 },
+  // Pendiente: Heber debe proveer testimonios reales antes de activar esta sección.
+  // Ejemplo de formato (NO publicar hasta confirmar con Heber):
+  // { name: "Lucía M.", text: "La manta llegó hermosa y súper suave. Mi bebé no se la quita.", stars: 5, rotate: -4 },
 ];
 
 export default function TestimonialsClothesline() {
