@@ -233,6 +233,9 @@ const gridStyles = `
   @media (min-width: 768px) {
     .bestseller-layout { grid-template-columns: 1fr 1fr !important; }
   }
+  @media (max-width: 767px) {
+    .bestseller-viewall { display: none !important; }
+  }
 `;
 
 export default function BestsellerGrid() {
