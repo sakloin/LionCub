@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, Inter, JetBrains_Mono } from "next/font/google";
+import { Cormorant_Garamond, Inter, JetBrains_Mono, Fredoka, Figtree, Nunito } from "next/font/google";
 import "./globals.css";
 import Providers from "./components/Providers";
 import { SITE_URL } from "./lib/site";
@@ -8,8 +8,8 @@ import { DATOS_LEGALES } from "./lib/legal";
 const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
   subsets: ["latin"],
-  weight: ["300", "400", "500"],
-  style: ["normal", "italic"],
+  weight: ["300"],
+  style: ["normal"],
   display: "swap",
 });
 
@@ -23,6 +23,27 @@ const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains",
   subsets: ["latin"],
   weight: ["400"],
+  display: "swap",
+});
+
+const fredoka = Fredoka({
+  variable: "--font-fredoka",
+  subsets: ["latin"],
+  weight: ["700"],
+  display: "swap",
+});
+
+const figtree = Figtree({
+  variable: "--font-figtree",
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  display: "swap",
+});
+
+const nunito = Nunito({
+  variable: "--font-nunito",
+  subsets: ["latin"],
+  weight: ["900"],
   display: "swap",
 });
 
@@ -148,7 +169,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${cormorant.variable} ${inter.variable} ${jetbrainsMono.variable}`}
+      className={`${cormorant.variable} ${inter.variable} ${jetbrainsMono.variable} ${fredoka.variable} ${figtree.variable} ${nunito.variable}`}
     >
       <body className="min-h-full flex flex-col antialiased bg-bg text-ink">
           <script

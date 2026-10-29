@@ -1,28 +1,31 @@
 import AnnouncementBar from "./components/AnnouncementBar";
 import Navbar from "./components/Navbar";
-import HeroVitrina from "./components/HeroVitrina";
-import TrustBar from "./components/TrustBar";
-import Collection from "./components/Collection";
-import WhyPima from "./components/WhyPima";
+import HeroV2 from "./components/HeroV2";
+import CarouselV2 from "./components/CarouselV2";
+import ShopByAge from "./components/ShopByAge";
+import BestsellerGrid from "./components/BestsellerGrid";
+import DiscountBannerV2 from "./components/DiscountBannerV2";
+import WhyLionCubV2 from "./components/WhyLionCubV2";
+import NewsletterV2 from "./components/NewsletterV2";
+import TestimonialsClothesline from "./components/TestimonialsClothesline";
 import Footer from "./components/Footer";
-import { getCatalog } from "./lib/catalog";
 
-// Revalida el catálogo en el servidor cada 60 s (ISR): rápido y razonablemente
-// fresco en stock/precios. El stock real se vuelve a verificar al confirmar el pedido.
 export const revalidate = 60;
 
 export default async function Home() {
-  const { products, offers } = await getCatalog();
   return (
     <>
       <AnnouncementBar />
       <Navbar />
       <main>
-        <HeroVitrina />
-        <Collection initialProducts={products} initialOffers={offers} />
-        <TrustBar />
-        <WhyPima />
-        {/* OurStory y Testimonials ocultos — enfoque en productos al estilo Falabella */}
+        <HeroV2 />
+        <CarouselV2 />
+        <ShopByAge />
+        <BestsellerGrid />
+        <DiscountBannerV2 />
+        <WhyLionCubV2 />
+        <TestimonialsClothesline />
+        <NewsletterV2 />
       </main>
       <Footer />
     </>
