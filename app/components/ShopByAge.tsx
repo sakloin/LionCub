@@ -1,182 +1,130 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 
-const AGE_CARDS = [
+/**
+ * ShopByAge — 4 cards de edad con fotos reales, fiel al diseño ChatGPT reference.
+ * Fondo #faf7f6, grid de 4 columnas, imagen con clip de esquina redondeada.
+ */
+
+const AGES = [
   {
-    range: "0–6 meses",
-    desc: "Suave para piel recién nacida",
+    label: "0–3 meses",
+    sub: "Sus primeros abrazos",
     img: "/products/bb-0-3m.png",
-    alt: "Bebé recién nacido con body de algodón pima azul",
-    href: "/tienda?edad=0-6m",
-    objPos: "center 15%",
+    alt: "Bebé de 0 a 3 meses con ropa Lion Cub",
+    href: "#favoritos",
   },
   {
-    range: "6m–1 año",
-    desc: "Diseñado para primeros movimientos",
+    label: "4–6 meses",
+    sub: "Pequeños descubrimientos",
+    img: "/products/bb-3-6m.png",
+    alt: "Bebé de 4 a 6 meses con ropa Lion Cub",
+    href: "#favoritos",
+  },
+  {
+    label: "7–9 meses",
+    sub: "Un mundo por explorar",
     img: "/products/bb-6-12m.png",
-    alt: "Bebé de 6 a 12 meses sentado con conjunto azul",
-    href: "/tienda?edad=6-12m",
-    objPos: "center 10%",
+    alt: "Bebé de 7 a 9 meses con ropa Lion Cub",
+    href: "#favoritos",
   },
   {
-    range: "1–2 años",
-    desc: "Listo para jugar todo el día",
+    label: "1–2 años",
+    sub: "Libertad para jugar",
     img: "/products/bb-1-2a.png",
-    alt: "Bebé de 1 a 2 años con conjunto rosa Lion Cub",
-    href: "/tienda?edad=1-2a",
-    objPos: "center 8%",
+    alt: "Niña de 1 a 2 años con ropa Lion Cub",
+    href: "#favoritos",
   },
 ];
 
 export default function ShopByAge() {
   return (
-    <section
-      aria-label="Compra por edad"
-      style={{
-        background: "var(--color-v2-bg)",
-        padding: "clamp(3rem, 7vw, 5rem) clamp(1.25rem, 5vw, 3rem) clamp(12rem, 18vw, 15rem)",
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-        {/* Header — igual que NUBI: título centrado + línea acento */}
-        <div style={{ textAlign: "center", marginBottom: "clamp(2rem, 4vw, 3rem)" }}>
-          <p
-            style={{
-              fontFamily: "var(--font-mono, monospace)",
-              fontSize: "11px",
-              letterSpacing: "0.26em",
-              textTransform: "uppercase",
-              color: "var(--color-gold-text)",
-              marginBottom: "0.75rem",
-              opacity: 0.85,
-            }}
-          >
-            Para cada etapa
-          </p>
-          <h2
-            style={{
-              fontFamily: "var(--font-title)",
-              fontWeight: 700,
-              fontSize: "clamp(1.875rem, 4vw, 2.25rem)",
-              color: "var(--color-ink)",
-              margin: "0 0 0.75rem",
-            }}
-          >
-            Compra por edad
-          </h2>
-          {/* Línea acento estilo NUBI */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-            <div style={{ width: "40px", height: "2px", background: "var(--color-v2-amber)", borderRadius: "2px" }} />
-            <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "var(--color-v2-amber)" }} />
-            <div style={{ width: "40px", height: "2px", background: "var(--color-v2-amber)", borderRadius: "2px" }} />
-          </div>
-        </div>
+    <section id="edades" style={{ background: "#faf7f6", padding: "clamp(3rem,7vw,5rem) clamp(1rem,5vw,3rem)" }}>
+      <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+        <h2 className="lc-sec-heading">Compra por edad</h2>
+        <div className="lc-heartline" aria-hidden>♥</div>
 
-        {/* Grid — 3 cols landscape desktop, 1 col mobile */}
-        <div
-          className="shop-age-grid"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: "clamp(0.75rem, 2vw, 1.5rem)",
-          }}
-        >
-          {AGE_CARDS.map((card) => (
-            <Link
-              key={card.range}
-              href={card.href}
-              style={{ textDecoration: "none", display: "block" }}
+        <div className="lc-age-grid">
+          {AGES.map((age) => (
+            <a
+              key={age.label}
+              href={age.href}
+              className="lc-age-card"
+              aria-label={`Ver prendas para ${age.label}`}
             >
-              {/* Foto paisaje con bordes suaves — igual modelo NUBI */}
-              <div
-                style={{
-                  position: "relative",
-                  aspectRatio: "4 / 3",
-                  borderRadius: "20px",
-                  overflow: "hidden",
-                }}
-              >
+              <div className="lc-age-img">
                 <Image
-                  src={card.img}
-                  alt={card.alt}
-                  fill
-                  style={{ objectFit: "cover", objectPosition: card.objPos }}
-                  sizes="(max-width: 767px) 50vw, 25vw"
+                  src={age.img}
+                  alt={age.alt}
+                  width={280}
+                  height={320}
+                  style={{ objectFit: "cover", width: "100%", height: "100%" }}
                 />
               </div>
-
-              {/* Texto debajo de la foto — igual que NUBI */}
-              <div
-                style={{
-                  marginTop: "1rem",
-                  paddingLeft: "0.25rem",
-                }}
-              >
-                <span
-                  style={{
-                    fontFamily: "var(--font-title)",
-                    fontWeight: 700,
-                    fontSize: "clamp(0.95rem, 1.8vw, 1.1rem)",
-                    color: "var(--color-ink)",
-                    display: "block",
-                    marginBottom: "2px",
-                  }}
-                >
-                  {card.range}
-                </span>
-                <span
-                  style={{
-                    fontFamily: "var(--font-title)",
-                    fontWeight: 400,
-                    fontSize: "clamp(0.78rem, 1.2vw, 0.88rem)",
-                    color: "var(--color-ink-soft)",
-                    display: "block",
-                    letterSpacing: "0.01em",
-                  }}
-                >
-                  {card.desc}
-                </span>
-              </div>
-            </Link>
+              <span className="lc-age-label">
+                <strong>{age.label}</strong>
+                <span>{age.sub}</span>
+              </span>
+            </a>
           ))}
         </div>
       </div>
 
-      {/* Onda inferior */}
-      <div
-        aria-hidden
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          lineHeight: 0,
-          pointerEvents: "none",
-        }}
-      >
-        <svg
-          viewBox="0 0 1440 180"
-          xmlns="http://www.w3.org/2000/svg"
-          preserveAspectRatio="none"
-          style={{ display: "block", width: "100%" }}
-        >
-          <path
-            d="M0,120 C280,55 520,170 780,105 C1000,55 1240,160 1440,100 L1440,180 L0,180 Z"
-            fill="var(--color-v2-wave)"
-          />
-        </svg>
-      </div>
-
       <style>{`
-        @media (max-width: 767px) {
-          .shop-age-grid { grid-template-columns: 1fr !important; }
+        .lc-sec-heading {
+          font-family: var(--font-figtree,"Figtree",system-ui,sans-serif);
+          font-weight:700;
+          font-size:clamp(1.4rem,3.5vw,2.2rem);
+          color:#171815;
+          text-align:center;
+          margin:0 0 .25rem;
+          text-wrap:balance;
         }
-        @media (min-width: 480px) and (max-width: 767px) {
-          .shop-age-grid { grid-template-columns: repeat(2, 1fr) !important; }
+        .lc-age-grid {
+          display:grid;
+          grid-template-columns:repeat(4,1fr);
+          gap:clamp(12px,2vw,24px);
+          margin-top:clamp(1.5rem,4vw,2.5rem);
+        }
+        .lc-age-card {
+          display:flex;
+          flex-direction:column;
+          gap:.75rem;
+          text-decoration:none;
+          cursor:pointer;
+          transition:transform .22s;
+        }
+        .lc-age-card:hover { transform:translateY(-4px); }
+        .lc-age-img {
+          border-radius:clamp(10px,2.5vw,20px);
+          overflow:hidden;
+          aspect-ratio:4/5;
+          background:#e8e4d4;
+        }
+        .lc-age-label {
+          display:flex;
+          flex-direction:column;
+          gap:2px;
+          padding:0 4px;
+        }
+        .lc-age-label strong {
+          font-family: var(--font-figtree,"Figtree",system-ui,sans-serif);
+          font-weight:700;
+          font-size:clamp(.85rem,1.6vw,1rem);
+          color:#171815;
+        }
+        .lc-age-label span {
+          font-family: var(--font-figtree,"Figtree",system-ui,sans-serif);
+          font-size:clamp(.75rem,1.3vw,.875rem);
+          color:#83827f;
+          font-weight:400;
+        }
+        @media(max-width:768px){
+          .lc-age-grid { grid-template-columns:repeat(2,1fr); }
+        }
+        @media(max-width:480px){
+          .lc-age-grid { grid-template-columns:repeat(2,1fr); gap:10px; }
         }
       `}</style>
     </section>

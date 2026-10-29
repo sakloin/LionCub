@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, Inter, JetBrains_Mono, Fredoka, Figtree } from "next/font/google";
+import { Cormorant_Garamond, Inter, JetBrains_Mono, Fredoka, Figtree, Nunito } from "next/font/google";
 import "./globals.css";
 import Providers from "./components/Providers";
 import { SITE_URL } from "./lib/site";
@@ -37,6 +37,13 @@ const figtree = Figtree({
   variable: "--font-figtree",
   subsets: ["latin"],
   weight: ["400", "700"],
+  display: "swap",
+});
+
+const nunito = Nunito({
+  variable: "--font-nunito",
+  subsets: ["latin"],
+  weight: ["900"],
   display: "swap",
 });
 
@@ -162,7 +169,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${cormorant.variable} ${inter.variable} ${jetbrainsMono.variable} ${fredoka.variable} ${figtree.variable}`}
+      className={`${cormorant.variable} ${inter.variable} ${jetbrainsMono.variable} ${fredoka.variable} ${figtree.variable} ${nunito.variable}`}
     >
       <body className="min-h-full flex flex-col antialiased bg-bg text-ink">
           <script
