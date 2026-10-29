@@ -5,28 +5,20 @@ import Link from "next/link";
 
 const AGE_CARDS = [
   {
-    range: "0–3 meses",
+    range: "0–6 meses",
     desc: "Suave para piel recién nacida",
     img: "/products/bb-0-3m.png",
     alt: "Bebé recién nacido con body de algodón pima azul",
-    href: "/tienda?edad=0-3m",
-    objPos: "center 12%",
+    href: "/tienda?edad=0-6m",
+    objPos: "center 15%",
   },
   {
-    range: "3–6 meses",
-    desc: "Comodidad para cada explorador",
-    img: "/products/bb-3-6m.png",
-    alt: "Bebé de 3 a 6 meses con conjunto Lion Cub",
-    href: "/tienda?edad=3-6m",
-    objPos: "center 10%",
-  },
-  {
-    range: "6–12 meses",
+    range: "6m–1 año",
     desc: "Diseñado para primeros movimientos",
     img: "/products/bb-6-12m.png",
     alt: "Bebé de 6 a 12 meses sentado con conjunto azul",
     href: "/tienda?edad=6-12m",
-    objPos: "center 8%",
+    objPos: "center 10%",
   },
   {
     range: "1–2 años",
@@ -84,12 +76,12 @@ export default function ShopByAge() {
           </div>
         </div>
 
-        {/* Grid — 4 cols desktop, 2 cols mobile */}
+        {/* Grid — 3 cols landscape desktop, 1 col mobile */}
         <div
           className="shop-age-grid"
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
+            gridTemplateColumns: "repeat(3, 1fr)",
             gap: "clamp(0.75rem, 2vw, 1.5rem)",
           }}
         >
@@ -99,11 +91,11 @@ export default function ShopByAge() {
               href={card.href}
               style={{ textDecoration: "none", display: "block" }}
             >
-              {/* Foto retrato con bordes suaves — idéntico al modelo NUBI */}
+              {/* Foto paisaje con bordes suaves — igual modelo NUBI */}
               <div
                 style={{
                   position: "relative",
-                  aspectRatio: "3 / 4",
+                  aspectRatio: "4 / 3",
                   borderRadius: "20px",
                   overflow: "hidden",
                 }}
@@ -181,6 +173,9 @@ export default function ShopByAge() {
 
       <style>{`
         @media (max-width: 767px) {
+          .shop-age-grid { grid-template-columns: 1fr !important; }
+        }
+        @media (min-width: 480px) and (max-width: 767px) {
           .shop-age-grid { grid-template-columns: repeat(2, 1fr) !important; }
         }
       `}</style>

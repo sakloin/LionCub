@@ -139,6 +139,36 @@ export default function WhyLionCubV2() {
           }}>¿Por qué Lion Cub?</h2>
         </div>
 
+        {/* Trust badges row — 3 items horizontales */}
+        <div style={{
+          display: "flex",
+          justifyContent: "center",
+          gap: "clamp(1.5rem, 4vw, 3rem)",
+          flexWrap: "wrap",
+          marginBottom: "clamp(2rem, 4vw, 3rem)",
+          paddingBottom: "clamp(1.5rem, 3vw, 2rem)",
+          borderBottom: "1px solid rgba(192,138,74,0.18)",
+        }}>
+          {[
+            { icon: "🌿", label: "100% Algodón Pima" },
+            { icon: "🤍", label: "Suave para la piel" },
+            { icon: "🇵🇪", label: "Hecho en Perú" },
+          ].map(({ icon, label }) => (
+            <div key={label} style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.6rem",
+              fontFamily: "var(--font-title)",
+              fontWeight: 600,
+              fontSize: "clamp(0.85rem, 1.5vw, 0.95rem)",
+              color: "var(--color-ink)",
+            }}>
+              <span style={{ fontSize: "1.2em" }} aria-hidden>{icon}</span>
+              {label}
+            </div>
+          ))}
+        </div>
+
         {/* Layout: columna izq | foto | columna der
             Por qué: position relative para que las conexiones SVG se ubiquen sobre todo */}
         <div

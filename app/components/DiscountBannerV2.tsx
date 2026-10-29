@@ -165,7 +165,7 @@ export default function DiscountBannerV2() {
     <section
       aria-label="Descuento primera compra"
       style={{
-        background: "var(--color-v2-sage)",
+        background: "var(--color-v2-bg)",
         padding: "clamp(2.5rem, 5vw, 3.5rem) 0",
         overflow: "hidden",
         position: "relative",
@@ -222,7 +222,7 @@ export default function DiscountBannerV2() {
             fontWeight: 700,
             fontSize: "clamp(2.5rem, 8vw, 5rem)",
             lineHeight: 1,
-            color: "var(--color-v2-amber)",
+            color: "var(--color-ink)",
           }}>
             10% OFF
           </div>

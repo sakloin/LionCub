@@ -309,7 +309,7 @@ export default function HeroV2() {
           e.currentTarget.style.boxShadow = "0 4px 18px rgba(226,118,90,0.35)";
         }}
       >
-        Explorar colección · Verano 2027
+        Ver colección →
       </Link>
 
       <style>{`

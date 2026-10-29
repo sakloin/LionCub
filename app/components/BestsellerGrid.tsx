@@ -258,18 +258,47 @@ export default function BestsellerGrid() {
         </defs>
       </svg>
       <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-        {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: "clamp(2rem, 4vw, 3rem)" }}>
-          <p style={{
-            fontFamily: "var(--font-mono, monospace)", fontSize: "11px",
-            letterSpacing: "0.26em", textTransform: "uppercase",
-            color: "var(--color-v2-amber)", marginBottom: "0.75rem", opacity: 0.85,
-          }}>Para ti</p>
+        {/* Header — título centrado + "Ver todos" a la derecha, igual a NUBI */}
+        <div style={{ marginBottom: "clamp(2rem, 4vw, 3rem)", position: "relative", textAlign: "center" }}>
           <h2 style={{
             fontFamily: "var(--font-title)", fontWeight: 700,
             fontSize: "clamp(1.875rem, 4vw, 2.25rem)",
-            color: "var(--color-ink)", margin: 0,
-          }}>Selección Lion Cub</h2>
+            color: "var(--color-ink)", margin: "0 0 0.6rem",
+          }}>Lo más vendido</h2>
+          {/* Acento coral — igual a NUBI */}
+          <div aria-hidden style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", marginBottom: "0" }}>
+            <div style={{ width: "30px", height: "2px", background: "var(--color-v2-cta)", borderRadius: "2px" }} />
+            <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--color-v2-cta)" }} />
+            <div style={{ width: "30px", height: "2px", background: "var(--color-v2-cta)", borderRadius: "2px" }} />
+          </div>
+          {/* "Ver todos →" posicionado arriba a la derecha */}
+          <a
+            href="/tienda"
+            style={{
+              position: "absolute",
+              right: 0,
+              top: "50%",
+              transform: "translateY(-50%)",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              fontFamily: "var(--font-title)",
+              fontWeight: 600,
+              fontSize: "0.85rem",
+              color: "var(--color-ink)",
+              textDecoration: "none",
+              border: "1.5px solid var(--color-ink)",
+              borderRadius: "999px",
+              padding: "8px 18px",
+              transition: "background 0.2s ease, color 0.2s ease",
+            }}
+            className="bestseller-viewall"
+          >
+            Ver todos
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+              <path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </a>
         </div>
 
         {/* Layout: featured | 2×2 grid */}

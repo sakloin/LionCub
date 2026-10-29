@@ -171,24 +171,11 @@ export default function CarouselV2() {
                       gap: "clamp(0.75rem, 2vw, 1.25rem)",
                     }}
                   >
-                    <p
-                      style={{
-                        fontFamily: "var(--font-mono, monospace)",
-                        fontSize: "11px",
-                        letterSpacing: "0.24em",
-                        textTransform: "uppercase",
-                        color: "var(--color-v2-amber)",
-                        opacity: 0.85,
-                        margin: 0,
-                      }}
-                    >
-                      {s.eyebrow}
-                    </p>
                     <h2
                       style={{
                         fontFamily: "var(--font-title)",
                         fontWeight: 700,
-                        fontSize: "clamp(2rem, 5vw, 3.5rem)",
+                        fontSize: "clamp(2.5rem, 7vw, 5rem)",
                         lineHeight: 1.05,
                         color: "var(--color-ink)",
                         margin: 0,
