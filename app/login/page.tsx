@@ -6,15 +6,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 
-const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
-  .split(",")
-  .map((s) => s.trim().toLowerCase())
-  .filter(Boolean);
-
-function isAdmin(email?: string | null) {
-  return !!email && ADMIN_EMAILS.includes(email.toLowerCase());
-}
-
 export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -58,20 +49,21 @@ export default function LoginPage() {
         return;
       }
 
-      const userEmail = data.user?.email;
-      if (isAdmin(userEmail)) {
-        const token = data.session?.access_token;
-        if (token) {
-          await fetch("/api/admin/session", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token }),
-          });
+      // Let the server decide: /api/admin/session verifies the JWT and the
+      // admin email list server-side, never the client.
+      const token = data.session?.access_token;
+      if (token) {
+        const res = await fetch("/api/admin/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
+        if (res.ok) {
+          router.push("/admin");
+          return;
         }
-        router.push("/admin");
-      } else {
-        router.push("/mi-cuenta");
       }
+      router.push("/mi-cuenta");
     } catch {
       setError("No se pudo conectar. Intenta de nuevo.");
     } finally {
@@ -92,8 +84,8 @@ export default function LoginPage() {
             className="rounded-2xl mb-3"
             priority
           />
-          <p className="font-bold text-[#1A1410] text-lg tracking-tight">Lion Cub</p>
-          <p className="text-[#9B8D7E] text-sm mt-0.5">
+          <p className="lc-display font-bold text-[#1A1410] text-lg tracking-tight">Lion Cub</p>
+          <p className="text-[#756A5E] text-sm mt-0.5">
             {mode === "signin" ? "Bienvenida de nuevo" : "Crea tu cuenta"}
           </p>
         </div>
@@ -181,14 +173,14 @@ export default function LoginPage() {
               : "Crear cuenta"}
           </button>
 
-          <p className="text-center text-sm text-[#9B8D7E]">
+          <p className="text-center text-sm text-[#756A5E]">
             {mode === "signin" ? (
               <>
                 ¿No tienes cuenta?{" "}
                 <button
                   type="button"
                   onClick={() => { setMode("signup"); setError(""); setInfo(""); }}
-                  className="text-[#86652C] font-semibold underline"
+                  className="text-[#86652C] font-semibold underline py-2 -my-2 px-1"
                 >
                   Crear cuenta
                 </button>
@@ -199,7 +191,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => { setMode("signin"); setError(""); setInfo(""); }}
-                  className="text-[#86652C] font-semibold underline"
+                  className="text-[#86652C] font-semibold underline py-2 -my-2 px-1"
                 >
                   Iniciar sesión
                 </button>
@@ -210,7 +202,7 @@ export default function LoginPage() {
 
         {/* Back to store */}
         <p className="text-center mt-6">
-          <Link href="/" className="text-[#9B8D7E] text-sm hover:text-[#5B4F42]">
+          <Link href="/" className="text-[#756A5E] text-sm hover:text-[#5B4F42]">
             ← Volver a la tienda
           </Link>
         </p>

@@ -34,7 +34,7 @@ export default function MiCuentaPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FDF8F0] flex items-center justify-center">
-        <p className="text-[#9B8D7E] text-sm">Cargando…</p>
+        <p className="text-[#756A5E] text-sm">Cargando…</p>
       </div>
     );
   }
@@ -44,8 +44,8 @@ export default function MiCuentaPage() {
       <div className="max-w-sm mx-auto px-4 py-12">
         {/* Header */}
         <div className="text-center mb-8">
-          <p className="font-bold text-[#1A1410] text-lg">Mi cuenta</p>
-          <p className="text-[#9B8D7E] text-sm mt-1">{email}</p>
+          <h1 className="font-bold text-[#1A1410] text-lg">Mi cuenta</h1>
+          <p className="text-[#756A5E] text-sm mt-1">{email}</p>
         </div>
 
         {/* Options */}
@@ -56,7 +56,7 @@ export default function MiCuentaPage() {
           >
             <div>
               <p className="font-semibold text-[#1A1410] text-sm">Mis pedidos</p>
-              <p className="text-[#9B8D7E] text-xs mt-0.5">Revisa el estado de tus compras</p>
+              <p className="text-[#756A5E] text-xs mt-0.5">Revisa el estado de tus compras</p>
             </div>
             <span className="text-[#C9A961] text-lg">→</span>
           </Link>
@@ -67,7 +67,7 @@ export default function MiCuentaPage() {
           >
             <div>
               <p className="font-semibold text-[#1A1410] text-sm">Ir a la tienda</p>
-              <p className="text-[#9B8D7E] text-xs mt-0.5">Explora la colección</p>
+              <p className="text-[#756A5E] text-xs mt-0.5">Explora la colección</p>
             </div>
             <span className="text-[#C9A961] text-lg">→</span>
           </Link>
@@ -90,7 +90,7 @@ export default function MiCuentaPage() {
         <button
           onClick={signOut}
           disabled={signingOut}
-          className="w-full mt-6 text-[#9B8D7E] text-sm hover:text-[#5B4F42] transition-colors disabled:opacity-50"
+          className="w-full mt-6 text-[#756A5E] text-sm hover:text-[#5B4F42] transition-colors disabled:opacity-50"
         >
           {signingOut ? "Cerrando sesión…" : "Cerrar sesión"}
         </button>
