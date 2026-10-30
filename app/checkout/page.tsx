@@ -102,6 +102,13 @@ export default function CheckoutPage() {
   // Aceptación expresa de Términos y Privacidad (Ley 29733) antes de confirmar.
   const [acceptTerms, setAcceptTerms] = useState(false);
 
+  // Coupon state
+  const [couponInput,    setCouponInput]    = useState("");
+  const [couponCode,     setCouponCode]     = useState<string | null>(null);
+  const [couponDiscount, setCouponDiscount] = useState(0);   // soles
+  const [couponError,    setCouponError]    = useState<string | null>(null);
+  const [couponLoading,  setCouponLoading]  = useState(false);
+
   // Proof upload state
   const [proofFile,       setProofFile]       = useState<File | null>(null);
   const [proofUrl,        setProofUrl]        = useState("");
@@ -131,7 +138,8 @@ export default function CheckoutPage() {
 
   const isShalom        = form.shipping_method === "shalom";
   const shippingCents   = isShalom ? 1500 : 1000;
-  const grandTotalCents = toCents(total) + shippingCents;
+  const discountCents   = toCents(couponDiscount);
+  const grandTotalCents = toCents(total) - discountCents + shippingCents;
   const shippingCost    = fromCents(shippingCents);
   const grandTotal      = fromCents(grandTotalCents);
   const availableSlots  = isFriday(form.delivery_date) ? FRI_SLOTS : ALL_SLOTS;
@@ -149,6 +157,45 @@ export default function CheckoutPage() {
     setProofUrl("");
     setProofError(null);
     setProofUploading(false);
+  }
+
+  async function applyCoupon() {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    setCouponError(null);
+    setCouponLoading(true);
+    try {
+      const res = await fetch("/api/apply-coupon", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code,
+          subtotal: total,
+          customer_phone: form.customer_phone || undefined,
+          customer_email: form.customer_email || undefined,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setCouponError(data.error ?? "Cupón inválido.");
+        setCouponCode(null);
+        setCouponDiscount(0);
+        return;
+      }
+      setCouponCode(data.code);
+      setCouponDiscount(data.discountAmount);
+    } catch {
+      setCouponError("No se pudo validar el cupón. Intenta de nuevo.");
+    } finally {
+      setCouponLoading(false);
+    }
+  }
+
+  function removeCoupon() {
+    setCouponCode(null);
+    setCouponDiscount(0);
+    setCouponInput("");
+    setCouponError(null);
   }
 
   function handleDateChange(dateStr: string) {
@@ -275,6 +322,7 @@ export default function CheckoutPage() {
           shipping_cost: shippingCost,
           subtotal: total,
           total: grandTotal,
+          coupon_code: couponCode ?? undefined,
           items,
         }),
       });
@@ -765,8 +813,54 @@ export default function CheckoutPage() {
                 </li>
               ))}
             </ul>
-            <div className="pt-4 flex flex-col gap-2 text-sm">
+            {/* Coupon input */}
+            <div className="pt-4 border-t border-rule">
+              {!couponCode ? (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={couponInput}
+                    onChange={e => { setCouponInput(e.target.value.toUpperCase()); setCouponError(null); }}
+                    onKeyDown={e => e.key === "Enter" && applyCoupon()}
+                    placeholder={t("Código de descuento", "Discount code")}
+                    className="flex-1 min-h-11 bg-transparent border border-rule px-3 text-base text-ink focus:border-ink transition-colors uppercase placeholder:normal-case placeholder:text-ink-mute-text"
+                    disabled={couponLoading}
+                    aria-label={t("Código de descuento", "Discount code")}
+                  />
+                  <button
+                    type="button"
+                    onClick={applyCoupon}
+                    disabled={couponLoading || !couponInput.trim()}
+                    className="min-h-11 px-4 border border-rule text-sm text-ink hover:border-ink disabled:opacity-40 transition-colors whitespace-nowrap"
+                  >
+                    {couponLoading ? t("…", "…") : t("Aplicar", "Apply")}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between text-sm bg-bg-warm border border-rule px-3 py-2.5">
+                  <div>
+                    <span className="lc-mono uppercase text-[10px] tracking-[0.18em] text-gold-text">{couponCode}</span>
+                    <span className="text-ink-soft ml-2">−{formatSoles(couponDiscount)}</span>
+                  </div>
+                  <button type="button" onClick={removeCoupon}
+                    className="lc-mono uppercase text-[9px] tracking-[0.18em] text-ink-mute-text hover:text-ink transition-colors">
+                    {t("Quitar", "Remove")}
+                  </button>
+                </div>
+              )}
+              {couponError && (
+                <p className="text-xs text-red-600 mt-1.5">{couponError}</p>
+              )}
+            </div>
+
+            <div className="pt-3 flex flex-col gap-2 text-sm">
               <div className="flex justify-between"><span className="text-ink-soft">{t("Subtotal", "Subtotal")}</span><span className="text-ink">{formatSoles(total)}</span></div>
+              {couponDiscount > 0 && (
+                <div className="flex justify-between text-gold-deep">
+                  <span>{t("Descuento", "Discount")} ({couponCode})</span>
+                  <span>−{formatSoles(couponDiscount)}</span>
+                </div>
+              )}
               <div className="flex justify-between"><span className="text-ink-soft">{t("Envío", "Shipping")}</span><span className="text-ink">{formatSoles(shippingCost)}</span></div>
               <div className="flex items-baseline justify-between pt-3 mt-1 border-t border-rule">
                 <span className="lc-mono uppercase text-[10px] tracking-[0.22em] text-ink-soft">Total</span>

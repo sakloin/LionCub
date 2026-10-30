@@ -87,6 +87,8 @@ export interface Order {
   notes: string | null;
   delivery_date: string | null;
   delivery_time_slot: string | null;
+  coupon_code: string | null;
+  discount_amount: number;
   created_at: string;
 }
 

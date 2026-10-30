@@ -599,6 +599,12 @@ export default function PedidosAdmin() {
                         })}
                         <dl className="flex flex-wrap justify-end gap-x-5 gap-y-1 pt-1 text-sm text-ink-soft">
                           <div className="flex gap-1"><dt>Subtotal</dt><dd className="font-semibold text-ink tabular-nums">{formatSoles(Number(order.subtotal))}</dd></div>
+                          {Number(order.discount_amount) > 0 && (
+                            <div className="flex gap-1 text-green-700">
+                              <dt>Cupón {order.coupon_code ?? ""}</dt>
+                              <dd className="font-semibold tabular-nums">−{formatSoles(Number(order.discount_amount))}</dd>
+                            </div>
+                          )}
                           <div className="flex gap-1"><dt>Envío</dt><dd className="font-semibold text-ink tabular-nums">{formatSoles(Number(order.shipping_cost))}</dd></div>
                           <div className="flex gap-1"><dt>Total</dt><dd className="font-semibold text-ink tabular-nums">{formatSoles(Number(order.total))}</dd></div>
                         </dl>
