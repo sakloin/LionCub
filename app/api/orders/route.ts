@@ -13,6 +13,11 @@ const SHIPPING_CENTS: Record<string, number> = {
   shalom: 1500,
 };
 
+// Defined coupons — keep in sync with /api/apply-coupon/route.ts.
+const COUPONS: Record<string, { discountPct: number; firstPurchaseOnly: boolean }> = {
+  LION10: { discountPct: 10, firstPurchaseOnly: true },
+};
+
 interface VariantRow {
   id: string;
   product_id: string;
@@ -41,6 +46,7 @@ export async function POST(req: NextRequest) {
     total: _ignoredTotal,
     shipping_cost: _ignoredShipping,
     acepta_terminos: aceptaTerminos,
+    coupon_code: clientCouponCode,
     ...orderData
   } = body as {
     items?: CartItem[];
@@ -48,6 +54,7 @@ export async function POST(req: NextRequest) {
     total?: unknown;
     shipping_cost?: unknown;
     acepta_terminos?: unknown;
+    coupon_code?: string;
     [k: string]: unknown;
   };
   void _ignoredSubtotal;
@@ -192,7 +199,41 @@ export async function POST(req: NextRequest) {
   });
 
   const shippingCents = SHIPPING_CENTS[shippingMethod];
-  const totalCents = subtotalCents + shippingCents;
+
+  // ─── Validate and apply coupon (server-authoritative) ────────────────
+  let discountCents = 0;
+  let validatedCouponCode: string | null = null;
+  const normalizedCoupon = (clientCouponCode ?? "").trim().toUpperCase();
+  if (normalizedCoupon) {
+    const coupon = COUPONS[normalizedCoupon];
+    if (!coupon) {
+      return NextResponse.json({ error: "Código de descuento inválido." }, { status: 400 });
+    }
+    if (coupon.firstPurchaseOnly) {
+      const phone = orderData.customer_phone as string | undefined;
+      const email = (orderData.customer_email as string | undefined ?? "").trim();
+      if (!phone) {
+        return NextResponse.json({ error: "Teléfono requerido para validar el cupón." }, { status: 400 });
+      }
+      const orParts = [`customer_phone.eq.${phone}`];
+      if (email) orParts.push(`customer_email.eq.${email}`);
+      const { data: prev } = await supabaseAdmin
+        .from("orders")
+        .select("id")
+        .or(orParts.join(","))
+        .not("order_status", "eq", "cancelado")
+        .not("payment_status", "eq", "fallido")
+        .limit(1);
+      if (prev && prev.length > 0) {
+        return NextResponse.json({ error: "Este cupón es solo para el primer pedido." }, { status: 409 });
+      }
+    }
+    discountCents = Math.round(subtotalCents * coupon.discountPct / 100);
+    validatedCouponCode = normalizedCoupon;
+  }
+
+  const discountedSubtotalCents = subtotalCents - discountCents;
+  const totalCents = discountedSubtotalCents + shippingCents;
 
   // ─── Atomically reserve stock for every variant ──────────────────────
   // The pre-validation above catches stock=0 at the boundary; this reservation
@@ -235,11 +276,13 @@ export async function POST(req: NextRequest) {
   // `acepta_terminos_at` va después del spread: el cliente no puede fijarlo.
   const orderRow: Record<string, unknown> = {
     ...orderData,
-    subtotal:      fromCents(subtotalCents),
-    total:         fromCents(totalCents),
-    shipping_cost: fromCents(shippingCents),
-    payment_status: "pendiente",
-    order_status:   "nuevo",
+    subtotal:        fromCents(subtotalCents),
+    total:           fromCents(totalCents),
+    shipping_cost:   fromCents(shippingCents),
+    discount_amount: fromCents(discountCents),
+    ...(validatedCouponCode ? { coupon_code: validatedCouponCode } : {}),
+    payment_status:  "pendiente",
+    order_status:    "nuevo",
     acepta_terminos_at: new Date().toISOString(),
   };
   const insertOrder = (row: Record<string, unknown>) =>
@@ -248,12 +291,21 @@ export async function POST(req: NextRequest) {
   let { data: order, error } = await insertOrder(orderRow);
 
   // Si la migración aún no está aplicada, PostgREST no conoce la columna
-  // (PGRST204). No se bloquea la compra: se reintenta sin ella (DT-17).
-  if (error && error.code === "PGRST204" && error.message?.includes("acepta_terminos_at")) {
-    console.warn("[orders] falta la columna orders.acepta_terminos_at; se guarda el pedido sin ella");
-    const { acepta_terminos_at: _sinColumna, ...rowSinAceptacion } = orderRow;
-    void _sinColumna;
-    ({ data: order, error } = await insertOrder(rowSinAceptacion));
+  // (PGRST204). No se bloquea la compra: se reintenta sin las columnas
+  // desconocidas (DT-17).
+  if (error && error.code === "PGRST204") {
+    const msg = error.message ?? "";
+    const fallbackRow = { ...orderRow };
+    if (msg.includes("acepta_terminos_at")) {
+      console.warn("[orders] falta acepta_terminos_at; se guarda sin ella");
+      delete fallbackRow.acepta_terminos_at;
+    }
+    if (msg.includes("coupon_code") || msg.includes("discount_amount")) {
+      console.warn("[orders] faltan columnas de cupón; se guarda sin ellas");
+      delete fallbackRow.coupon_code;
+      delete fallbackRow.discount_amount;
+    }
+    ({ data: order, error } = await insertOrder(fallbackRow));
   }
 
   if (error || !order) {
@@ -262,6 +314,18 @@ export async function POST(req: NextRequest) {
       { error: error?.message ?? "Error creating order" },
       { status: 500 }
     );
+  }
+
+  // ─── Record coupon use (fire-and-forget; never block the order) ──────
+  if (validatedCouponCode) {
+    supabaseAdmin.from("coupon_uses").insert({
+      coupon_code:    validatedCouponCode,
+      customer_phone: orderData.customer_phone as string ?? null,
+      customer_email: (orderData.customer_email as string ?? null) || null,
+      order_id:       order.id,
+    }).then(({ error: cuErr }) => {
+      if (cuErr) console.error("[orders] coupon_uses insert failed:", cuErr.message);
+    });
   }
 
   // ─── Insert order_items; on failure, delete order + roll back stock ───
