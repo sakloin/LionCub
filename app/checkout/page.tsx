@@ -823,7 +823,7 @@ export default function CheckoutPage() {
                     onChange={e => { setCouponInput(e.target.value.toUpperCase()); setCouponError(null); }}
                     onKeyDown={e => e.key === "Enter" && applyCoupon()}
                     placeholder={t("Código de descuento", "Discount code")}
-                    className="flex-1 min-h-11 bg-transparent border border-rule px-3 text-sm text-ink focus:border-ink transition-colors uppercase placeholder:normal-case placeholder:text-ink-mute-text"
+                    className="flex-1 min-h-11 bg-transparent border border-rule px-3 text-base text-ink focus:border-ink transition-colors uppercase placeholder:normal-case placeholder:text-ink-mute-text"
                     disabled={couponLoading}
                     aria-label={t("Código de descuento", "Discount code")}
                   />
@@ -856,7 +856,7 @@ export default function CheckoutPage() {
             <div className="pt-3 flex flex-col gap-2 text-sm">
               <div className="flex justify-between"><span className="text-ink-soft">{t("Subtotal", "Subtotal")}</span><span className="text-ink">{formatSoles(total)}</span></div>
               {couponDiscount > 0 && (
-                <div className="flex justify-between text-green-700">
+                <div className="flex justify-between text-gold-deep">
                   <span>{t("Descuento", "Discount")} ({couponCode})</span>
                   <span>−{formatSoles(couponDiscount)}</span>
                 </div>
