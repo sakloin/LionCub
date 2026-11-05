@@ -21,7 +21,7 @@
 | 4 | Congelamiento + velocidad (LCP < 2.5 s móvil) + prueba de compra real | ⬜ |
 | 5 | Lanzamiento | ⬜ |
 | A1 | Rediseño del panel admin (navegación, tablero, pedidos, productos) — spec `docs/requisitos/admin-rediseno-2026-10-19.md` | 🟡 implementado en rama `claude/admin-rediseno` (PR borrador) — falta auditor |
-| H1 | Hero editorial + home alineada a IDENTIDAD (opción B «puente») — spec `docs/requisitos/hero-editorial-2026-11-04.md` | 🔵 en curso en rama `claude/hero-editorial` (PR #121) |
+| H1 | Hero editorial + home alineada a IDENTIDAD (opción B «puente») — spec `docs/requisitos/hero-editorial-2026-11-04.md` | 🟡 implementado en rama `claude/hero-editorial` (PR #121) — auditor: corregido todo salvo la foto del hero (decide Heber) |
 
 ## Fase 2 — Críticos de compra
 - [x] **2.1 Resiliencia de la colección** (`app/components/Collection.tsx`): `try/catch/finally` en la carga para que un fallo del fetch NO deje "Cargando…" eterno; cae al estado vacío. _(hecho en rama; criterio: con la base caída, la sección no se cuelga)._
@@ -78,19 +78,19 @@ Rama `claude/correcciones-auditoria-lanzamiento` (PR en borrador). Fuente: `Lion
 
 ## Fase H1 — Hero editorial y home alineada a IDENTIDAD (2026-11-04)
 > Decisiones de Heber: IDENTIDAD.md manda (P1), opción B (P2), fase nueva tras el lanzamiento (P3). Solo la home pública (`app/page.tsx` + `LION_CUB_BODY` + `lc-styles.css` + `lc-app.js`). No toca checkout, bolsa, pagos ni catálogo SSR.
-- [ ] **H1.1 Hero editorial** — reemplaza `section.hero` (letras con fotos, doodles, ola) por el hero del prototipo.
+- [x] **H1.1 Hero editorial** — reemplaza `section.hero` (letras con fotos, doodles, ola) por el hero del prototipo.
   - Criterio: foto mamá+bebé como `<img fetchpriority="high">` (LCP, < 200 KB); titular «Suave como la caricia de *mamá*»; un solo CTA «Ver colección» → `#favoritos`; polaroid con un producto real que abre su ficha; viento SVG solo escritorio, luz y motas en todos; quieto con `prefers-reduced-motion`.
   - Verificar: `npm run lint` · `npm run build` · capturas 1440 y 390 · GC-01, GC-02 a mano.
   - Archivos: `app/data/lion-cub-body.ts`, `public/lc-hero.css` (nuevo), `public/lc-hero.js` (nuevo), `app/page.tsx`. Tamaño: M. Depende de: —
-- [ ] **H1.2 Tokens IDENTIDAD en la home** — `:root` de `lc-styles.css` pasa a crema/tinta/oro; Nunito → Inter (cuerpo) y Cormorant (titulares); botones relleno tinta, acento oro ≤ 10 %.
+- [x] **H1.2 Tokens IDENTIDAD en la home** — `:root` de `lc-styles.css` pasa a crema/tinta/oro; Nunito → Inter (cuerpo) y Cormorant (titulares); botones relleno tinta, acento oro ≤ 10 %.
   - Criterio: ningún `font-family:Nunito` ni `--peach`/`--sage` como color de bloque en la home; contraste AA (tokens de texto de ADR 0003).
   - Verificar: lint · build · capturas de cada sección. Archivos: `public/lc-styles.css`. Tamaño: S. Depende de: H1.1
-- [ ] **H1.3 Hilos editoriales** — titulares «sans ligera + palabra en Cormorant cursiva»; la línea fina del hero reemplaza `♥` centrados y olas; etiquetas en JetBrains Mono.
+- [x] **H1.3 Hilos editoriales** — titulares «sans ligera + palabra en Cormorant cursiva»; la línea fina del hero reemplaza `♥` centrados y olas; etiquetas en JetBrains Mono.
   - Criterio: ningún `.heartline` ni `.wave*` visible; un solo patrón de titular en toda la home.
   - Archivos: `app/data/lion-cub-body.ts`, `public/lc-styles.css`. Tamaño: M. Depende de: H1.2
-- [ ] **H1.4 Polaroid y motas** — el tendedero de «Pequeños detalles» usa la misma polaroid del hero; motas de algodón tenues en «¿Por qué elegir Lion Cub?».
+- [x] **H1.4 Polaroid y motas** — el tendedero de «Pequeños detalles» usa la misma polaroid del hero; motas de algodón tenues en «¿Por qué elegir Lion Cub?».
   - Archivos: `public/lc-styles.css`, `public/lc-hero.js`. Tamaño: S. Depende de: H1.3
-- [ ] **Punto de control H1** — capturas antes/después (móvil y escritorio) en el PR, veredicto APROBADO de `auditor-diseno`, PSI móvil LCP < 2.5 s en el preview de Vercel, OK de Heber.
+- [ ] **Punto de control H1** (auditor ronda 1: RECHAZADO 6.5/10 → corregidos #1 tablet, #3 marca de agua, #4–#8; #9–#12 a DT-30–DT-35; pendiente #2 foto) — capturas antes/después (móvil y escritorio) en el PR, veredicto APROBADO de `auditor-diseno`, PSI móvil LCP < 2.5 s en el preview de Vercel, OK de Heber.
 
 ## Notas
 - El **inglés va al lanzamiento** — selector EN/ES visible. Aprobado por Heber 2026-10-11.

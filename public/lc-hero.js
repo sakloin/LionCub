@@ -10,7 +10,7 @@
   /* ---------- 1. Viento (filtros SVG) ---------- */
   function wind() {
     var host = document.querySelector(".hx-fx");
-    if (!host || !matchMedia("(min-width: 761px)").matches) return;
+    if (!host || !matchMedia("(min-width: 1025px)").matches) return;
     var src = "/hero/poster-desktop.webp";
     var zones = [
       // [id, base frequency, frecuencias animadas, escala, escalas animadas, duración, rectángulos de máscara x,y,w,h]
