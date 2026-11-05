@@ -1,0 +1,204 @@
+/* Hero editorial Lion Cub (Fase H1.1). Spec: docs/requisitos/hero-editorial-2026-11-04.md
+   Marco 1155x720 escalado por --u (unidades del contenedor). Líneas finas dividen tres columnas y dos filas.
+   Colores y fuentes de design-patterns/IDENTIDAD.md. */
+:root{
+  --lc-bg:#FDF8F0;
+  --lc-bg-warm:#F5ECDC;
+  --lc-ink:#1A1410;
+  --lc-ink-soft:#5B4F42;
+  --lc-ink-mute-text:#756A5E;
+  --lc-rule:#E8DFCB;
+  --lc-gold:#C9A961;
+  --lc-gold-deep:#A47C3B;
+  --lc-gold-text:#86652C;
+  --lc-display:var(--font-cormorant),"Cormorant Garamond",Georgia,"Times New Roman",serif;
+  --lc-body:var(--font-inter),Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --lc-mono:var(--font-jetbrains),"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+
+.hx{position:relative;container-type:inline-size;background:var(--lc-bg);color:var(--lc-ink)}
+.hx-frame{--u:calc(100cqw / 1155);position:relative;width:100%;aspect-ratio:1155/720;overflow:hidden;background:var(--lc-bg-warm)}
+.hx-photo,.hx-photo img,.hx-fx,.hx-fx svg,.hx-rays,.hx-motes,.hx-veil{position:absolute;inset:0;width:100%;height:100%}
+.hx-photo img{object-fit:cover;object-position:50% 50%;display:block}
+.hx-fx svg{display:block}
+.hx-motes{pointer-events:none}
+.hx-rays{pointer-events:none;mix-blend-mode:screen;opacity:.4;
+  background:
+    linear-gradient(118deg,rgba(255,244,222,0) 8%,rgba(255,244,222,.55) 16%,rgba(255,244,222,0) 24%),
+    linear-gradient(118deg,rgba(255,244,222,0) 26%,rgba(255,240,214,.4) 32%,rgba(255,244,222,0) 38%),
+    linear-gradient(118deg,rgba(255,244,222,0) 41%,rgba(255,240,214,.28) 45%,rgba(255,244,222,0) 50%);
+  -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 55%,transparent 95%);mask-image:linear-gradient(180deg,#000 0%,#000 55%,transparent 95%)}
+.hx-veil{pointer-events:none;background:
+  linear-gradient(90deg,rgba(253,248,240,.9) 0%,rgba(253,248,240,.6) 25%,rgba(253,248,240,0) 45%,rgba(253,248,240,0) 67%,rgba(253,248,240,.62) 81%,rgba(253,248,240,.9) 100%)}
+
+.hx-grid i{position:absolute;background:rgba(164,124,59,.38);pointer-events:none}
+.hx-gv1{left:calc(200.6*var(--u));top:0;bottom:0;width:1px}
+.hx-gv2{left:calc(843.6*var(--u));top:0;bottom:0;width:1px}
+.hx-gh{top:calc(372*var(--u));left:0;right:0;height:1px}
+
+
+.hx-eyebrow,.hx-meta{font-family:var(--lc-mono);text-transform:uppercase;letter-spacing:.18em;font-weight:500;color:var(--lc-ink);margin:0}
+.hx-eyebrow{position:absolute;left:calc(866*var(--u));top:calc(52*var(--u));display:flex;align-items:center;gap:10px;font-size:max(12px,calc(11.5*var(--u)))}
+.hx-eyebrow svg{width:16px;height:16px;fill:var(--lc-gold);flex:none}
+
+.hx-title{position:absolute;left:calc(34*var(--u));top:calc(48*var(--u));margin:0;font-family:var(--lc-body);font-weight:300;
+  font-size:calc(64*var(--u));line-height:1;letter-spacing:-.025em;color:var(--lc-ink)}
+.hx-title span,.hx-title em{display:block}
+.hx-title em{font-family:var(--lc-display);font-style:italic;font-weight:400;font-size:calc(118*var(--u));line-height:1;letter-spacing:-.01em;color:var(--lc-gold-deep);margin-top:calc(2*var(--u))}
+
+.hx-meta{position:absolute;left:calc(34*var(--u));top:calc(398*var(--u));font-size:max(12px,calc(11.5*var(--u)));line-height:1.9}
+.hx-meta b{font-weight:500;color:var(--lc-gold-text)}
+
+.hx-copy{position:absolute;left:calc(866*var(--u));top:calc(398*var(--u));width:calc(258*var(--u))}
+.hx-copy p{margin:0 0 20px;font-family:var(--lc-body);font-size:max(16px,calc(16*var(--u)));line-height:1.55;color:var(--lc-ink-soft)}
+.hx-cta{display:inline-flex;align-items:center;gap:12px;min-height:48px;padding:0 26px;border-radius:999px;background:var(--lc-ink);color:var(--lc-bg);
+  font-family:var(--lc-body);font-weight:500;font-size:16px;text-decoration:none;transition:background-color .2s ease,transform .2s ease}
+.hx-cta:hover{background:var(--lc-ink-soft);color:var(--lc-bg)}
+.hx-cta:active{transform:scale(.98)}
+.hx-cta span{color:var(--lc-gold)}
+
+.hx-pola{position:absolute;left:calc(118*var(--u));top:calc(468*var(--u));width:calc(168*var(--u));margin:0;border:0;cursor:pointer;
+  background:#fff;padding:calc(10*var(--u)) calc(10*var(--u)) calc(34*var(--u));box-shadow:0 calc(16*var(--u)) calc(36*var(--u)) rgba(26,20,16,.2);
+  transform:rotate(-12deg);transition:transform .3s ease}
+.hx-pola:hover{transform:rotate(-9deg) translateY(-4px)}
+.hx-pola img{display:block;width:100%;aspect-ratio:4/5;object-fit:cover;object-position:50% 40%}
+.hx-pola span{position:absolute;left:0;right:0;bottom:calc(8*var(--u));text-align:center;font-family:var(--lc-display);font-style:italic;
+  font-size:max(15px,calc(19*var(--u)));color:var(--lc-ink-soft)}
+
+.hx-cta:focus-visible,.hx-pola:focus-visible{outline:2px solid var(--lc-gold-deep);outline-offset:4px}
+
+@media (prefers-reduced-motion:no-preference){
+  .hx-in{animation:hx-rise .4s cubic-bezier(.2,.7,.2,1) var(--d,0s) both}
+  .hx-pola{animation:hx-drop .4s cubic-bezier(.2,.8,.25,1) .35s both}
+  .hx-rays{animation:hx-rays 9s ease-in-out infinite alternate}
+  @keyframes hx-rise{from{opacity:0;transform:translateY(12px)}}
+  @keyframes hx-drop{from{opacity:0;transform:translateY(-24px) rotate(-6deg)}to{opacity:1;transform:rotate(-12deg)}}
+  @keyframes hx-rays{0%{opacity:.28;transform:translateX(-1.5%)}100%{opacity:.48;transform:translateX(1.5%)}}
+}
+@media (prefers-reduced-motion:reduce){.hx-rays{opacity:.32}}
+
+/* Celular y tablet (hasta 1024 px): la foto cubre el marco y el texto se reacomoda encima */
+@media (max-width:1024px){
+  .hx-frame{--u:calc(min(100cqw, 560px) / 400);aspect-ratio:auto;height:min(190cqw,calc(100svh - 70px));min-height:600px}
+  .hx-photo img{object-position:50% 62%}
+  .hx-veil{background:linear-gradient(180deg,rgba(253,248,240,.94) 0%,rgba(253,248,240,.72) 28%,rgba(253,248,240,0) 44%,rgba(253,248,240,0) 58%,rgba(253,248,240,.82) 76%,rgba(253,248,240,.97) 100%)}
+  .hx-gv1,.hx-gv2{display:none}
+  .hx-gh{top:auto;bottom:calc(205*var(--u))}
+  .hx-eyebrow{left:16px;top:20px;font-size:11px}
+  .hx-title{left:16px;right:16px;top:50px;font-size:calc(36*var(--u))}
+  .hx-title em{font-size:calc(62*var(--u))}
+  .hx-meta{display:none}
+  .hx-copy{left:16px;right:16px;top:auto;bottom:24px;width:auto;min-width:0}
+  .hx-copy p{font-size:16px;max-width:38ch}
+  .hx-pola{left:auto;right:18px;top:auto;bottom:calc(222*var(--u));width:96px;min-width:0;padding:6px 6px 24px}
+  .hx-pola span{font-size:14px;bottom:3px}
+}
+
+/* ============================================================
+   Capa editorial de la home (Fases H1.2–H1.4)
+   Los cinco hilos del hero aplicados al resto de secciones:
+   tipografía, líneas finas, polaroid, motas y un solo acento.
+   ============================================================ */
+
+/* Tipografía: Inter para cuerpo y UI, Cormorant para titulares */
+body{font-family:var(--lc-body);color:var(--lc-ink)}
+nav{font-weight:500}
+.brand{font-family:var(--lc-display);font-weight:500;font-style:italic;letter-spacing:0;font-size:32px;color:var(--lc-ink)}
+.brand b,.brand-trail{display:none}
+
+.section-heading{font-family:var(--lc-body);font-weight:300;font-size:clamp(28px,3.4vw,44px);letter-spacing:-.02em;line-height:1.1;color:var(--lc-ink);text-wrap:balance}
+.section-heading em{font-family:var(--lc-display);font-style:italic;font-weight:400;font-size:1.22em;letter-spacing:-.005em;color:var(--lc-gold-deep)}
+
+/* Línea fina en lugar de corazones centrados */
+.heartline{font-size:0;color:transparent;width:56px;height:1px;gap:0;background:var(--lc-gold);margin:18px auto 30px}
+.heartline:before,.heartline:after{display:none}
+
+/* Doodles, olas y manchas orgánicas fuera de la home */
+.doodle,.wave,.wave-top,.wave-bottom,.hero-trail,.favorite-heart,.favorite-trail,.why:before,.why:after,.slider:after{display:none!important}
+
+/* Botones: primario relleno tinta, flecha en oro */
+.pill{background:var(--lc-ink);color:var(--lc-bg);font-weight:500;min-height:48px}
+.pill:hover{background:var(--lc-ink-soft);color:var(--lc-bg)}
+.pill span{background:transparent;color:var(--lc-gold);width:auto;height:auto;font-size:18px}
+.pill.secondary{background:transparent;color:var(--lc-ink);border:1px solid var(--lc-ink)}
+.pill.secondary:hover{background:var(--lc-bg-warm);color:var(--lc-ink)}
+.pill.secondary span{background:transparent;color:var(--lc-gold-deep)}
+.count{background:var(--lc-ink);color:var(--lc-bg)}
+.viewall{border-color:var(--lc-rule);color:var(--lc-gold-text);font-weight:500;font-family:var(--lc-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase}
+
+/* Carrusel de campaña */
+.campaign{background:linear-gradient(var(--lc-bg-warm) 0 69%,var(--lc-bg) 69%)}
+.slide h2{font-family:var(--lc-display);font-weight:400;color:var(--lc-ink);letter-spacing:.01em;font-size:clamp(40px,4.6vw,60px);line-height:1}
+.slide h2 span{display:block;font-style:italic;color:var(--lc-gold-deep);letter-spacing:0}
+.slide .heartline{margin:16px 0 18px}
+.slide .textlink{font-weight:500;border-bottom-color:var(--lc-gold)}
+.round{color:var(--lc-ink)}
+
+/* Favoritos */
+.feature-art{border-radius:2px;background:var(--lc-bg-warm)}
+.feature-art h3{font-family:var(--lc-display);font-weight:400;color:var(--lc-ink)}
+.favorite{font-family:var(--lc-display);font-style:italic;font-weight:400;color:var(--lc-ink-soft)}
+.product-info h3{font-weight:500}
+.product-info b{color:var(--lc-ink)}
+.seal{font-family:var(--lc-mono);font-weight:500}
+.size-buttons button{border-color:var(--lc-rule);color:var(--lc-ink-soft)}
+.size-buttons button:hover{background:var(--lc-bg-warm)}
+
+/* Promo */
+.promo-title p{font-family:var(--lc-mono);font-weight:500;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--lc-ink-soft)}
+.promo-title strong{font-family:var(--lc-display);font-weight:300;color:var(--lc-ink)}
+.promo-copy{border-left-color:var(--lc-rule)}
+.promo-copy h3{font-weight:300}
+.promo-copy h3 em{font-family:var(--lc-display);font-style:italic;font-weight:400;font-size:1.25em;color:var(--lc-gold-deep)}
+.promo-copy button{background:var(--lc-ink);color:var(--lc-bg)}
+
+/* ¿Por qué Lion Cub? + motas de algodón detrás */
+.why{isolation:isolate}
+.lc-motes{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:-1}
+.benefit h3{font-family:var(--lc-display);font-weight:500;letter-spacing:0;color:var(--lc-ink)}
+.bubble{color:var(--lc-gold-deep)}
+.benefits-bar{font-family:var(--lc-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--lc-ink-soft)}
+
+/* Pequeños detalles: crema cálido + la misma polaroid del hero */
+.story{background:var(--lc-bg-warm);border-top:1px solid var(--lc-rule);border-bottom:1px solid var(--lc-rule)}
+.polaroid,.note{background:#fff;box-shadow:0 14px 30px rgba(26,20,16,.12)}
+.polaroid{padding:12px 12px 40px;transform:rotate(-6deg)}
+.note p{font-family:var(--lc-display);font-style:italic;font-size:21px;line-height:1.35;color:var(--lc-ink)}
+.note .hearts{display:none}
+.note small{font-family:var(--lc-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--lc-ink-mute-text)}
+.love-tag{background:transparent;border:1px solid var(--lc-gold);color:var(--lc-ink-soft)}
+.love-tag strong{font-family:var(--lc-display);font-weight:500;color:var(--lc-ink)}
+
+/* Newsletter */
+.newsletter h2{font-family:var(--lc-body);font-weight:300;letter-spacing:-.02em;color:var(--lc-ink)}
+.newsletter h2 span{font-family:var(--lc-display);font-style:italic;font-weight:400;font-size:1.2em;color:var(--lc-gold-deep)}
+.newsletter button{background:var(--lc-ink);color:var(--lc-gold)}
+.newsletter small{color:var(--lc-ink-mute-text)}
+
+/* Pie, bolsa y fichas */
+.footer-col h3{font-family:var(--lc-display);font-weight:500;color:var(--lc-ink)}
+.footer-icons{border-left-color:var(--lc-rule)}
+.total{font-weight:600}
+.detail .money{font-weight:600;color:var(--lc-ink)}
+.toast{background:var(--lc-ink);color:var(--lc-bg)}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline-color:var(--lc-gold-deep)}
+
+/* Restos de la paleta anterior → tokens de IDENTIDAD */
+nav>a,nav>details,nav>button{border-right-color:var(--lc-rule)}
+.dots button{background:var(--lc-rule)}
+.dots button.active{background:var(--lc-gold-deep)}
+.product-info .price span{border-right-color:var(--lc-rule)}
+.benefits-bar>span{border-right-color:var(--lc-rule)}
+.bubble{background:var(--lc-bg-warm);color:var(--lc-gold-deep);border-radius:50%;transform:none}
+.bubble svg{transform:none}
+.note:nth-child(3){background:#fff}
+.note p{margin-top:0}
+.footer-col h3:after{background:var(--lc-gold)}
+.copyright span{color:var(--lc-gold-deep)}
+.catalog-toolbar input,.catalog-toolbar select{border-color:var(--lc-rule)}
+.cart-item{border-bottom-color:var(--lc-rule)}
+
+/* Carrusel alineado al hero: marco recto, texto a la izquierda */
+.slider{border-radius:2px}
+.slide-copy{text-align:left}
+.slide .heartline{margin:16px 0 18px}
