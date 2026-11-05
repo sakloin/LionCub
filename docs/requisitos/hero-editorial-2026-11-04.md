@@ -61,7 +61,13 @@
 - Preguntar antes: dependencias nuevas (no hacen falta), video generado con IA, cambios a `IDENTIDAD.md`.
 - Nunca: tocar checkout, bolsa, pagos o precios en esta spec.
 
-## 8. Preguntas abiertas para Heber
+## 8. Decisiones de Heber (2026-11-04)
+- **P1 → IDENTIDAD.md manda.** La home pasa a Cormorant Garamond + Inter + JetBrains Mono, crema `#FDF8F0`, tinta `#1A1410` y oro champagne como único acento. Nunito, salvia y durazno salen de la home.
+- **P2 → Opción B (puente).**
+- **P3 → La tienda ya lanzó.** Entra como **Fase H1** en `plan.md`.
+- P4, P5 y P6 siguen abiertas. Mientras tanto: sin etiqueta de temporada inventada (se usa «Algodón Pima peruano · 0–24 meses»); doodles y olas se retiran de la home (lo implica B), y se pueden recuperar para redes; el video del gesto queda para después.
+
+## 9. Preguntas abiertas originales
 - **P1 — ¿Qué identidad manda?** (a) la de `IDENTIDAD.md` (Cormorant, oro champagne) o (b) la de la home publicada (Nunito, salvia, durazno). El prototipo está entre ambas. Recomendación: (a), porque ya está aprobada y el hero editorial encaja con ella.
 - **P2 — ¿Opción A, B o C?** Recomendación: B.
 - **P3 — ¿Seguimos en congelamiento?** El plan dice «solo correcciones desde 2026-10-25». Si la tienda ya lanzó, esto entra como fase nueva (Fase H1).
