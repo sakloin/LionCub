@@ -2093,7 +2093,7 @@ export default function ProductosAdmin() {
                       value={newSizeName}
                       onChange={e => setNewSizeName(e.target.value)}
                       onKeyDown={e => {
-                        if (e.key === "Enter") { e.preventDefault(); handleAddSize(); }
+                        if (e.key === "Enter" && !e.nativeEvent.isComposing) { e.preventDefault(); handleAddSize(); }
                         if (e.key === "Escape") { setAddingSize(false); setNewSizeName(""); }
                       }}
                       className="flex-1 border border-[#F5EDD8] rounded-lg px-2 py-1.5 text-xs"
@@ -2123,7 +2123,7 @@ export default function ProductosAdmin() {
                       value={newColorName}
                       onChange={e => setNewColorName(e.target.value)}
                       onKeyDown={e => {
-                        if (e.key === "Enter") { e.preventDefault(); handleAddColor(); }
+                        if (e.key === "Enter" && !e.nativeEvent.isComposing) { e.preventDefault(); handleAddColor(); }
                         if (e.key === "Escape") { setAddingColor(false); setNewColorName(""); }
                       }}
                       className="flex-1 border border-[#F5EDD8] rounded-lg px-2 py-1.5 text-xs"
@@ -2164,7 +2164,7 @@ export default function ProductosAdmin() {
                     value={newCatName}
                     onChange={e => setNewCatName(e.target.value)}
                     onKeyDown={e => {
-                      if (e.key === "Enter") { e.preventDefault(); handleAddCategory(); }
+                      if (e.key === "Enter" && !e.nativeEvent.isComposing) { e.preventDefault(); handleAddCategory(); }
                       if (e.key === "Escape") { setAddingCat(false); setNewCatName(""); }
                     }}
                     className="flex-1 border border-[#D4A520] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A520]"
