@@ -18,19 +18,31 @@ function texto(v: unknown): string {
   return typeof v === "string" ? v : "";
 }
 
-/** Deja solo origen + ruta. `inline`, `eval`, `data`, etc. pasan tal cual. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const TOKEN_LARGO = /^[A-Za-z0-9_-]{24,}$/;
+
+/** Cambia los segmentos con forma de UUID o token largo por `:token` (p. ej. /mi-pedido/<uuid>). */
+export function enmascararRuta(ruta: string): string {
+  return ruta.split("/").map((seg) => (UUID.test(seg) || TOKEN_LARGO.test(seg) ? ":token" : seg)).join("/");
+}
+
+/**
+ * Deja solo origen + ruta enmascarada. `inline`, `eval` y similares pasan tal cual;
+ * los valores con esquema pero sin `://` (data:, blob:…) guardan solo el esquema.
+ */
 export function limpiarUri(valor: unknown): string {
   const s = texto(valor).trim();
   if (!s) return "";
   if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(s)) {
-    // Palabras clave de CSP (inline, eval, data, blob…) o rutas: sin query ni fragmento.
-    return s.split(/[?#]/)[0].slice(0, 200);
+    const esquema = /^([a-z][a-z0-9+.-]*):/i.exec(s);
+    if (esquema) return (esquema[1].toLowerCase() + ":").slice(0, 20);
+    return enmascararRuta(s.split(/[?#]/)[0]).slice(0, 200);
   }
   try {
     const u = new URL(s);
-    return (u.origin === "null" ? u.protocol : u.origin + u.pathname).slice(0, 200);
+    return (u.origin === "null" ? u.protocol : u.origin + enmascararRuta(u.pathname)).slice(0, 200);
   } catch {
-    return s.split(/[?#]/)[0].slice(0, 200);
+    return enmascararRuta(s.split(/[?#]/)[0]).slice(0, 200);
   }
 }
 

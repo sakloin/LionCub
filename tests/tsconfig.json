@@ -10,5 +10,5 @@
     "rootDir": "..",
     "outDir": "../.test-build"
   },
-  "files": ["reclamos.test.ts", "csp.test.ts"]
+  "files": ["reclamos.test.ts", "csp.test.ts", "csp-route.test.ts"]
 }
