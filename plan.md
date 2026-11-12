@@ -21,7 +21,7 @@
 | 4 | Congelamiento + velocidad (LCP < 2.5 s móvil) + prueba de compra real | ⬜ |
 | 5 | Lanzamiento | ⬜ |
 | A1 | Rediseño del panel admin (navegación, tablero, pedidos, productos) — spec `docs/requisitos/admin-rediseno-2026-10-19.md` | 🟡 implementado en rama `claude/admin-rediseno` (PR borrador) — falta auditor |
-| A2 | Cabeceras de seguridad, fase 1: solo reportar (spec aprobada por Heber 2026-11-12) — rama `seguridad/cabeceras-report-only` | 🟡 implementado — falta auditor |
+| A2 | Cabeceras de seguridad, fase 1: solo reportar (spec aprobada por Heber 2026-11-12) — rama `seguridad/cabeceras-report-only` | ✅ auditor APROBADO (tras correcciones en 4cf9efe: buzón con tope por stream, 400 si falla la lectura, tokens enmascarados en logs); build, curl y 23 pruebas en verde. Fase 2 (aplicar la CSP, revisar 3DS de Culqi) tras 1–2 semanas de reportes |
 
 ## Fase 2 — Críticos de compra
 - [x] **2.1 Resiliencia de la colección** (`app/components/Collection.tsx`): `try/catch/finally` en la carga para que un fallo del fetch NO deje "Cargando…" eterno; cae al estado vacío. _(hecho en rama; criterio: con la base caída, la sección no se cuelga)._
