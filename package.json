@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsc -p tests/tsconfig.json && node --test .test-build/tests/reclamos.test.js"
+    "test": "tsc -p tests/tsconfig.json && node --test .test-build/tests/reclamos.test.js .test-build/tests/csp.test.js .test-build/tests/csp-route.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",

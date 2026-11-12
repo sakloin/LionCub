@@ -9,7 +9,7 @@
 
 | Prioridad | Área | Hallazgo | Qué hacer | Guía MWG |
 |---|---|---|---|---|
-| 🟠 | Seguridad | Sin cabeceras de seguridad en `next.config.ts`. Hay checkout con Culqi. | CSP en `Report-Only` permitiendo los dominios de Culqi/Supabase; luego activarla. `app/api/payments/**` es ruta protegida. | `security · secure-external-subresources` |
+| 🟠 | Seguridad | Sin cabeceras de seguridad en `next.config.ts`. Hay checkout con Culqi. **Fase 1 en curso: Report-Only (rama `seguridad/cabeceras-report-only`, PR #124).** | CSP en `Report-Only` permitiendo los dominios de Culqi/Supabase; luego activarla. `app/api/payments/**` es ruta protegida. | `security · secure-external-subresources` |
 | 🟢 | Formularios (IME) | 3 atajos de Enter sin `isComposing` en `app/admin/productos/page.tsx:2096, 2126, 2167`. | **Corregido en este PR**. | `ime-safe-enter-submit` |
 | 🟢 | Componentes | ~11 capas `fixed inset-0` y ~9 `<div onClick>` (p. ej. `app/components/SizeGuide.tsx`). | Guía de tallas y menús como `<dialog>`/`popover`. | `dialog · navigation-drawer` |
 | 🟢 | Rendimiento | Un `addEventListener('scroll')` en JS para efectos de desplazamiento. | Evaluar animaciones guiadas por scroll en CSS (`animation-timeline`) con respaldo. | `scroll-entry-exit-effects · shrinking-header-on-scroll` |
